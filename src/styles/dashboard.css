@@ -1,0 +1,47 @@
+/* ===== DASHBOARD STYLES ===== */
+.dashboard { display: flex; flex-direction: column; gap: var(--sp-6); }
+
+/* Quick Actions Bar */
+.dashboard-actions { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+
+/* Chart section */
+.chart-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.chart-header { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+.chart-title { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.chart-legend { display: flex; gap: var(--sp-5); }
+.chart-legend-item { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--text-secondary); font-weight: var(--fw-medium); }
+.chart-legend-dot { width: 10px; height: 10px; border-radius: var(--radius-full); flex-shrink: 0; }
+.chart-legend-dot--sale     { background: var(--chart-sale); }
+.chart-legend-dot--purchase { background: var(--chart-purchase); }
+.chart-canvas-wrap { padding: var(--sp-4) var(--sp-5) var(--sp-5); height: 220px; position: relative; }
+.chart-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* Dashboard grid */
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-6); }
+
+/* Recent bills */
+.recent-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+
+/* Party list */
+.party-list-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; max-height: 420px; display: flex; flex-direction: column; }
+.party-list-scroll { overflow-y: auto; flex: 1; }
+.party-list-item { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); transition: background var(--tr-fast); }
+.party-list-item:last-child { border-bottom: none; }
+.party-list-item:hover { background: var(--bg-hover); }
+.party-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.party-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.party-amount { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--primary); text-align: right; }
+
+/* Low stock alerts */
+.low-stock-item { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); }
+.low-stock-item:last-child { border-bottom: none; }
+.low-stock-dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--danger); flex-shrink: 0; }
+.low-stock-name { flex: 1; font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-primary); }
+.low-stock-qty { font-size: var(--fs-xs); color: var(--danger); font-weight: var(--fw-semibold); }
+
+/* Financial year badge */
+.fy-badge { display: inline-flex; align-items: center; gap: var(--sp-2); background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: var(--radius-full); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}

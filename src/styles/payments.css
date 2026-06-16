@@ -1,0 +1,32 @@
+/* ===== PAYMENTS MODULE STYLES ===== */
+.payment-mode-toggle { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.payment-mode-btn { padding: 6px 14px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted); background: transparent; cursor: pointer; transition: all var(--tr-fast); border: none; }
+.payment-mode-btn.active { background: var(--primary); color: white; }
+.payment-mode-btn:hover:not(.active) { background: var(--bg-hover); }
+
+/* Invoice link list */
+.invoice-link-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.invoice-link-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: border-color var(--tr-fast); }
+.invoice-link-row:hover { border-color: var(--primary); }
+.invoice-link-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0; }
+.invoice-link-info { flex: 1; }
+.invoice-link-num { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.invoice-link-date { font-size: var(--fs-xs); color: var(--text-muted); }
+.invoice-link-amt { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--primary); }
+
+/* Receipt summary */
+.receipt-summary { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--sp-4); }
+.receipt-summary-row { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+.receipt-summary-row:last-child { border-bottom: none; font-weight: var(--fw-bold); font-size: var(--fs-md); }
+.receipt-summary-row--negative { color: var(--danger); }
+
+/* Party avatar cell */
+.party-cell { display: flex; align-items: center; gap: var(--sp-3); }
+.party-avatar { width: 32px; height: 32px; border-radius: var(--radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: var(--fw-bold); flex-shrink: 0; text-transform: uppercase; }
+
+/* Payment layout with form + summary columns */
+.payment-form-layout { display: grid; grid-template-columns: 1fr 340px; gap: var(--sp-5); align-items: flex-start; }
+
+@media (max-width: 900px) {
+  .payment-form-layout { grid-template-columns: 1fr; }
+}

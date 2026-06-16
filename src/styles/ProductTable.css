@@ -1,0 +1,597 @@
+/* =========================================
+   Bulk Product Update – bpu- prefix
+   ========================================= */
+
+.bpu-container {
+  /* width: 92%;
+  max-width: 1100px;
+  margin: 28px auto; */
+  font-family: 'Segoe UI', sans-serif;
+  color: #111827;
+  position: relative;
+  padding-bottom: 80px;
+}
+
+/* ── Header ── */
+.bpu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.bpu-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 5px;
+  color: #111827;
+}
+
+.bpu-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.bpu-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.bpu-discard-btn {
+  padding: 10px 18px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.bpu-discard-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.bpu-save-btn {
+  padding: 10px 20px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.bpu-save-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ── Toolbar ── */
+.bpu-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.bpu-toolbar-left {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.bpu-search-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 12px;
+  flex: 1;
+  min-width: 200px;
+}
+.bpu-search-icon {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-right: 6px;
+}
+
+.bpu-search-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #374151;
+  padding: 9px 0;
+  width: 100%;
+  background: transparent;
+}
+
+.bpu-cat-wrap {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.bpu-cat-select {
+  padding: 9px 12px;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #374151;
+  background: transparent;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.bpu-filter-btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 16px;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.bpu-filter-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+/* Batch Card */
+.bpu-batch-card {
+  background: #f0f5ff;
+  border: 1.5px solid #c7d7fb;
+  border-radius: 10px;
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+
+.bpu-batch-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.bpu-batch-icon {
+  font-size: 12px;
+  color: #2563eb;
+}
+.bpu-batch-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  color: #2563eb;
+  text-transform: uppercase;
+}
+
+.bpu-batch-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bpu-batch-btn {
+  padding: 7px 14px;
+  border: 1px solid #c7d7fb;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 11.5px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  line-height: 1.3;
+  font-weight: 500;
+}
+.bpu-batch-btn:hover:not(:disabled) {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+}
+.bpu-batch-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bpu-batch-btn--delete {
+  padding: 7px 10px;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+.bpu-batch-btn--delete:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* ── Table ── */
+.bpu-table-wrapper {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow-x: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  margin-bottom: 14px;
+}
+
+.bpu-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bpu-table thead tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bpu-table th {
+  padding: 11px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  background: #fafafa;
+}
+
+.bpu-th-check {
+  width: 40px;
+}
+
+.bpu-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+.bpu-table tbody tr:last-child {
+  border-bottom: none;
+}
+.bpu-table tbody tr:hover {
+  background: #f9fafb;
+}
+.bpu-row--selected {
+  background: #eff6ff !important;
+}
+
+.bpu-table td {
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: #374151;
+  vertical-align: middle;
+}
+
+/* Checkbox */
+.bpu-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Product image */
+.bpu-product-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+.bpu-product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bpu-img-placeholder {
+  font-size: 18px;
+}
+
+.bpu-product-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.bpu-sku {
+  font-size: 11.5px;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  background: #f3f4f6;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* Category inline select */
+.bpu-cat-inline {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.bpu-cat-inline:focus {
+  border-color: #2563eb;
+}
+
+/* Quantity control */
+.bpu-qty-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bpu-qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 16px;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.bpu-qty-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.bpu-qty-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  min-width: 28px;
+  text-align: center;
+}
+.bpu-qty-val--low {
+  color: #ef4444;
+}
+
+/* Price input */
+.bpu-price-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #f9fafb;
+  transition: border-color 0.15s;
+  width: fit-content;
+}
+.bpu-price-wrap:focus-within {
+  border-color: #2563eb;
+  background: #fff;
+}
+
+.bpu-price-symbol {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: #6b7280;
+  border-right: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+
+.bpu-price-input {
+  border: none;
+  outline: none;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #111827;
+  width: 80px;
+  background: transparent;
+}
+
+/* Toggle switch */
+.bpu-toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: #d1d5db;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.bpu-toggle--on {
+  background: #2563eb;
+}
+
+.bpu-toggle-thumb {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 3px;
+  left: 3px;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.bpu-toggle--on .bpu-toggle-thumb {
+  left: 21px;
+}
+
+.bpu-no-data {
+  text-align: center;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* ── Pagination ── */
+.bpu-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 2px;
+  margin-bottom: 20px;
+}
+
+.bpu-pagination-info {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.bpu-pagination-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.bpu-page-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.bpu-page-btn:hover:not(:disabled):not(.active) {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+.bpu-page-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+  font-weight: 600;
+}
+.bpu-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Stats Bar ── */
+.bpu-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.bpu-stat-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.bpu-stat-card--accent {
+  border-left: 4px solid #2563eb;
+}
+
+.bpu-stat-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+
+.bpu-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bpu-pending-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f97316;
+  flex-shrink: 0;
+}
+
+/* ── FAB ── */
+.bpu-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  transition: background 0.15s;
+  z-index: 100;
+}
+.bpu-fab:hover {
+  background: #1d4ed8;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .bpu-stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .bpu-header {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .bpu-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .bpu-stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bpu-header-actions {
+    flex-wrap: wrap;
+  }
+}

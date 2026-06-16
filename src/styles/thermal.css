@@ -1,0 +1,245 @@
+/* ===== THERMAL BILL — @media print styles ===== */
+
+/* Hide thermal bill on screen */
+.thermal-bill-wrapper {
+  display: none;
+}
+
+/* ── Print: show ONLY thermal bill ── */
+@media print {
+  /* Hide entire app */
+  body > * {
+    display: none !important;
+  }
+
+  /* Show only thermal bill */
+  .thermal-bill-wrapper {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* ── Page setup ── */
+  @page {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  /* ── Wrapper widths ── */
+  .thermal-58 {
+    width: 58mm;
+    min-width: 58mm;
+    max-width: 58mm;
+  }
+
+  .thermal-80 {
+    width: 80mm;
+    min-width: 80mm;
+    max-width: 80mm;
+  }
+
+  .thermal-bill-wrapper {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 9pt;
+    line-height: 1.3;
+    color: #000;
+    background: #fff;
+    padding: 3mm 2mm;
+    page-break-inside: avoid;
+  }
+
+  /* ── Header ── */
+  .thermal-header {
+    text-align: center;
+    margin-bottom: 4pt;
+  }
+
+  .thermal-store-name {
+    font-size: 13pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .thermal-store-addr,
+  .thermal-phone {
+    font-size: 8pt;
+    color: #333;
+  }
+
+  .thermal-gstin {
+    font-size: 8pt;
+    font-weight: 700;
+    margin-top: 2pt;
+  }
+
+  /* ── Divider ── */
+  .thermal-divider {
+    font-size: 8pt;
+    color: #555;
+    letter-spacing: -1px;
+    margin: 3pt 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* ── Invoice type ── */
+  .thermal-invoice-type {
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 700;
+    margin: 3pt 0;
+  }
+
+  /* ── Row (key: value) ── */
+  .thermal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 1.5pt 0;
+    font-size: 8.5pt;
+  }
+
+  .thermal-row.thermal-bold {
+    font-weight: 700;
+  }
+
+  .thermal-row.thermal-large {
+    font-size: 11pt;
+    margin-top: 3pt;
+  }
+
+  .thermal-row-left {
+    flex: 1;
+  }
+
+  .thermal-row-right {
+    text-align: right;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Item header ── */
+  .thermal-item-header {
+    display: flex;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 1pt 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Item row ── */
+  .thermal-item-row {
+    margin-bottom: 4pt;
+  }
+
+  .thermal-item-name {
+    font-size: 8.5pt;
+    font-weight: 700;
+    word-break: break-word;
+  }
+
+  .thermal-item-hsn {
+    font-size: 7.5pt;
+    color: #555;
+  }
+
+  .thermal-item-detail {
+    display: flex;
+    font-size: 8pt;
+    margin-top: 1pt;
+  }
+
+  .thermal-item-name-col { flex: 1; }
+  .thermal-item-qty-col  { width: 28pt; text-align: center; }
+  .thermal-item-rate-col { width: 40pt; text-align: right; }
+  .thermal-item-amt-col  { width: 44pt; text-align: right; }
+  .thermal-item-disc     { width: 36pt; text-align: right; color: #666; }
+
+  .thermal-item-gst {
+    font-size: 7.5pt;
+    color: #555;
+    padding-left: 4pt;
+  }
+
+  /* ── Section title ── */
+  .thermal-section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: 3pt 0 1pt;
+  }
+
+  /* ── GST Summary ── */
+  .thermal-gst-header,
+  .thermal-gst-row {
+    display: flex;
+    font-size: 7.5pt;
+    justify-content: space-between;
+    margin: 1pt 0;
+  }
+
+  .thermal-gst-header { font-weight: 700; }
+
+  .thermal-gst-header span,
+  .thermal-gst-row span {
+    flex: 1;
+    text-align: right;
+  }
+
+  .thermal-gst-header span:first-child,
+  .thermal-gst-row span:first-child {
+    text-align: left;
+  }
+
+  /* ── QR Code ── */
+  .thermal-qr-section {
+    text-align: center;
+    margin: 6pt 0;
+  }
+
+  .thermal-qr-label {
+    font-size: 8pt;
+    font-weight: 700;
+    margin-bottom: 4pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .thermal-qr-upi {
+    font-size: 7pt;
+    color: #555;
+    margin-top: 3pt;
+  }
+
+  /* ── Footer ── */
+  .thermal-footer {
+    text-align: center;
+    margin-top: 4pt;
+  }
+
+  .thermal-thanks {
+    font-size: 10pt;
+    font-weight: 700;
+    margin-bottom: 3pt;
+  }
+
+  .thermal-footer-sub {
+    font-size: 7.5pt;
+    color: #555;
+  }
+
+  /* ── Suppress all browser UI ── */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

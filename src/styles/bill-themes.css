@@ -1,0 +1,208 @@
+/* ==============================
+   A4 PAGE SETUP
+   ============================== */
+@page {
+    size: A4;
+    margin: 10mm;
+}
+
+body {
+    margin: 0;
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ==============================
+   MAIN DOCUMENT
+   ============================== */
+.bill-document {
+    width: 210mm;
+    min-height: 297mm;
+    margin: auto;
+    border: 1px solid #444;
+    box-sizing: border-box;
+    color: #000;
+    font-size: 12px;
+}
+
+/* ==============================
+   HEADER
+   ============================== */
+.bill-doc__header {
+    text-align: center;
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.bill-doc__company {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.bill-doc__company-sub {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ==============================
+   SECTION TITLE (PURPLE BAR)
+   ============================== */
+.bill-doc__section-title {
+    background: #7c74c9;
+    color: #fff;
+    padding: 6px 10px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* ==============================
+   BILL TO + INVOICE DETAILS
+   ============================== */
+.bill-doc__meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #444;
+}
+
+.bill-doc__meta-col {
+    padding: 10px;
+}
+
+.bill-doc__meta-col:first-child {
+    border-right: 1px solid #444;
+}
+
+.bill-doc__meta-col p {
+    margin: 2px 0;
+}
+
+/* ==============================
+   TABLE
+   ============================== */
+.bill-doc__table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bill-doc__table th,
+.bill-doc__table td {
+    border: 1px solid #444;
+    padding: 6px;
+}
+
+.bill-doc__table th {
+    background: #7c74c9;
+    color: #fff;
+    font-size: 11px;
+}
+
+/* ALIGNMENTS */
+.bill-doc__table th:nth-child(1),
+.bill-doc__table td:nth-child(1) {
+    text-align: center;
+    width: 40px;
+}
+
+.bill-doc__table th:nth-child(3),
+.bill-doc__table td:nth-child(3),
+.bill-doc__table th:nth-child(4),
+.bill-doc__table td:nth-child(4),
+.bill-doc__table th:nth-child(5),
+.bill-doc__table td:nth-child(5) {
+    text-align: center;
+}
+
+.bill-doc__table th:last-child,
+.bill-doc__table td:last-child {
+    text-align: right;
+}
+
+/* ==============================
+   TOTAL ROW INSIDE TABLE
+   ============================== */
+.bill-doc__table tfoot td {
+    font-weight: bold;
+    background: #f5f5f5;
+}
+
+/* ==============================
+   BOTTOM SECTION (WORDS + AMOUNT)
+   ============================== */
+.bill-doc__bottom {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    border-top: 1px solid #444;
+}
+
+.bill-doc__bottom > div {
+    padding: 10px;
+}
+
+.bill-doc__bottom > div:first-child {
+    border-right: 1px solid #444;
+}
+
+/* ==============================
+   AMOUNT BOX
+   ============================== */
+.bill-doc__amount-box p {
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0;
+}
+
+.bill-doc__amount-box .grand-total {
+    font-weight: bold;
+    font-size: 14px;
+    border-top: 1px solid #000;
+    padding-top: 6px;
+}
+
+/* ==============================
+   FOOTER (SIGNATURE)
+   ============================== */
+.bill-doc__footer {
+    border-top: 1px solid #444;
+    padding: 20px;
+    text-align: right;
+    font-size: 12px;
+}
+
+.bill-theme-controls{
+    display: flex;
+    gap: 20px;
+}
+
+.bill-print-btn{
+}
+
+/* ==============================
+   PRINT CLEANUP
+   ============================== */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .bill-document,
+    .bill-document * {
+        visibility: visible;
+    }
+
+    .bill-document {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm;
+        min-height: 297mm;
+        border: none;
+    }
+
+    /* REMOVE UI ELEMENTS */
+    .bill-theme-controls,
+    .bill-print-btn,
+    .top-bar,
+    .bottom-nav {
+        display: none !important;
+    }
+}

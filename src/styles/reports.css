@@ -1,0 +1,15 @@
+/* ===== REPORTS STYLES (unified for all 3 reports) ===== */
+.report-page { display: flex; flex-direction: column; gap: var(--sp-5); }
+.report-table-col { font-weight: var(--fw-medium); color: var(--text-primary); }
+.report-amount { font-weight: var(--fw-semibold); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.report-invoice-num { font-family: monospace; font-size: var(--fs-xs); color: var(--primary); font-weight: var(--fw-semibold); }
+.report-party-cell { display: flex; align-items: center; gap: var(--sp-3); }
+.report-avatar { width: 30px; height: 30px; border-radius: var(--radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: var(--fw-bold); flex-shrink: 0; }
+.export-btn { display: inline-flex; align-items: center; gap: var(--sp-2); }
+
+/* Stock report */
+.stock-indicator { display: flex; align-items: center; gap: var(--sp-2); }
+.stock-dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex-shrink: 0; }
+.stock-dot--in  { background: var(--success); }
+.stock-dot--low { background: var(--warning); }
+.stock-dot--out { background: var(--danger); }
