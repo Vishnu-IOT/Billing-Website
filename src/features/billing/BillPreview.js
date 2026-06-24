@@ -7,7 +7,7 @@ import { formatDate } from '../../utils/date';
 import { numberToWords } from '../../utils/numbers';
 
 export default function BillPreview({ bill, billType = 'SALE', onBack }) {
-  const settings = useAppStore((s) => s.settings);
+  const companies = useAppStore((s) => s.companies);
   const printRef = useRef(null);
   console.log(bill);
   if (!bill) return null;
@@ -96,16 +96,16 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
                   textTransform: 'uppercase',
                 }}
               >
-                {settings.companyName || 'BUSINESS NAME'}
+                {companies.legal_name || 'BUSINESS NAME'}
               </h2>
               <div style={{ whiteSpace: 'pre-wrap' }}>
-                {settings.companyAddress || 'Address Line 1\nCity, State, ZIP'}
+                {companies.address_line1 || 'Address Line 1\nCity, State, ZIP'}
               </div>
-              {settings.companyPhone && (
-                <div>Phone: {settings.companyPhone}</div>
+              {companies.companyPhone && (
+                <div>Phone: {companies.phone}</div>
               )}
-              {settings.companyGstin && (
-                <div>GSTIN: {settings.companyGstin}</div>
+              {companies.companyGstin && (
+                <div>GSTIN: {companies.email}</div>
               )}
             </div>
             <div style={{ textAlign: 'right' }}>

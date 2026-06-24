@@ -359,6 +359,7 @@ export default function Products() {
                 setForm((f) => ({ ...f, taxRate: e.target.value }))
               }
             >
+              <option value="">Select GST %</option>
               <option value="0">0%</option>
               <option value="5">5%</option>
               <option value="12">12%</option>
@@ -481,7 +482,7 @@ export default function Products() {
               filteredProducts.map((p) => {
                 const qty = parseInt(p.stockQuantity) || 0;
                 const min = parseInt(p.minStockLevel) || 5;
-                const isOut = qty === 0;
+                const isOut = qty <= 0;
                 const isLow = qty > 0 && qty < min;
 
                 let stockLabel = 'In Stock';
@@ -654,11 +655,10 @@ export default function Products() {
                       <div className="kpi-card__sub">
                         <span>Margin Margin</span>
                         <span
-                          className={`profit-badge ${
-                            productMetrics.profit >= 0
+                          className={`profit-badge ${productMetrics.profit >= 0
                               ? 'profit-badge--positive'
                               : 'profit-badge--negative'
-                          }`}
+                            }`}
                         >
                           {productMetrics.totalSalesAmt > 0
                             ? `${Math.round((productMetrics.profit / productMetrics.totalSalesAmt) * 100)}%`
@@ -723,13 +723,13 @@ export default function Products() {
                                 >
                                   {txn.date
                                     ? new Date(txn.date).toLocaleDateString(
-                                        'en-IN',
-                                        {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: 'numeric',
-                                        }
-                                      )
+                                      'en-IN',
+                                      {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      }
+                                    )
                                     : '—'}
                                 </td>
                                 {/* <td style={{ fontWeight: 600 }}>

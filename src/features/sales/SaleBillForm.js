@@ -4,7 +4,7 @@ import useAppStore from '../../store/appStore';
 import useSalesStore from '../../store/salesStore';
 import { PartySelector } from '../../components/shared/PartySelector';
 import { InvoiceItemsTable } from '../../components/shared/InvoiceItemsTable';
-import { Button, ToastContainer } from '../../components/ui';
+import { Button, ConfirmModal, ToastContainer } from '../../components/ui';
 import { useBillCalculations } from '../../hooks/useBillCalculations';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
@@ -67,6 +67,7 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
   const [users, setUsers] = useState([]);
+  const [close, setClose] = useState(false);
 
   // ── Fetch Users ──
   async function loadUsers() {
@@ -121,26 +122,26 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
           items:
             existingBill.SalesItems && existingBill.SalesItems.length > 0
               ? existingBill.SalesItems.map((item) => ({
-                  productId: item.productId || '',
-                  productName: item.productName || '',
-                  hsnCode: item.hsnCode || '',
-                  sku: item.sku || '',
-                  batchNumber: item.batchNumber || '',
-                  expiryDate: item.expiryDate || '',
-                  serialNumber: item.serialNumber || '',
-                  notes: item.notes || '',
-                  price: item.price || 0,
-                  quantity: item.quantity || 1,
-                  discountPercent: item.discountPercentage || 0,
-                  taxRate: item.taxPercentage || 0,
-                  mrp: item.price || 0, // Fallback if missing
-                  unit: 'pcs', // Fallback
-                  afterDiscount: item.baseRate || 0,
-                  discountAmount: item.discountAmount || 0,
-                  taxAmount: item.taxAmount || 0,
-                  netRate: item.netRate || 0,
-                  total: item.netRate || 0,
-                }))
+                productId: item.productId || '',
+                productName: item.productName || '',
+                hsnCode: item.hsnCode || '',
+                sku: item.sku || '',
+                batchNumber: item.batchNumber || '',
+                expiryDate: item.expiryDate || '',
+                serialNumber: item.serialNumber || '',
+                notes: item.notes || '',
+                price: item.price || 0,
+                quantity: item.quantity || 1,
+                discountPercent: item.discountPercentage || 0,
+                taxRate: item.taxPercentage || 0,
+                mrp: item.price || 0, // Fallback if missing
+                unit: 'pcs', // Fallback
+                afterDiscount: item.baseRate || 0,
+                discountAmount: item.discountAmount || 0,
+                taxAmount: item.taxAmount || 0,
+                netRate: item.netRate || 0,
+                total: item.netRate || 0,
+              }))
               : Array.from({ length: 3 }, createEmptyItem),
         });
         setCustomerForm({
@@ -240,6 +241,15 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
     >
       <ToastContainer toasts={toast.toasts} />
 
+      <ConfirmModal
+        open={!!close}
+        onClose={() => setClose(false)}
+        onConfirm={onBack}
+        title="Discard Sales Bill?"
+        confirmLabel='Discard'
+        icon='🛒'
+      />
+
       {/* Header */}
       <div className="page-header">
         <div className="page-header__left">
@@ -264,13 +274,13 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
           <div className="bill-type-toggle">
             <button
               className={`bill-type-btn ${billingType === 'B2B' ? 'active' : ''}`}
-              onClick={() => {}}
+              onClick={() => { }}
             >
               B2B
             </button>
             <button
               className={`bill-type-btn ${billingType === 'B2C' ? 'active' : ''}`}
-              onClick={() => {}}
+              onClick={() => { }}
             >
               B2C
             </button>
@@ -329,7 +339,7 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
                           className="form-input"
                           value={address?.address ?? ''}
                           readOnly
-                          // style={{ height: '60px' }}
+                        // style={{ height: '60px' }}
                         />
                       </div>
                     </>
@@ -390,9 +400,9 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
                       style={
                         editMode
                           ? {
-                              backgroundColor: 'var(--bg-hover)',
-                              cursor: 'not-allowed',
-                            }
+                            backgroundColor: 'var(--bg-hover)',
+                            cursor: 'not-allowed',
+                          }
                           : {}
                       }
                     />
@@ -506,7 +516,7 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
             <Button
               variant="secondary"
               style={{ width: '100%' }}
-              onClick={onBack}
+              onClick={() => setClose(true)}
             >
               Discard
             </Button>

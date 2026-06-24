@@ -4,7 +4,7 @@ import useAppStore from '../../store/appStore';
 import usePurchaseStore from '../../store/purchaseStore';
 import { PartySelector } from '../../components/shared/PartySelector';
 import { InvoiceItemsTable } from '../../components/shared/InvoiceItemsTable';
-import { Button, ToastContainer } from '../../components/ui';
+import { Button, ConfirmModal, ToastContainer } from '../../components/ui';
 import { useBillCalculations } from '../../hooks/useBillCalculations';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
@@ -50,6 +50,7 @@ export default function PurchaseBillForm({
   });
 
   const [address, setAddress] = useState('');
+  const [close, setClose] = useState(false);
 
   /* Load Bill for Edit Mode */
   useEffect(() => {
@@ -71,26 +72,26 @@ export default function PurchaseBillForm({
           items:
             existingBill.PurchaseItems && existingBill.PurchaseItems.length > 0
               ? existingBill.PurchaseItems.map((item) => ({
-                  productId: item.productId || '',
-                  productName: item.Product.name || '',
-                  hsnCode: item.hsnCode || '',
-                  sku: item.sku || '',
-                  batchNumber: item.batchNumber || '',
-                  expiryDate: item.expiryDate || '',
-                  serialNumber: item.serialNumber || '',
-                  notes: item.notes || '',
-                  price: item.price || 0,
-                  quantity: item.quantity || 1,
-                  discountPercent: item.discountPercentage || 0,
-                  taxRate: item.taxPercentage || 0,
-                  mrp: item.price || 0,
-                  unit: 'pcs',
-                  afterDiscount: item.baseRate || 0,
-                  discountAmount: item.discountAmount || 0,
-                  taxAmount: item.taxAmount || 0,
-                  netRate: item.netRate || 0,
-                  total: item.netRate || 0,
-                }))
+                productId: item.productId || '',
+                productName: item.Product.name || '',
+                hsnCode: item.hsnCode || '',
+                sku: item.sku || '',
+                batchNumber: item.batchNumber || '',
+                expiryDate: item.expiryDate || '',
+                serialNumber: item.serialNumber || '',
+                notes: item.notes || '',
+                price: item.price || 0,
+                quantity: item.quantity || 1,
+                discountPercent: item.discountPercentage || 0,
+                taxRate: item.taxPercentage || 0,
+                mrp: item.price || 0,
+                unit: 'pcs',
+                afterDiscount: item.baseRate || 0,
+                discountAmount: item.discountAmount || 0,
+                taxAmount: item.taxAmount || 0,
+                netRate: item.netRate || 0,
+                total: item.netRate || 0,
+              }))
               : Array.from({ length: 3 }, createEmptyItem),
         });
         setCustomerForm({
@@ -150,6 +151,15 @@ export default function PurchaseBillForm({
     >
       <ToastContainer toasts={toast.toasts} />
 
+      <ConfirmModal
+        open={!!close}
+        onClose={() => setClose(false)}
+        onConfirm={onBack}
+        title="Discard Purchase Bill?"
+        confirmLabel='Discard'
+        icon='🛍️'
+      />
+
       <div className="page-header">
         <div
           className="page-header__left"
@@ -199,7 +209,7 @@ export default function PurchaseBillForm({
                           className="form-input"
                           value={address?.address ?? ''}
                           readOnly
-                          // style={{ height: '60px' }}
+                        // style={{ height: '60px' }}
                         />
                       </div>
                     </>
@@ -252,9 +262,9 @@ export default function PurchaseBillForm({
                       style={
                         editMode
                           ? {
-                              backgroundColor: 'var(--bg-hover)',
-                              cursor: 'not-allowed',
-                            }
+                            backgroundColor: 'var(--bg-hover)',
+                            cursor: 'not-allowed',
+                          }
                           : {}
                       }
                     />
@@ -362,7 +372,7 @@ export default function PurchaseBillForm({
           <Button
             variant="secondary"
             style={{ width: '100%' }}
-            onClick={onBack}
+            onClick={() => setClose(true)}
           >
             Discard
           </Button>

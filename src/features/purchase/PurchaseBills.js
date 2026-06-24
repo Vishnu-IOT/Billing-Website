@@ -107,6 +107,7 @@ export default function PurchaseBills() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Delete Purchase Bill?"
+        confirmLabel='Delete'
       />
 
       <div className="page-header">

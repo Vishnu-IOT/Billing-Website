@@ -22,17 +22,7 @@ const useAppStore = create((set, get) => ({
   categories: [],
   parties: [],
   customers: [],
-  settings: {
-    companyName: 'Your Business Name',
-    companyAddress: 'Your Address',
-    companyGstin: '',
-    companyPhone: '',
-    billTheme: 'classic',
-    invoicePrefix: 'INV',
-    invoiceStartingNumber: '0001',
-    invoiceYearFormat: 'YYYY',
-    invoiceSeparator: '-',
-  },
+  companies: [],
   loading: true,
   error: null,
 
@@ -40,7 +30,7 @@ const useAppStore = create((set, get) => ({
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
-      const [products, categories, parties, customers, settings] =
+      const [products, categories, parties, customers, companies] =
         await Promise.all([
           fetchProductsAPI().catch(() => []),
           fetchCategoryAPI().catch(() => []),
@@ -57,7 +47,7 @@ const useAppStore = create((set, get) => ({
         customers: Array.isArray(customers)
           ? customers
           : (customers?.data ?? []),
-        settings: settings?.data ?? settings ?? get().settings,
+        companies: companies?.data ?? companies ?? get().companies,
         loading: false,
       });
     } catch (err) {
@@ -135,9 +125,9 @@ const useAppStore = create((set, get) => ({
     }));
   },
 
-  // ── Settings ──
-  updateSettings: (settings) =>
-    set((s) => ({ settings: { ...s.settings, ...settings } })),
+  // ── companies ──
+  updatecompanies: (companies) =>
+    set((s) => ({ companies: { ...s.companies, ...companies } })),
 }));
 
 export default useAppStore;

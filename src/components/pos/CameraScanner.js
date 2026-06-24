@@ -12,7 +12,7 @@ export default function CameraScanner({ open, onClose, onScan }) {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scannedSessionItems, setScannedSessionItems] = useState([]);
-  
+
   const html5QrcodeRef = useRef(null);
   const lastBarcodeRef = useRef(null);
   const lastTimeRef = useRef(0);
@@ -41,7 +41,10 @@ export default function CameraScanner({ open, onClose, onScan }) {
   const handleScanSuccess = (decodedText) => {
     const now = Date.now();
     // 1.5s duplicate check
-    if (decodedText === lastBarcodeRef.current && now - lastTimeRef.current < 1500) {
+    if (
+      decodedText === lastBarcodeRef.current &&
+      now - lastTimeRef.current < 1500
+    ) {
       return;
     }
     lastBarcodeRef.current = decodedText;
@@ -49,7 +52,7 @@ export default function CameraScanner({ open, onClose, onScan }) {
 
     // Trigger parent scan handler (which returns the matched product)
     const product = onScan(decodedText);
-    
+
     // Play beep sound
     playBeep();
 
@@ -66,7 +69,11 @@ export default function CameraScanner({ open, onClose, onScan }) {
             barcode: decodedText,
             name: product ? product.name : 'Unknown Product',
             quantity: 1,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            time: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
           },
           ...prev,
         ];
@@ -88,12 +95,15 @@ export default function CameraScanner({ open, onClose, onScan }) {
       }
 
       await html5QrcodeRef.current.start(
-        { facingMode: "environment" },
+        { facingMode: 'environment' },
         {
           fps: 15,
           qrbox: (width, height) => {
             const size = Math.min(width, height) * 0.7;
-            return { width: Math.max(180, Math.min(280, size)), height: Math.max(180, Math.min(280, size)) };
+            return {
+              width: Math.max(180, Math.min(280, size)),
+              height: Math.max(180, Math.min(280, size)),
+            };
           },
         },
         handleScanSuccess,
@@ -135,7 +145,7 @@ export default function CameraScanner({ open, onClose, onScan }) {
       clearTimeout(timer);
       if (html5QrcodeRef.current) {
         if (html5QrcodeRef.current.isScanning) {
-          html5QrcodeRef.current.stop().catch(err => console.error(err));
+          html5QrcodeRef.current.stop().catch((err) => console.error(err));
         }
         html5QrcodeRef.current = null;
       }
@@ -158,7 +168,9 @@ export default function CameraScanner({ open, onClose, onScan }) {
         backdropFilter: 'blur(8px)',
         animation: 'fadeIn 0.25s ease',
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         style={{
@@ -166,7 +178,8 @@ export default function CameraScanner({ open, onClose, onScan }) {
           borderRadius: 24,
           width: '100%',
           maxWidth: 440,
-          overflow: 'hidden',
+          maxHeight: 650,
+          overflow: 'scroll',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
@@ -223,14 +236,25 @@ export default function CameraScanner({ open, onClose, onScan }) {
               justifyContent: 'center',
               transition: 'background-color 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)')
+            }
           >
             ✕
           </button>
         </div>
 
-        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div
+          style={{
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          }}
+        >
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 12 }}>
             <button
@@ -241,7 +265,9 @@ export default function CameraScanner({ open, onClose, onScan }) {
                 padding: '12px',
                 borderRadius: 12,
                 border: '1px solid rgba(16, 185, 129, 0.3)',
-                background: scanning ? 'rgba(16, 185, 129, 0.05)' : 'linear-gradient(135deg, #10b981, #059669)',
+                background: scanning
+                  ? 'rgba(16, 185, 129, 0.05)'
+                  : 'linear-gradient(135deg, #10b981, #059669)',
                 color: scanning ? '#6ee7b7' : '#fff',
                 fontSize: 14,
                 fontWeight: 600,
@@ -264,7 +290,9 @@ export default function CameraScanner({ open, onClose, onScan }) {
                 padding: '12px',
                 borderRadius: 12,
                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                background: !scanning ? 'rgba(239, 68, 68, 0.05)' : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                background: !scanning
+                  ? 'rgba(239, 68, 68, 0.05)'
+                  : 'linear-gradient(135deg, #ef4444, #dc2626)',
                 color: !scanning ? '#fca5a5' : '#fff',
                 fontSize: 14,
                 fontWeight: 600,
@@ -306,7 +334,9 @@ export default function CameraScanner({ open, onClose, onScan }) {
                 minHeight: 250,
                 background: '#161d30',
                 border: scanning ? '2px solid #4f46e5' : '2px solid #334155',
-                boxShadow: scanning ? '0 0 20px rgba(79, 70, 229, 0.25)' : 'none',
+                boxShadow: scanning
+                  ? '0 0 20px rgba(79, 70, 229, 0.25)'
+                  : 'none',
                 transition: 'all 0.3s ease',
               }}
             />
@@ -341,11 +371,30 @@ export default function CameraScanner({ open, onClose, onScan }) {
           </div>
 
           {/* Session Log list */}
-          <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>Session Scan Log</span>
+          <div
+            style={{
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              paddingTop: 16,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                Session Scan Log
+              </span>
               <span style={{ color: '#818cf8', fontSize: 12, fontWeight: 500 }}>
-                Total: {scannedSessionItems.reduce((acc, item) => acc + item.quantity, 0)} items
+                Total:{' '}
+                {scannedSessionItems.reduce(
+                  (acc, item) => acc + item.quantity,
+                  0
+                )}{' '}
+                items
               </span>
             </div>
             {scannedSessionItems.length === 0 ? (
@@ -389,10 +438,20 @@ export default function CameraScanner({ open, onClose, onScan }) {
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
-                      <div style={{ color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div
+                        style={{
+                          color: '#fff',
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {item.name}
                       </div>
-                      <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
+                      <div
+                        style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}
+                      >
                         Code: {item.barcode} • {item.time}
                       </div>
                     </div>

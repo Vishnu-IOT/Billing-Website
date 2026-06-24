@@ -72,8 +72,8 @@ const ownerSidebar = [
     icon: <FiSettings />,
     label: 'Settings',
   },
-  { key: 'expenses', icon: <TbMoneybag />, label: 'Expenses' },
-  { key: 'analytics', icon: <RiAlignItemBottomLine />, label: 'Analytics' },
+  // { key: 'expenses', icon: <TbMoneybag />, label: 'Expenses' },
+  // { key: 'analytics', icon: <RiAlignItemBottomLine />, label: 'Analytics' },
 ];
 
 const staffSidebar = [

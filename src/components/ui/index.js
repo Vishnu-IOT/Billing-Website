@@ -82,6 +82,7 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Delete',
   loading,
+  icon = '🗑️',
 }) {
   if (!open) return null;
   return (
@@ -92,7 +93,7 @@ export function ConfirmModal({
       <div className="modal modal--sm modal--confirm">
         <div className="modal__body">
           <div className="modal__icon" style={{ textAlign: 'center' }}>
-            🗑️
+            {icon || '🗑️'}
           </div>
           <h3>{title}</h3>
           <p>{message || 'This action cannot be undone.'}</p>

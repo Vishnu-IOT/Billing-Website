@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/currency';
 import useInvoiceColumnStore from '../../store/invoiceColumnStore';
 import { ColumnSettingsDrawer } from './ColumnSettingsDrawer';
 import { FiSettings } from 'react-icons/fi';
+import { ProductSelector } from './ProductSelector';
 
 export function InvoiceItemsTable({
   items,
@@ -75,18 +76,25 @@ function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
     switch (col.id) {
       case 'productName':
         return (
-          <select
-            className="invoice-select"
-            value={item.productId || ''}
-            onChange={(e) => onUpdate(idx, 'productId', e.target.value)}
-          >
-            <option value="">Select…</option>
-            {products.map((p) => (
-              <option key={p.id || p._id} value={p.id || p._id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          // <select
+          //   className="invoice-select"
+          //   value={item.productId || ''}
+          //   onChange={(e) => onUpdate(idx, 'productId', e.target.value)}
+          // >
+          //   <option value="">Select…</option>
+          //   {products.map((p) => (
+          //     <option key={p.id || p._id} value={p.id || p._id}>
+          //       {p.name}
+          //     </option>
+          //   ))}
+          // </select>
+          <ProductSelector
+            products={products}
+            value={item.productId}
+            onChange={(productId) => {
+              onUpdate(idx, 'productId', productId);
+            }}
+          />
         );
       case 'hsnCode':
         return (
@@ -201,13 +209,18 @@ function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
         );
       case 'taxRate':
         return (
-          <input
+          <select
             className="invoice-input"
             style={{ width: '100%' }}
-            type="number"
             value={item.taxRate || 0}
-            onChange={(e) => onUpdate(idx, 'taxRate', e.target.value)}
-          />
+            onChange={(e) => onUpdate(idx, 'taxRate', Number(e.target.value))}
+          >
+            <option value={0}>0%</option>
+            <option value={5}>5%</option>
+            <option value={12}>12%</option>
+            <option value={18}>18%</option>
+            <option value={28}>28%</option>
+          </select>
         );
       case 'discountAmount':
         return (
