@@ -171,7 +171,7 @@ export function buildSaleBillPayload({
 /**
  * Build the backend payload for a purchase bill
  */
-export function buildPurchaseBillPayload({ billForm, validItems, partyId }) {
+export function buildPurchaseBillPayload({ billForm, validItems, partyId,customerForm }) {
   const {
     subtotal: baseRate,
     totalTax: tax,
@@ -188,6 +188,8 @@ export function buildPurchaseBillPayload({ billForm, validItems, partyId }) {
     totalAmount,
     paymentStatus: 'Unpaid',
     purchaseDate: billForm.date,
+    po_number: customerForm.poNumber || '',
+    eway_bill: customerForm.ewayBill || '',
     items: validItems.map((item) => ({
       productId: Number(item.productId),
       productName: item.productName,

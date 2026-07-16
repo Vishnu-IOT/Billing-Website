@@ -11,6 +11,7 @@ const useUIStore = create((set) => ({
   openSidebar: () => set({ sidebarOpen: true }),
   closeSidebar: () => set({ sidebarOpen: false }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  setHideSidebar: (value) => set({ hideSidebar: value }),
 }));
 
 export default useUIStore;

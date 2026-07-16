@@ -124,11 +124,11 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
               ? existingBill.SalesItems.map((item) => ({
                 productId: item.productId || '',
                 productName: item.productName || '',
-                hsnCode: item.hsnCode || '',
+                hsnCode: item.hsnCode || item.hsncode || '',
                 sku: item.sku || '',
-                batchNumber: item.batchNumber || '',
+                batchNumber: item.batchNo || item.batchNumber || '',
                 expiryDate: item.expiryDate || '',
-                serialNumber: item.serialNumber || '',
+                serialNumber: item.serialNo || item.serialNumber || '',
                 notes: item.notes || '',
                 price: item.price || 0,
                 quantity: item.quantity || 1,
@@ -163,9 +163,10 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
 
   /* Item handlers */
   function handleItemUpdate(idx, field, value) {
+    const billType = 'sales';
     setBillForm((prev) => ({
       ...prev,
-      items: updateItemField(prev.items, products, idx, field, value),
+      items: updateItemField(prev.items, products, idx, field, value, billType),
     }));
   }
   function handleItemRemove(idx) {
@@ -197,6 +198,14 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
     }
     if (billingType === 'B2B' && !selectedPartyId) {
       toast.error('Select a party');
+      return;
+    }
+    if (billingType === 'B2B' && !customerForm.userId) {
+      toast.error('Select a User/Rep');
+      return;
+    }
+    if (billingType === 'B2B' && !billForm.date) {
+      toast.error('Select a Proper Date');
       return;
     }
     setSaving(true);
@@ -260,7 +269,7 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
               gap: 'var(--sp-3)',
             }}
           >
-            <Button variant="ghost" size="sm" onClick={onBack}>
+            <Button variant="ghost" size="sm" onClick={() => { setClose(true) }}>
               ← Back
             </Button>
             <h1>
@@ -396,7 +405,7 @@ function B2BInvoiceForm({ billingType, editMode, billId, onBack, onSaved }) {
                           invoiceNo: e.target.value,
                         }))
                       }
-                      readOnly={editMode}
+                      readOnly
                       style={
                         editMode
                           ? {

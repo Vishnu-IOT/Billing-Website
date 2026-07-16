@@ -176,6 +176,12 @@ export function Sidebar() {
     () => localStorage.getItem('sidebar-collapsed') === 'true'
   );
 
+  const hideSidebar = useUIStore((s) => s.hideSidebar);
+
+  if (hideSidebar) {
+    return null;
+  }
+
   const toggleCollapse = () => {
     const next = !collapsed;
     setCollapsed(next);

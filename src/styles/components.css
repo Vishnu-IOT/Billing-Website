@@ -932,6 +932,10 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--danger-light);
 }
 
+.table-desktop-only {
+  min-height: 300px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 767px) {
   .table-desktop-only {

@@ -72,6 +72,7 @@ export function InvoiceItemsTable({
 }
 
 function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
+  console.log(items);
   function renderCell(col, item, idx) {
     switch (col.id) {
       case 'productName':

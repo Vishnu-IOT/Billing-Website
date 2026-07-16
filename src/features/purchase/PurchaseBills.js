@@ -1,6 +1,7 @@
 /* ===== PURCHASE BILLS — List View ===== */
 import React, { useState, useMemo, useEffect } from 'react';
 import usePurchaseStore from '../../store/purchaseStore';
+import useUIStore from '../../store/uiStore';
 import {
   Button,
   EmptyState,
@@ -36,6 +37,14 @@ export default function PurchaseBills() {
   const [previewBill, setPreviewBill] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [search, setSearch] = useState('');
+
+  const setHideSidebar = useUIStore((s) => s.setHideSidebar);
+
+  useEffect(() => {
+    setHideSidebar(view !== 'list');
+
+    return () => setHideSidebar(false);
+  }, [view]);
 
   useEffect(() => {
     loadBills();

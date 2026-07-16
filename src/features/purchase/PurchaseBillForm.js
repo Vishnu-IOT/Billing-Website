@@ -74,11 +74,11 @@ export default function PurchaseBillForm({
               ? existingBill.PurchaseItems.map((item) => ({
                 productId: item.productId || '',
                 productName: item.Product.name || '',
-                hsnCode: item.hsnCode || '',
+                hsnCode: item.hsnCode || item.hsncode || '',
                 sku: item.sku || '',
-                batchNumber: item.batchNumber || '',
+                batchNumber: item.batchNumber || item.batchNo || '',
                 expiryDate: item.expiryDate || '',
-                serialNumber: item.serialNumber || '',
+                serialNumber: item.serialNumber || item.serialNo || '',
                 notes: item.notes || '',
                 price: item.price || 0,
                 quantity: item.quantity || 1,
@@ -107,9 +107,10 @@ export default function PurchaseBillForm({
   const totals = calcBillTotals(validItems, billForm.globalDiscount);
 
   function handleItemUpdate(idx, field, value) {
+    const billType = 'purchase';
     setBillForm((prev) => ({
       ...prev,
-      items: updateItemField(prev.items, products, idx, field, value),
+      items: updateItemField(prev.items, products, idx, field, value, billType),
     }));
   }
 
@@ -122,12 +123,17 @@ export default function PurchaseBillForm({
       toast.error('Select a vendor');
       return;
     }
+    if (!billForm.date) {
+      toast.error('Select a Proper Date');
+      return;
+    }
     setSaving(true);
     try {
       const payload = buildPurchaseBillPayload({
         billForm,
         validItems,
         partyId: selectedPartyId,
+        customerForm
       });
       if (editMode) {
         await updateBill(billId, payload);
@@ -162,10 +168,10 @@ export default function PurchaseBillForm({
 
       <div className="page-header">
         <div
-          className="page-header__left"
+          // className="page-header__left"
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}
         >
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button variant="ghost" size="sm" onClick={() => { setClose(true) }}>
             ← Back
           </Button>
           <h1>{editMode ? 'Edit Purchase Bill' : 'New Purchase Bill'}</h1>
@@ -378,6 +384,6 @@ export default function PurchaseBillForm({
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

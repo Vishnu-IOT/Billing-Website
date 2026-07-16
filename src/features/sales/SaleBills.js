@@ -1,6 +1,7 @@
 /* ===== SALE BILLS — List View ===== */
 import React, { useState, useMemo, useEffect } from 'react';
 import useSalesStore from '../../store/salesStore';
+import useUIStore from '../../store/uiStore';
 import {
   Button,
   EmptyState,
@@ -38,6 +39,14 @@ export default function SaleBills({ searchParams }) {
   const [search, setSearch] = useState('');
   const [billingType, setBillingType] = useState('B2C');
   const [billID, setBillID] = useState(null);
+
+  const setHideSidebar = useUIStore((s) => s.setHideSidebar);
+
+  useEffect(() => {
+    setHideSidebar(view !== 'list');
+
+    return () => setHideSidebar(false);
+  }, [view]);
 
   /* Handle searchParams from Sidebar sub-menu */
   useEffect(() => {
