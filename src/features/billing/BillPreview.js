@@ -8,6 +8,7 @@ import { numberToWords } from '../../utils/numbers';
 
 export default function BillPreview({ bill, billType = 'SALE', onBack }) {
   const companies = useAppStore((s) => s.companies);
+  console.log(companies);
   const printRef = useRef(null);
   console.log(bill);
   if (!bill) return null;
@@ -253,7 +254,7 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
                       {disc > 0 ? `${disc}%` : '-'}
                     </td>
                     <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                      {taxRate > 0 ? `${taxRate}%` : '-'}
+                      {taxRate >= 0 ? `${taxRate}%` : '-'}
                     </td>
                     <td
                       style={{

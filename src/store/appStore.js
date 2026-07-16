@@ -62,8 +62,9 @@ const useAppStore = create((set, get) => ({
     set({ products: Array.isArray(data) ? data : (data?.data ?? []) });
   },
   addProduct: async (product) => {
-    await addProductsAPI(product);
+    const data = await addProductsAPI(product);
     get().refreshProducts();
+    return data;
   },
   updateProduct: async (id, data) => {
     await updateProductsAPI(id, data);

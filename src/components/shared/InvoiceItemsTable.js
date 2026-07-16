@@ -157,7 +157,9 @@ function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
             className="invoice-input"
             style={{ width: '100%' }}
             type="number"
-            value={item.quantity || 1}
+            onWheel={(e) => e.target.blur()}
+            placeholder="Qty"
+            value={item.quantity || ''}
             onChange={(e) => onUpdate(idx, 'quantity', e.target.value)}
           />
         );
@@ -193,8 +195,10 @@ function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
             className="invoice-input"
             style={{ width: '100%' }}
             type="number"
+            onWheel={(e) => e.target.blur()}
             value={item.price || ''}
             onChange={(e) => onUpdate(idx, 'price', e.target.value)}
+            placeholder="Price"
           />
         );
       case 'discountPercent':
@@ -203,6 +207,7 @@ function DesktopTable({ items, products, onUpdate, onRemove, activeColumns }) {
             className="invoice-input"
             style={{ width: '100%' }}
             type="number"
+            onWheel={(e) => e.target.blur()}
             value={item.discountPercent || 0}
             onChange={(e) => onUpdate(idx, 'discountPercent', e.target.value)}
           />
@@ -522,6 +527,7 @@ function MobileItems({ items, products, onUpdate, onRemove, activeColumns }) {
                   <label className="form-label">{col.label}</label>
                   <input
                     type={isNumber ? 'number' : 'text'}
+                    onWheel={(e) => e.target.blur()}
                     className="form-input"
                     value={item[col.id] || ''}
                     onChange={(e) => onUpdate(idx, col.id, e.target.value)}

@@ -31,6 +31,10 @@ const EMPTY_FORM = {
   stockQuantity: '',
   minStockLevel: 5,
   unit: 'pcs',
+  sku: '',
+  batchNo: '',
+  expiryDate: '',
+  serialNo: '',
 };
 
 export default function Products() {
@@ -49,6 +53,7 @@ export default function Products() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [activeProduct, setActiveProduct] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const [txnPage, setTxnPage] = useState(1);
   const TXN_ITEMS_PER_PAGE = 5;
@@ -102,11 +107,43 @@ export default function Products() {
     setModalOpen(true);
   }
 
-  async function handleSave() {
+  function validateForm() {
+    const errors = {};
+    // Product Name
     if (!form.name.trim()) {
-      toast.error('Name required');
-      return;
+      errors.name = 'Product name is required';
     }
+    // HSN Code
+    if (!form.HSNCode) {
+      errors.HSNCode = 'HSN Code is required';
+    }
+    // Category
+    if (!form.categoryId) {
+      errors.categoryId = 'Category is required';
+    }
+    // Purchase Price
+    if (form.purchasePrice === '' || Number(form.purchasePrice) <= 0) {
+      errors.purchasePrice = 'Purchase price must be greater than 0';
+    }
+    // Sales Price
+    if (form.salesPrice === '' || Number(form.salesPrice) <= 0) {
+      errors.salesPrice = 'Sales price must be greater than 0';
+    }
+    // MRP
+    if (form.MRP === '' || Number(form.MRP) <= 0) {
+      errors.MRP = 'MRP must be greater than 0';
+    }
+    // Tax Rate
+    if (form.taxRate === '') {
+      errors.taxRate = 'Tax rate is required';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
     try {
       if (editProduct) {
@@ -116,7 +153,8 @@ export default function Products() {
         // Update active product state to show fresh data
         setActiveProduct({ ...editProduct, ...form });
       } else {
-        await addProduct(form);
+        const data = await addProduct(form);
+        console.log(data);
         toast.success('Added');
       }
       setModalOpen(false);
@@ -124,6 +162,7 @@ export default function Products() {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
+      setFormErrors({});
     }
   }
 
@@ -290,9 +329,9 @@ export default function Products() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFormErrors({}) }}
         title={editProduct ? 'Edit Product' : 'Add Product'}
-        size="lg"
+        size="xlg"
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
@@ -304,19 +343,24 @@ export default function Products() {
           </>
         }
       >
-        <div className="form-grid-2">
+        <div className="form-grid-4">
           <div className="form-col-full form-group">
             <label className="form-label">Name *</label>
             <input
               className="form-input"
+              placeholder="Enter Product Name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
+            {formErrors.name && (
+              <span className="um-error-text">{formErrors.name}</span>
+            )}
           </div>
-          <div className="form-group">
-            <label className="form-label">SKU/Barcode</label>
+          <div className="form-group form-col-fulls" >
+            <label className="form-label">Barcode *</label>
             <input
               className="form-input"
+              placeholder="Enter Barcode"
               value={form.barcode}
               onChange={(e) =>
                 setForm((f) => ({ ...f, barcode: e.target.value }))
@@ -324,17 +368,33 @@ export default function Products() {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">HSN Code</label>
+            <label className="form-label">HSN Code *</label>
             <input
               className="form-input"
+              placeholder="Enter HSN Code"
               value={form.HSNCode}
               onChange={(e) =>
                 setForm((f) => ({ ...f, HSNCode: e.target.value }))
               }
             />
+            {formErrors.HSNCode && (
+              <span className="um-error-text">{formErrors.HSNCode}</span>
+            )}
           </div>
           <div className="form-group">
-            <label className="form-label">Category</label>
+            <label className="form-label">SKU Code</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Enter SKU Code"
+              value={form.sku || ''}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, sku: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Category *</label>
             <select
               className="form-select"
               value={form.categoryId}
@@ -349,9 +409,12 @@ export default function Products() {
                 </option>
               ))}
             </select>
+            {formErrors.categoryId && (
+              <span className="um-error-text">{formErrors.categoryId}</span>
+            )}
           </div>
           <div className="form-group">
-            <label className="form-label">GST %</label>
+            <label className="form-label">GST % *</label>
             <select
               className="form-select"
               value={form.taxRate}
@@ -366,60 +429,61 @@ export default function Products() {
               <option value="18">18%</option>
               <option value="28">28%</option>
             </select>
+            {formErrors.taxRate && (
+              <span className="um-error-text">{formErrors.taxRate}</span>
+            )}
           </div>
           <div className="form-group">
-            <label className="form-label">MRP (₹)</label>
+            <label className="form-label">MRP (₹) *</label>
             <input
               type="number"
               className="form-input"
+              onWheel={(e) => e.target.blur()}
+              placeholder="Enter MRP"
               value={form.MRP}
               onChange={(e) => setForm((f) => ({ ...f, MRP: e.target.value }))}
             />
+            {formErrors.MRP && (
+              <span className="um-error-text">{formErrors.MRP}</span>
+            )}
           </div>
           <div className="form-group">
-            <label className="form-label">Sales Price (₹)</label>
+            <label className="form-label">Sales Price (₹) *</label>
             <input
               type="number"
               className="form-input"
+              onWheel={(e) => e.target.blur()}
+              placeholder="Enter Sales Price"
               value={form.salesPrice}
               onChange={(e) =>
                 setForm((f) => ({ ...f, salesPrice: e.target.value }))
               }
             />
+            {formErrors.salesPrice && (
+              <span className="um-error-text">{formErrors.salesPrice}</span>
+            )}
           </div>
           <div className="form-group">
-            <label className="form-label">Purchase Price (₹)</label>
+            <label className="form-label">Purchase Price (₹) *</label>
             <input
               type="number"
               className="form-input"
+              onWheel={(e) => e.target.blur()}
+              placeholder="Enter Purchase Price"
               value={form.purchasePrice}
               onChange={(e) =>
                 setForm((f) => ({ ...f, purchasePrice: e.target.value }))
               }
             />
+            {formErrors.purchasePrice && (
+              <span className="um-error-text">{formErrors.purchasePrice}</span>
+            )}
           </div>
-          <div className="form-group">
-            <label className="form-label">Initial Stock</label>
-            <input
-              type="number"
-              className="form-input"
-              value={form.stockQuantity || 0}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, stockQuantity: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Min Stock Level</label>
-            <input
-              type="number"
-              className="form-input"
-              value={form.minStockLevel}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, minStockLevel: e.target.value }))
-              }
-            />
-          </div>
+        </div>
+        <div className="form-para">
+          <p>Inventory</p>
+        </div>
+        <div className="form-grid-4">
           <div className="form-group">
             <label className="form-label">Unit</label>
             <select
@@ -435,6 +499,65 @@ export default function Products() {
               <option value="box">Box</option>
               <option value="m">Meters (m)</option>
             </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Initial Stock</label>
+            <input
+              type="number"
+              className="form-input"
+              onWheel={(e) => e.target.blur()}
+              value={form.stockQuantity || 0}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, stockQuantity: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Min Stock Level</label>
+            <input
+              type="number"
+              className="form-input"
+              onWheel={(e) => e.target.blur()}
+              value={form.minStockLevel}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, minStockLevel: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Batch Number</label>
+            <input
+              type="text"
+              className="form-input"
+              value={form.batchNo || ''}
+              placeholder="Batch Number (optional)"
+              onChange={(e) =>
+                setForm((f) => ({ ...f, batchNo: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Serial Number</label>
+            <input
+              type="text"
+              className="form-input"
+              value={form.serialNo || ''}
+              placeholder="Serial Number (optional)"
+              onChange={(e) =>
+                setForm((f) => ({ ...f, serialNo: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Expiry Date</label>
+            <input
+              type="date"
+              className="form-input"
+              value={form.expiryDate}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, expiryDate: e.target.value }))
+              }
+            />
           </div>
         </div>
       </Modal>
@@ -557,7 +680,7 @@ export default function Products() {
                   </div>
                   <div className="product-analytics-meta">
                     <span>
-                      SKU/Barcode:{' '}
+                      Barcode:{' '}
                       <strong style={{ color: 'var(--text-primary)' }}>
                         {activeProduct.barcode ||
                           activeProduct.SKU ||
@@ -656,8 +779,8 @@ export default function Products() {
                         <span>Margin Margin</span>
                         <span
                           className={`profit-badge ${productMetrics.profit >= 0
-                              ? 'profit-badge--positive'
-                              : 'profit-badge--negative'
+                            ? 'profit-badge--positive'
+                            : 'profit-badge--negative'
                             }`}
                         >
                           {productMetrics.totalSalesAmt > 0

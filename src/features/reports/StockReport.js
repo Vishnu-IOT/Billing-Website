@@ -30,7 +30,7 @@ export default function StockReport() {
 
   const totalValue    = filtered.reduce((s, p) => s + (parseFloat(p.salesPrice || 0) * (parseFloat(p.stockQuantity) || 0)), 0);
   const lowStockCount = filtered.filter((p) => (parseFloat(p.stockQuantity) || 0) < 5).length;
-  const outOfStock    = filtered.filter((p) => (parseFloat(p.stockQuantity) || 0) === 0).length;
+  const outOfStock    = filtered.filter((p) => (parseFloat(p.stockQuantity) || 0) <= 0).length;
 
   function stockStatus(qty) {
     const n = parseInt(qty) || 0;

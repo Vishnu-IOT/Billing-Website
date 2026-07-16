@@ -225,7 +225,7 @@ export default function Categories() {
                           {catProducts.map((prod) => {
                             const qty = parseInt(prod.stockQuantity) || 0;
                             const min = parseInt(prod.minStockLevel) || 5;
-                            const isOut = qty === 0;
+                            const isOut = qty <= 0;
                             const isLow = qty > 0 && qty < min;
 
                             let badgeClass = 'co-badge--available';
