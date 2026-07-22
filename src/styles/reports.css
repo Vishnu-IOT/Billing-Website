@@ -13,3 +13,25 @@
 .stock-dot--in  { background: var(--success); }
 .stock-dot--low { background: var(--warning); }
 .stock-dot--out { background: var(--danger); }
+
+/* Unified Card & Table Styling for Reports */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.card__header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.card__title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}

@@ -42,6 +42,12 @@ const UserManagement = lazy(
 const UsersReport = lazy(() => import('../features/reports/UsersReport'));
 const Expenses = lazy(() => import('../features/reports/Expenses'));
 const Analytics = lazy(() => import('../features/reports/Analytics'));
+const Documents = lazy(() => import('../features/documents/Documents'));
+const ComplianceCenter = lazy(
+  () => import('../features/compliance/ComplianceCenter')
+);
+const GSTR1Report = lazy(() => import('../features/reports/GSTR1Report'));
+const GSTR3BReport = lazy(() => import('../features/reports/GSTR3BReport'));
 
 function renderPage(page, searchParams, isAuthenticated) {
   if (page.startsWith('sales/edit/')) {
@@ -236,6 +242,38 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'documents':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <Documents searchParams={searchParams} />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'compliance':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <ComplianceCenter />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'gstr1-report':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <GSTR1Report />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'gstr3b-report':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <GSTR3BReport />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
     default:
       return (
         <ProtectedRoute>
@@ -249,6 +287,7 @@ function renderPage(page, searchParams, isAuthenticated) {
 const ALL_MORE_ITEMS = [
   { key: 'categories', label: 'Categories', allowed: ['OWNER', 'STAFF'] },
   { key: 'parties', label: 'Parties', allowed: ['OWNER', 'STAFF', 'BILLER'] },
+  { key: 'documents', label: 'Documents', allowed: ['OWNER', 'STAFF'] },
   { key: 'sale-report', label: 'Sales Report', allowed: ['OWNER', 'STAFF'] },
   {
     key: 'purchase-report',

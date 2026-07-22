@@ -6,6 +6,7 @@ export function PartySelector({ value, onChange }) {
   const parties = useAppStore((s) => s.parties);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  
 
   const selected = parties.find((p) => String(p.id || p._id) === String(value));
 

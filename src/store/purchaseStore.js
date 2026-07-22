@@ -68,12 +68,13 @@ const usePurchaseStore = create((set, get) => ({
     }));
   },
 
-  updatePaymentStatus: async (id, status) => {
-    await updatePaymentOutAPI(id, { paymentStatus: status });
+  updatePaymentStatus: async (id, payload) => {
+    const status = typeof payload === 'string' ? payload : payload.paymentStatus;
+    await updatePaymentOutAPI(id, typeof payload === 'object' ? payload : { paymentStatus: payload });
     set((s) => ({
       purchaseBills: s.purchaseBills.map((b) =>
         String(b.id || b._id) === String(id)
-          ? { ...b, paymentStatus: status }
+          ? { ...b, paymentStatus: status, ...(typeof payload === 'object' ? payload : {}) }
           : b
       ),
     }));

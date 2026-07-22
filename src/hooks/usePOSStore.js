@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { calcItemRow, calcBillTotals, createEmptyItem } from '../utils/invoice';
 import { toFloat } from '../utils/currency';
+import useSettingsStore from '../store/settingsStore';
 
 const usePOSStore = create((set, get) => ({
   /* ── Cart ── */
@@ -20,11 +21,11 @@ const usePOSStore = create((set, get) => ({
   invoiceNo: '',
   saleDate: new Date().toISOString().split('T')[0],
 
-  /* ── POS Settings ── */
-  scannerEnabled: true,
-  cameraEnabled: true,
-  printerWidth: '80', // '58' | '80'
-  autoPrint: false,
+  /* ── POS Settings (synced with settingsStore) ── */
+  scannerEnabled: useSettingsStore.getState().scannerEnabled,
+  cameraEnabled: useSettingsStore.getState().cameraEnabled,
+  printerWidth: useSettingsStore.getState().printerWidth,
+  autoPrint: useSettingsStore.getState().autoPrint,
 
   /* ─────────────────────────────────────────
      CART ACTIONS
@@ -126,7 +127,10 @@ const usePOSStore = create((set, get) => ({
 
   setSaleDate: (date) => set({ saleDate: date }),
 
-  setPOSSetting: (key, value) => set({ [key]: value }),
+  setPOSSetting: (key, value) => {
+    useSettingsStore.getState().updateSettings({ [key]: value });
+    set({ [key]: value });
+  },
 
   /* ── Computed Totals (derived from cart) ── */
   getComputedTotals: () => {

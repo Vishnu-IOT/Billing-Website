@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import useAppStore from '../../store/appStore';
 import useSalesStore from '../../store/salesStore';
 import usePOSStore from '../../hooks/usePOSStore';
+import useSettingsStore from '../../store/settingsStore';
 import { formatCurrency } from '../../utils/currency';
 import { todayISO } from '../../utils/date';
 import { getNextInvoiceNo, buildSaleBillPayload } from '../../utils/invoice';
@@ -26,7 +27,7 @@ export default function POSScreen({
 }) {
   const products = useAppStore((s) => s.products);
   const categories = useAppStore((s) => s.categories);
-  const settings = useAppStore((s) => s.settings);
+  const settings = useSettingsStore();
   const saleBills = useSalesStore((s) => s.saleBills);
   const addBill = useSalesStore((s) => s.addBill);
   const updateBill = useSalesStore((s) => s.updateBill);
@@ -40,10 +41,10 @@ export default function POSScreen({
   const globalDiscount = usePOSStore((s) => s.globalDiscount);
   const invoiceNo = usePOSStore((s) => s.invoiceNo);
   const saleDate = usePOSStore((s) => s.saleDate);
-  const printerWidth = usePOSStore((s) => s.printerWidth);
-  const autoPrint = usePOSStore((s) => s.autoPrint);
-  const scannerEnabled = usePOSStore((s) => s.scannerEnabled);
-  const cameraEnabled = usePOSStore((s) => s.cameraEnabled);
+  const printerWidth = useSettingsStore((s) => s.printerWidth);
+  const autoPrint = useSettingsStore((s) => s.autoPrint);
+  const scannerEnabled = useSettingsStore((s) => s.scannerEnabled);
+  const cameraEnabled = useSettingsStore((s) => s.cameraEnabled);
   const getComputedTotals = usePOSStore((s) => s.getComputedTotals);
   const addToCart = usePOSStore((s) => s.addToCart);
   const updateCartItem = usePOSStore((s) => s.updateCartItem);
@@ -238,6 +239,9 @@ export default function POSScreen({
       if (!customerInfo.name || !customerInfo.phone) {
         return toast.error('Customer Details is Required!!');
       }
+      if (!customerInfo.userId) {
+        return toast.error('User Details is Required!!');
+      }
       const payload = buildSaleBillPayload({
         billForm: {
           invoiceNo,
@@ -370,18 +374,17 @@ export default function POSScreen({
       <div className="pos-topbar">
         <div className="pos-topbar-left">
           <button className="pos-back-btn" onClick={onBack} title="Back (Esc)">
-            ← Back
+            ‹ Back
           </button>
           <div className="pos-topbar-title">
             <span className="pos-topbar-badge">POS</span>
             <span>
-              {editMode ? `Edit B2C Billing - #${invoiceNo}` : 'B2C Billing'}
+              {editMode ? `Edit Invoice · #${invoiceNo}` : 'B2C Counter Billing'}
             </span>
           </div>
         </div>
 
         <div className="pos-topbar-center">
-          {/* Barcode Input */}
           {scannerEnabled && (
             <BarcodeInput
               products={products}
@@ -402,7 +405,7 @@ export default function POSScreen({
             </button>
           )}
           <div className="pos-invoice-meta">
-            <span className="pos-inv-no">{invoiceNo}</span>
+            <span className="pos-inv-no"># {invoiceNo}</span>
             <input
               type="date"
               value={saleDate}
@@ -418,19 +421,18 @@ export default function POSScreen({
               onClick={handleNewBill}
               title="New Bill (F9)"
             >
-              🆕 New
+              ＋ New Bill
             </button>
           )}
         </div>
       </div>
 
       <div className="bill-form-card__body">
-        <div className="form-grid-2" style={{ marginBottom: 'var(--sp-4)' }}>
+        <div className="form-grid-2" style={{ marginBottom: 0 }}>
           <div className="form-group">
-            <label className="form-label">User ID</label>
+            <label className="form-label">Biller / User</label>
             <select
               className="form-input"
-              placeholder="User ID"
               value={customerInfo.userId}
               onChange={(e) =>
                 setCustomerInfo({
@@ -439,7 +441,7 @@ export default function POSScreen({
                 })
               }
             >
-              <option value="">Select User</option>
+              <option value="">— Select User —</option>
               {users.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.name}
@@ -448,7 +450,7 @@ export default function POSScreen({
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Customer Name</label>
+            <label className="form-label">Customer Name *</label>
             <input
               className="form-input"
               placeholder="Walk-in customer"
@@ -462,13 +464,14 @@ export default function POSScreen({
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Phone</label>
+            <label className="form-label">Phone *</label>
             <input
               className="form-input"
               type="tel"
-              placeholder="Customer phone"
+              placeholder="10-digit mobile number"
               value={customerInfo.phone || ''}
               onChange={handlePhoneChange}
+              maxLength={10}
             />
           </div>
         </div>
@@ -559,18 +562,12 @@ export default function POSScreen({
                   <tr>
                     <td colSpan="9">
                       <div className="pos-cart-empty">
-                        <div style={{ fontSize: 48, marginBottom: 12 }}>🛒</div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            color: '#475569',
-                            marginBottom: 6,
-                          }}
-                        >
-                          Cart is empty
+                        <div style={{ fontSize: 46, marginBottom: 10, opacity: 0.4 }}>🛒</div>
+                        <div style={{ fontWeight: 700, color: '#334155', marginBottom: 4, fontSize: 14 }}>
+                          Cart is Empty
                         </div>
-                        <div style={{ fontSize: 13, color: '#94a3b8' }}>
-                          Scan a barcode or click a product to add items
+                        <div style={{ fontSize: 12, color: '#1e293b', lineHeight: 1.6 }}>
+                          Scan a barcode or select a product from the left panel
                         </div>
                       </div>
                     </td>
@@ -652,7 +649,7 @@ export default function POSScreen({
             )}
 
             <div className="pos-grand-total-row">
-              <span>TOTAL</span>
+              <span>GRAND TOTAL</span>
               <span>{formatCurrency(totals.grandTotal)}</span>
             </div>
           </div>
@@ -672,18 +669,24 @@ export default function POSScreen({
               disabled={cart.length === 0}
               title="Checkout (F8)"
             >
-              🖨 Checkout{' '}
-              {cart.length > 0 && `· ${formatCurrency(totals.grandTotal)}`}
+              🖨 &nbsp;Checkout &amp; Print
+              {cart.length > 0 && (
+                <span style={{ opacity: 0.85, fontWeight: 600, fontSize: 13 }}>
+                  &nbsp;· {formatCurrency(totals.grandTotal)}
+                </span>
+              )}
             </button>
           </div>
 
           {/* Keyboard shortcuts hint */}
           <div className="pos-shortcuts-hint">
-            <span>F2 Barcode</span>
-            <span>·</span>
-            <span>F8 Checkout</span>
-            <span>·</span>
-            <span>F9 New Bill</span>
+            <span>F2 · Barcode</span>
+            <span style={{ color: '#1e293b' }}>|</span>
+            <span>F8 · Checkout</span>
+            <span style={{ color: '#1e293b' }}>|</span>
+            <span>F9 · New Bill</span>
+            <span style={{ color: '#1e293b' }}>|</span>
+            <span>Esc · Back</span>
           </div>
         </div>
       </div>

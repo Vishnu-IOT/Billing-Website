@@ -62,12 +62,14 @@ export default function UsersReport() {
   // Export to Excel handler
   const handleExport = () => {
     try {
-      const exportRows = filteredUsers.map((u) => ({
+        const exportRows = filteredUsers.map((u) => ({
         Name: u.name || '',
         Email: u.email || '',
         Role: u.role || 'Staff',
         Phone: u.phone || 'N/A',
         Status: u.is_active || u.status === '1' ? 'Active' : 'Inactive',
+        'Sales Billed (₹)': u.totalSalesAmount || 0,
+        'Invoices Count': u.totalInvoices || 0,
         'Created Date': u.createdAt
           ? new Date(u.createdAt).toLocaleDateString(undefined, {
               year: 'numeric',
@@ -98,7 +100,7 @@ export default function UsersReport() {
         <div className="page-header__left">
           <h1>Users Report</h1>
           <p className="page-header__sub">
-            Review and export company users list
+            Review and export company users list with sales performance
           </p>
         </div>
         <div className="page-header__actions">
@@ -207,8 +209,9 @@ export default function UsersReport() {
                   <th>User Details</th>
                   <th>Contact</th>
                   <th>Role</th>
+                  <th>Sales Billed</th>
+                  <th>Invoices</th>
                   <th>Status</th>
-                  <th>Created Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,20 +238,19 @@ export default function UsersReport() {
                         <span className={roleCls}>{user.role || 'Staff'}</span>
                       </td>
                       <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          ₹{parseFloat(user.totalSalesAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 'var(--fs-sm)' }}>
+                          {user.totalInvoices || 0}
+                        </div>
+                      </td>
+                      <td>
                         <span className={statusCls}>
                           {isActive ? 'Active' : 'Inactive'}
                         </span>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                          {user.createdAt
-                            ? new Date(user.createdAt).toLocaleDateString(undefined, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                              })
-                            : 'N/A'}
-                        </div>
                       </td>
                     </tr>
                   );

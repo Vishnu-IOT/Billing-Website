@@ -16,6 +16,8 @@ import {
   fetchCusotmersAPI,
 } from '../api';
 
+import useSettingsStore from './settingsStore';
+
 const useAppStore = create((set, get) => ({
   // ── State ──
   products: [],
@@ -23,6 +25,7 @@ const useAppStore = create((set, get) => ({
   parties: [],
   customers: [],
   companies: [],
+  settings: useSettingsStore.getState(),
   loading: true,
   error: null,
 
@@ -126,9 +129,11 @@ const useAppStore = create((set, get) => ({
     }));
   },
 
-  // ── companies ──
-  updatecompanies: (companies) =>
-    set((s) => ({ companies: { ...s.companies, ...companies } })),
+  // ── Settings ──
+  updateSettings: (newSettings) => {
+    useSettingsStore.getState().updateSettings(newSettings);
+    set({ settings: useSettingsStore.getState() });
+  },
 }));
 
 export default useAppStore;

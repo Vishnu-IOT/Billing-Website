@@ -15,6 +15,7 @@ import {
   FiUserCheck,
   FiChevronsLeft,
   FiChevronsRight,
+  FiShield,
 } from 'react-icons/fi';
 import { TbReport, TbMoneybagMoveBack, TbMoneybagMove, TbMoneybag } from 'react-icons/tb';
 import { RiAlignItemBottomLine } from 'react-icons/ri';
@@ -28,21 +29,21 @@ const ownerSidebar = [
     key: 'sales',
     icon: <FiFileText />,
     label: 'Sales',
-    // children: [
-    //   {
-    //     key: 'sales?type=B2B',
-    //     icon: <IoReceiptOutline />,
-    //     label: 'B2B Billing',
-    //   },
-    //   {
-    //     key: 'sales?type=B2C',
-    //     icon: <IoReceiptOutline />,
-    //     label: 'POS Billing',
-    //   },
-    // ],
   },
   { key: 'purchases', icon: <FiShoppingCart />, label: 'Purchase' },
-  // { key: 'sales?type=B2C', icon: <IoReceiptOutline />, label: 'POS Billing' },
+  {
+    key: 'documents',
+    icon: <FiFileText />,
+    label: 'Documents',
+    children: [
+      { key: 'documents?type=QUOTATION', label: 'Quotation' },
+      { key: 'documents?type=PROFORMA', label: 'Proforma Invoice' },
+      { key: 'documents?type=DELIVERY_CHALLAN', label: 'Delivery Challan' },
+      { key: 'documents?type=CREDIT_NOTE', label: 'Credit Note' },
+      { key: 'documents?type=DEBIT_NOTE', label: 'Debit Note' },
+    ],
+  },
+  { key: 'compliance', icon: <FiShield />, label: 'Compliance Hub' },
   { key: 'products', icon: <FiBox />, label: 'Products' },
   { key: 'categories', icon: <FiTag />, label: 'Categories' },
   {
@@ -53,6 +54,8 @@ const ownerSidebar = [
       { key: 'sale-report', label: 'Sales Report' },
       { key: 'purchase-report', label: 'Purchase Report' },
       { key: 'stock-report', label: 'Stock Report' },
+      { key: 'gstr1-report', label: 'GSTR-1 Report' },
+      { key: 'gstr3b-report', label: 'GSTR-3B Report' },
       { key: 'user-report', label: 'User/Rep Report' },
     ],
   },
@@ -83,6 +86,18 @@ const staffSidebar = [
   { key: 'parties', icon: <FiUsers />, label: 'Parties' },
   { key: 'sales', icon: <FiFileText />, label: 'Sales' },
   {
+    key: 'documents',
+    icon: <FiFileText />,
+    label: 'Documents',
+    children: [
+      { key: 'documents?type=QUOTATION', label: 'Quotation' },
+      { key: 'documents?type=PROFORMA', label: 'Proforma' },
+      { key: 'documents?type=DELIVERY_CHALLAN', label: 'Challan' },
+      { key: 'documents?type=CREDIT_NOTE', label: 'Credit Note' },
+    ],
+  },
+  { key: 'compliance', icon: <FiShield />, label: 'Compliance Hub' },
+  {
     key: 'reports',
     icon: <TbReport />,
     label: 'Reports',
@@ -90,6 +105,8 @@ const staffSidebar = [
       { key: 'sale-report', label: 'Sales Report' },
       { key: 'purchase-report', label: 'Purchase Report' },
       { key: 'stock-report', label: 'Stock Report' },
+      { key: 'gstr1-report', label: 'GSTR-1 Report' },
+      { key: 'gstr3b-report', label: 'GSTR-3B Report' },
     ],
   },
 ];

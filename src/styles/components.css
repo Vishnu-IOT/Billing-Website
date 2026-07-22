@@ -440,25 +440,30 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* ── Tables ── */
-.table-wrapper {
+.table-wrapper,
+.bills-table-wrap {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: scroll;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
-.data-table {
+.data-table,
+.bills-table {
   width: 100%;
   font-size: var(--fs-sm);
+  border-collapse: collapse;
 }
 
-.data-table thead {
+.data-table thead,
+.bills-table thead {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
 
-.data-table th {
+.data-table th,
+.bills-table th {
   padding: 11px var(--sp-4);
   text-align: left;
   font-size: var(--fs-xs);
@@ -469,29 +474,35 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-.data-table td {
+.data-table td,
+.bills-table td {
   padding: 13px var(--sp-4);
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
 }
 
-.data-table tbody tr:last-child td {
+.data-table tbody tr:last-child td,
+.bills-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.data-table tbody tr {
+.data-table tbody tr,
+.bills-table tbody tr {
   transition: background var(--tr-fast);
 }
 
-.data-table tbody tr:hover {
+.data-table tbody tr:hover,
+.bills-table tbody tr:hover {
   background: var(--bg-hover);
 }
 
-.data-table .text-right {
+.data-table .text-right,
+.bills-table .text-right {
   text-align: right;
 }
 
-.data-table .text-center {
+.data-table .text-center,
+.bills-table .text-center {
   text-align: center;
 }
 

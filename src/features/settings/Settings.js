@@ -1,358 +1,184 @@
-/* ===== SETTINGS ===== */
+/* ===== SETTINGS — TABBED ERP SETTINGS SHELL ===== */
 import React, { useState } from 'react';
-import useAppStore from '../../store/appStore';
-import { Button, ToastContainer } from '../../components/ui';
+import { ToastContainer } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
-import { formatInvoicePrefix } from '../../utils/invoice';
-import usePOSStore from '../../hooks/usePOSStore';
+import InvoiceBillingTab from './tabs/InvoiceBillingTab';
+import TaxGSTTab from './tabs/TaxGSTTab';
+import PaymentsTab from './tabs/PaymentsTab';
+import POSPrintingTab from './tabs/POSPrintingTab';
+import {
+  FiFileText,
+  FiPercent,
+  FiCreditCard,
+  FiPrinter,
+  FiBriefcase,
+  FiUsers,
+} from 'react-icons/fi';
+
+const TABS = [
+  { id: 'invoice', label: 'Invoice & Billing', icon: <FiFileText /> },
+  { id: 'tax', label: 'Tax & GST', icon: <FiPercent /> },
+  { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
+  { id: 'pos', label: 'POS & Printing', icon: <FiPrinter /> },
+];
 
 export default function Settings() {
-  const { settings, updateSettings } = useAppStore();
+  const [activeTab, setActiveTab] = useState('invoice');
   const toast = useToast();
-  const [form, setForm] = useState({ ...settings });
-  const [saving, setSaving] = useState(false);
 
-  /* POS Settings from Zustand POS store */
-  const printerWidth = usePOSStore((s) => s.printerWidth);
-  const autoPrint = usePOSStore((s) => s.autoPrint);
-  const scannerEnabled = usePOSStore((s) => s.scannerEnabled);
-  const cameraEnabled = usePOSStore((s) => s.cameraEnabled);
-  const setPOSSetting = usePOSStore((s) => s.setPOSSetting);
-
-  function handleChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      updateSettings(form);
-      toast.success('Settings saved');
-    } catch {
-      toast.error('Save failed');
-    } finally {
-      setSaving(false);
+  function handleSaveToast(msg, type = 'success') {
+    if (type === 'error') {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
     }
   }
 
-  /* ── Reusable iOS-style toggle ── */
-  function Toggle({ value, onChange, label, description }) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 0',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontWeight: 600,
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-primary)',
-            }}
-          >
-            {label}
-          </div>
-          {description && (
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 2,
-              }}
-            >
-              {description}
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => onChange(!value)}
-          style={{
-            width: 44,
-            height: 24,
-            borderRadius: 12,
-            background: value ? 'var(--primary)' : '#cbd5e1',
-            border: 'none',
-            cursor: 'pointer',
-            position: 'relative',
-            transition: 'background 0.2s ease',
-            flexShrink: 0,
-            marginLeft: 16,
-          }}
-        >
-          <span
-            style={{
-              position: 'absolute',
-              top: 2,
-              left: value ? 22 : 2,
-              width: 20,
-              height: 20,
-              borderRadius: '50%',
-              background: '#fff',
-              transition: 'left 0.2s ease',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-            }}
-          />
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--sp-5)',
-        maxWidth: 640,
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
       <ToastContainer toasts={toast.toasts} />
       <div className="page-header">
         <div className="page-header__left">
           <h1>Settings</h1>
-          <p className="page-header__sub">Business and invoice configuration</p>
+          <p className="page-header__sub">
+            Configure system defaults, invoice formats, tax rules, and POS hardware
+          </p>
         </div>
       </div>
 
-      {/* ── Invoice Theme ── */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">Invoice Theme</span>
-        </div>
-        <div className="card__body">
-          <div style={{ display: 'flex', gap: 'var(--sp-4)' }}>
-            {['classic', 'modern', 'minimal'].map((theme) => (
-              <div
-                key={theme}
-                onClick={() => setForm((f) => ({ ...f, billTheme: theme }))}
-                style={{
-                  padding: 'var(--sp-4)',
-                  border: `2px solid ${form.billTheme === theme ? 'var(--primary)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius-lg)',
-                  cursor: 'pointer',
-                  flex: 1,
-                  textAlign: 'center',
-                  transition: 'all 0.15s',
-                  background:
-                    form.billTheme === theme
-                      ? 'var(--primary-light)'
-                      : 'var(--bg)',
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 600,
-                    textTransform: 'capitalize',
-                    color:
-                      form.billTheme === theme
-                        ? 'var(--primary)'
-                        : 'var(--text-primary)',
-                  }}
-                >
-                  {theme}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Invoice Numbering ── */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">Invoice Numbering Prefix</span>
-        </div>
-        <div className="card__body">
+      {/* Main Tabbed Container */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '240px 1fr',
+          gap: 'var(--sp-5)',
+          alignItems: 'start',
+        }}
+      >
+        {/* Left Nav Sidebar */}
+        <div
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--sp-3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--sp-1)',
+            boxShadow: 'var(--shadow-xs)',
+          }}
+        >
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sp-4)',
+              fontSize: '10.5px',
+              fontWeight: 800,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.6px',
+              padding: '6px 10px',
+              marginBottom: 4,
             }}
           >
-            <div className="form-grid-2">
-              <div className="form-group">
-                <label className="form-label">Prefix String</label>
-                <input
-                  name="invoicePrefix"
-                  className="form-input"
-                  value={form.invoicePrefix || ''}
-                  onChange={handleChange}
-                  placeholder="e.g. INV, SALES"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Financial Year Format</label>
-                <select
-                  name="invoiceYearFormat"
-                  className="form-select"
-                  value={form.invoiceYearFormat || 'YYYY'}
-                  onChange={handleChange}
-                >
-                  <option value="none">None</option>
-                  <option value="YYYY">YYYY (e.g. 2024)</option>
-                  <option value="YY-YY">YY-YY (e.g. 24-25)</option>
-                  <option value="YYYY-YYYY">YYYY-YYYY (e.g. 2024-2025)</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Separator</label>
-                <input
-                  name="invoiceSeparator"
-                  className="form-input"
-                  value={form.invoiceSeparator ?? '-'}
-                  onChange={handleChange}
-                  placeholder="e.g. -, /, _"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Starting Number</label>
-                <input
-                  name="invoiceStartingNumber"
-                  type="number"
-                  min="1"
-                  className="form-input"
-                  value={form.invoiceStartingNumber || '1'}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                background: 'var(--bg)',
-                padding: 'var(--sp-4)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: 'var(--sp-1)',
-                }}
-              >
-                Live Preview
-              </div>
-              <div
-                style={{
-                  fontSize: 'var(--fs-xl)',
-                  fontWeight: 700,
-                  color: 'var(--primary)',
-                  fontFamily: 'monospace',
-                }}
-              >
-                {formatInvoicePrefix(form)}
-                {String(form.invoiceStartingNumber || '1').padStart(
-                  String(form.invoiceStartingNumber || '0001').length || 4,
-                  '0'
-                )}
-              </div>
-            </div>
+            System Preferences
           </div>
-        </div>
-      </div>
+          {TABS.map((t) => {
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  background: active ? 'var(--primary-light)' : 'transparent',
+                  color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontWeight: active ? 700 : 500,
+                  fontSize: 'var(--fs-sm)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
 
-      {/* ── POS & Printing ── */}
-      <div className="card">
-        <div className="card__header">
-          <span className="card__title">🖨 POS &amp; Thermal Printing</span>
-          <span
-            style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
+          <div
+            style={{
+              fontSize: '10.5px',
+              fontWeight: 800,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.6px',
+              padding: '12px 10px 4px',
+            }}
           >
-            B2C counter billing settings
-          </span>
-        </div>
-        <div className="card__body">
-          {/* Printer Width */}
-          <div style={{ marginBottom: 'var(--sp-5)' }}>
-            <label
-              className="form-label"
-              style={{ marginBottom: 10, display: 'block' }}
-            >
-              Thermal Printer Width
-            </label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {[
-                { val: '58', label: '58mm', desc: 'Small receipt printer' },
-                { val: '80', label: '80mm', desc: 'Standard retail printer' },
-              ].map(({ val, label, desc }) => (
-                <button
-                  key={val}
-                  onClick={() => setPOSSetting('printerWidth', val)}
-                  style={{
-                    flex: 1,
-                    padding: '14px',
-                    borderRadius: 12,
-                    border: `2px solid ${printerWidth === val ? 'var(--primary)' : 'var(--border)'}`,
-                    background:
-                      printerWidth === val
-                        ? 'var(--primary-light)'
-                        : 'var(--bg)',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.15s',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: 'var(--fs-lg)',
-                      color:
-                        printerWidth === val
-                          ? 'var(--primary)'
-                          : 'var(--text-primary)',
-                    }}
-                  >
-                    {label}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 'var(--fs-xs)',
-                      color: 'var(--text-muted)',
-                      marginTop: 4,
-                    }}
-                  >
-                    {desc}
-                  </div>
-                </button>
-              ))}
-            </div>
+            Database Settings
           </div>
+          <button
+            type="button"
+            onClick={() => (window.location.hash = 'company')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              fontWeight: 500,
+              fontSize: 'var(--fs-sm)',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 16 }}><FiBriefcase /></span>
+            Company Profile →
+          </button>
+          <button
+            type="button"
+            onClick={() => (window.location.hash = 'users')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              fontWeight: 500,
+              fontSize: 'var(--fs-sm)',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 16 }}><FiUsers /></span>
+            User Management →
+          </button>
+        </div>
 
-          {/* Toggle switches */}
-          <Toggle
-            label="Auto Print on Checkout"
-            description="Automatically open print dialog when a B2C bill is saved"
-            value={autoPrint}
-            onChange={(v) => setPOSSetting('autoPrint', v)}
-          />
-          <Toggle
-            label="USB Barcode Scanner"
-            description="Show the barcode input bar at the top of the POS screen"
-            value={scannerEnabled}
-            onChange={(v) => setPOSSetting('scannerEnabled', v)}
-          />
-          <Toggle
-            label="Camera Barcode Scanner"
-            description="Enable the 📷 camera scan button for mobile barcode scanning"
-            value={cameraEnabled}
-            onChange={(v) => setPOSSetting('cameraEnabled', v)}
-          />
+        {/* Right Active Content Panel */}
+        <div style={{ maxWidth: 720 }}>
+          {activeTab === 'invoice' && <InvoiceBillingTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'tax' && <TaxGSTTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'payments' && <PaymentsTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'pos' && <POSPrintingTab onSaveToast={handleSaveToast} />}
         </div>
       </div>
-
-      <Button variant="primary" size="lg" loading={saving} onClick={handleSave}>
-        Save Settings
-      </Button>
     </div>
   );
 }
