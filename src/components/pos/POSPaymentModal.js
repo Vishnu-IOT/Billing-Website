@@ -110,7 +110,7 @@ export default function POSPaymentModal({
           {/* Customer */}
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
-              Customer (optional)
+              Customer Details
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div style={{ position: 'relative' }}>
@@ -128,6 +128,7 @@ export default function POSPaymentModal({
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
                   }}
+                  readOnly
                 />
               </div>
               <div style={{ position: 'relative' }}>
@@ -146,6 +147,7 @@ export default function POSPaymentModal({
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
                   }}
+                  readOnly
                 />
               </div>
             </div>

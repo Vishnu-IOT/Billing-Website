@@ -13,16 +13,18 @@ import { formatCurrency } from '../../utils/currency';
 export default function POSProductGrid({ products, categories, onAddProduct, recentProductIds }) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  console.log(categories);
 
   /* ── Build category list from products ── */
   const categoryList = useMemo(() => {
-    const cats = new Set();
-    (products || []).forEach((p) => {
-      if (p.category) cats.add(p.category);
-      if (p.categoryName) cats.add(p.categoryName);
-    });
-    return ['all', ...Array.from(cats)];
-  }, [products]);
+    return [
+      { id: 'all', name: 'All' },
+      ...(categories || []).map((cat) => ({
+        id: cat.id,
+        name: cat.category,
+      })),
+    ];
+  }, [categories]);
 
   /* ── Filter products ── */
   const filtered = useMemo(() => {
@@ -36,8 +38,7 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
         (p.barcode && p.barcode.toLowerCase().includes(q));
       const matchCat =
         activeCategory === 'all' ||
-        (p.category || p.categoryName || '').toLowerCase() ===
-          activeCategory.toLowerCase();
+        String(p.categoryId) === String(activeCategory);
       return matchSearch && matchCat;
     });
   }, [products, search, activeCategory]);
@@ -93,11 +94,12 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
       <div className="pos-category-strip">
         {categoryList.map((cat) => (
           <button
-            key={cat}
-            className={`pos-category-pill ${activeCategory === cat ? 'active' : ''}`}
-            onClick={() => setActiveCategory(cat)}
+            key={cat.id}
+            className={`pos-category-pill ${activeCategory === cat.id ? 'active' : ''
+              }`}
+            onClick={() => setActiveCategory(cat.id)}
           >
-            {cat === 'all' ? '🏪 All' : cat}
+            {cat.id === 'all' ? '🏪 All' : cat.name}
           </button>
         ))}
       </div>
@@ -183,7 +185,11 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
       {/* ── Count ── */}
       <div className="pos-grid-count">
         {filtered.length} product{filtered.length !== 1 ? 's' : ''}
-        {activeCategory !== 'all' && ` in "${activeCategory}"`}
+        {
+          activeCategory !== 'all' &&
+          ` in "${categoryList.find(c => c.id === activeCategory)?.name || ''
+          }"`
+        }
       </div>
     </div>
   );

@@ -335,10 +335,12 @@ const LoginView = ({ onSwitch }) => {
     setLoading(true);
     try {
       const data = { email: email, password: password };
-      await login(data);
+      const resData = await login(data);
+      console.log(resData);
       toast.success('Logged in successfully!');
       window.location.hash = 'dashboard';
     } catch (err) {
+      alert(err.message || 'Invalid username and password!');
       toast.error(err.message || 'Login failed. Please check credentials.');
     } finally {
       setLoading(false);

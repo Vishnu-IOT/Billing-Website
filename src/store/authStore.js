@@ -36,6 +36,8 @@ const useAuthStore = create(
             return loggedInUser;
           } else {
             throw new Error(response.data?.message || 'Invalid credentials');
+            console.log(response.data);
+            return response.data;
           }
         } catch (err) {
           console.error('API login failed:', err);

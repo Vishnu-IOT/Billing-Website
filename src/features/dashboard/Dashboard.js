@@ -63,7 +63,6 @@ export default function Dashboard() {
       try {
         const response = await getDashboardAPI();
         const data = response;
-        console.log(data);
         if (data) {
           setDashData(data);
         }

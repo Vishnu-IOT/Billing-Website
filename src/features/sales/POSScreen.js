@@ -199,16 +199,10 @@ export default function POSScreen({
         (p) => String(p.phone).trim() === String(phone).trim()
       );
     }
-    console.log(existing);
     setCustomerInfo({
       ...customerInfo,
       phone,
-      name:
-        phone.length >= 10
-          ? existing
-            ? existing.name
-            : ''
-          : customerInfo.name,
+      name: existing ? existing.name : customerInfo.name
     });
   }
 

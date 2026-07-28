@@ -20,6 +20,7 @@ export default function Categories() {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   // Auto-select first category if available
   useEffect(() => {
@@ -29,14 +30,15 @@ export default function Categories() {
   }, [categories, activeCategory]);
 
   async function handleAdd() {
-    if (!name.trim()) {
-      toast.error('Enter a category name');
-      return;
-    }
+    // if (!name.trim()) {
+    //   toast.error('Enter a category name');
+    //   return;
+    // }
+    if (!validateForm()) return;
     setSaving(true);
     try {
       await addCategory({ category: name.trim() });
-      toast.success('Category added');
+      toast.success('Category Added Successfully!');
       setName('');
       setShowAdd(false);
     } catch {
@@ -49,7 +51,7 @@ export default function Categories() {
   async function handleDelete() {
     try {
       await deleteCategory(deleteId);
-      toast.success('Deleted');
+      toast.success('Category Deleted Successfully!');
       if (activeCategory && String(activeCategory.id || activeCategory._id) === String(deleteId)) {
         setActiveCategory(null);
       }
@@ -58,6 +60,15 @@ export default function Categories() {
     } finally {
       setDeleteId(null);
     }
+  }
+
+  function validateForm() {
+    const errors = {};
+    if (!name.trim()) {
+      errors.name = 'Category name is required';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   return (
@@ -75,11 +86,11 @@ export default function Categories() {
 
       <Modal
         open={showAdd}
-        onClose={() => setShowAdd(false)}
+        onClose={() => { setShowAdd(false); setFormErrors({}) }}
         title="Add Category"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>
+            <Button variant="secondary" onClick={() => { setShowAdd(false); setFormErrors({}) }}>
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleAdd}>
@@ -97,6 +108,9 @@ export default function Categories() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           />
+          {formErrors.name && (
+            <span className="um-error-text">{formErrors.name}</span>
+          )}
         </div>
       </Modal>
 
@@ -161,9 +175,9 @@ export default function Categories() {
               })}
             </div>
 
-            <button className="co-add-cat-btn" onClick={() => setShowAdd(true)}>
+            {/* <button className="co-add-cat-btn" onClick={() => setShowAdd(true)}>
               + Add Category
-            </button>
+            </button> */}
           </div>
 
           {/* Right Pane: Products belonging to category */}

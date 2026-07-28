@@ -185,6 +185,10 @@ export default function DocumentForm({
       toast.error('Add at least one item');
       return;
     }
+    if (!customerForm.validUntil) {
+      toast.error('Select a proper valid date');
+      return;
+    }
     if (!selectedPartyId) {
       toast.error(config.side === 'purchase' ? 'Select a vendor' : 'Select a party');
       return;

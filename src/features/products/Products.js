@@ -28,7 +28,7 @@ const EMPTY_FORM = {
   purchasePrice: '',
   taxRate: '',
   categoryId: '',
-  stockQuantity: '',
+  stockQuantity: 0,
   minStockLevel: 5,
   unit: 'pcs',
   sku: '',
@@ -117,6 +117,9 @@ export default function Products() {
     if (!form.HSNCode) {
       errors.HSNCode = 'HSN Code is required';
     }
+     if (!form.barcode) {
+      errors.barcode = 'Barcode is required';
+    }
     // Category
     if (!form.categoryId) {
       errors.categoryId = 'Category is required';
@@ -149,13 +152,13 @@ export default function Products() {
       if (editProduct) {
         const id = editProduct.id || editProduct._id;
         await updateProduct(id, form);
-        toast.success('Updated');
+        toast.success('Product Updated Successfully!');
         // Update active product state to show fresh data
         setActiveProduct({ ...editProduct, ...form });
       } else {
         const data = await addProduct(form);
         console.log(data);
-        toast.success('Added');
+        toast.success('Product Added Successfully!');
       }
       setModalOpen(false);
     } catch {
@@ -169,7 +172,7 @@ export default function Products() {
   async function handleDelete() {
     try {
       await deleteProduct(deleteId);
-      toast.success('Deleted');
+      toast.success('Product Deleted Successfully!');
       setActiveProduct(null);
     } catch {
       toast.error('Failed to delete');
@@ -334,7 +337,7 @@ export default function Products() {
         size="xlg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFormErrors({}) }}>
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleSave}>
@@ -366,6 +369,9 @@ export default function Products() {
                 setForm((f) => ({ ...f, barcode: e.target.value }))
               }
             />
+            {formErrors.barcode && (
+              <span className="um-error-text">{formErrors.barcode}</span>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">HSN Code *</label>
@@ -506,7 +512,7 @@ export default function Products() {
               type="number"
               className="form-input"
               onWheel={(e) => e.target.blur()}
-              value={form.stockQuantity || 0}
+              value={form.stockQuantity}
               onChange={(e) =>
                 setForm((f) => ({ ...f, stockQuantity: e.target.value }))
               }
