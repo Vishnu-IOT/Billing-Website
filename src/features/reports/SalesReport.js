@@ -3,9 +3,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { fetchSaleBillsByDateAPI } from '../../api';
 import { StatCard, PaymentBadge, Pagination, Button, ToastContainer } from '../../components/ui';
 import { usePagination } from '../../hooks/usePagination';
-import { useToast }      from '../../hooks/useToast';
+import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
-import { formatDate }     from '../../utils/date';
+import { formatDate } from '../../utils/date';
 import { exportToExcel, buildSalesGSTExportRows } from '../../utils/export';
 import { PiMicrosoftExcelLogoFill } from 'react-icons/pi';
 import '../../styles/reports.css';
@@ -17,7 +17,7 @@ export default function SalesReport() {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const [bills, setBills]   = useState([]);
+  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '' });
   const [applied, setApplied] = useState({ startDate: '', endDate: '', status: '' });
@@ -41,10 +41,10 @@ export default function SalesReport() {
 
   const { page, totalPages, paginated, from, to, total, goToPage } = usePagination(filtered, 8);
 
-  const totalTaxable    = filtered.reduce((s, b) => s + parseFloat(b.baseRate || 0), 0);
-  const totalGST        = filtered.reduce((s, b) => s + parseFloat(b.tax || 0), 0);
-  const netReceivables  = filtered.reduce((s, b) => s + parseFloat(b.totalAmount || 0), 0);
-  const pendingDues     = filtered.filter((b) => b.paymentStatus?.toLowerCase() === 'unpaid').reduce((s, b) => s + parseFloat(b.totalAmount || 0), 0);
+  const totalTaxable = filtered.reduce((s, b) => s + parseFloat(b.baseRate || 0), 0);
+  const totalGST = filtered.reduce((s, b) => s + parseFloat(b.tax || 0), 0);
+  const netReceivables = filtered.reduce((s, b) => s + parseFloat(b.totalAmount || 0), 0);
+  const pendingDues = filtered.filter((b) => b.paymentStatus?.toLowerCase() === 'unpaid').reduce((s, b) => s + parseFloat(b.totalAmount || 0), 0);
 
   function handleExport() {
     try {
@@ -67,9 +67,9 @@ export default function SalesReport() {
 
       <div className="stat-grid">
         <StatCard label="Taxable Value" value={formatCurrency(totalTaxable)} icon="📊" color="blue" />
-        <StatCard label="Output GST"    value={formatCurrency(totalGST)}     icon="🏛" color="cyan" />
+        <StatCard label="Output GST" value={formatCurrency(totalGST)} icon="🏛" color="cyan" />
         <StatCard label="Net Receivables" value={formatCurrency(netReceivables)} icon="💰" color="green" />
-        <StatCard label="Pending Dues"  value={formatCurrency(pendingDues)}   icon="⚠️" color="amber" />
+        <StatCard label="Pending Dues" value={formatCurrency(pendingDues)} icon="⚠️" color="amber" />
       </div>
 
       {/* Filters */}
@@ -111,8 +111,8 @@ export default function SalesReport() {
                   <td className="report-invoice-num">{b.invoiceNumber}</td>
                   <td>
                     <div className="report-party-cell">
-                      <span className="report-avatar">{getInitials(b.Party?.name)}</span>
-                      <span>{b.Party?.name}</span>
+                      <span className="report-avatar">{getInitials(b.Party?.name || b.Customer?.name)}</span>
+                      <span>{b.Party?.name|| b.Customer?.name}</span>
                     </div>
                   </td>
                   <td className="text-right report-amount">{formatCurrency(b.totalAmount)}</td>

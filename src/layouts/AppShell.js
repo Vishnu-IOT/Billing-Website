@@ -48,6 +48,8 @@ const ComplianceCenter = lazy(
 );
 const GSTR1Report = lazy(() => import('../features/reports/GSTR1Report'));
 const GSTR3BReport = lazy(() => import('../features/reports/GSTR3BReport'));
+const InventoryHub = lazy(() => import('../features/inventory/InventoryHub'));
+const AccountingHub = lazy(() => import('../features/financials/AccountingHub'));
 
 function renderPage(page, searchParams, isAuthenticated) {
   if (page.startsWith('sales/edit/')) {
@@ -121,6 +123,22 @@ function renderPage(page, searchParams, isAuthenticated) {
         <ProtectedRoute>
           <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
             <Products />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'inventory':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <InventoryHub />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'accounting':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <AccountingHub />
           </RoleGuard>
         </ProtectedRoute>
       );

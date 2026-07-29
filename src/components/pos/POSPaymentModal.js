@@ -28,7 +28,31 @@ export default function POSPaymentModal({
   saving,
 }) {
   const [cashGiven, setCashGiven] = useState('');
-  const change = Math.max(0, (parseFloat(cashGiven) || 0) - totals.grandTotal);
+  const [splitCash, setSplitCash] = useState('');
+  const [splitCard, setSplitCard] = useState('');
+  const [splitUPI, setSplitUPI] = useState('');
+
+  const change = Math.max(0, (parseFloat(cashGiven) || 0) - (totals?.grandTotal || 0));
+  const splitTotal = (parseFloat(splitCash) || 0) + (parseFloat(splitCard) || 0) + (parseFloat(splitUPI) || 0);
+
+  const handleConfirmClick = () => {
+    let paymentDetails = null;
+    if (paymentMethod === 'Split') {
+      paymentDetails = {
+        cash: parseFloat(splitCash) || 0,
+        card: parseFloat(splitCard) || 0,
+        upi: parseFloat(splitUPI) || 0,
+      };
+    } else if (paymentMethod === 'Cash') {
+      paymentDetails = { cash: totals.grandTotal };
+    } else if (paymentMethod === 'Card') {
+      paymentDetails = { card: totals.grandTotal };
+    } else if (paymentMethod === 'UPI') {
+      paymentDetails = { upi: totals.grandTotal };
+    }
+
+    onConfirm(paymentDetails);
+  };
 
   if (!open) return null;
 
@@ -254,6 +278,85 @@ export default function POSPaymentModal({
             </div>
           )}
 
+          {/* Split Payment inputs */}
+          {paymentMethod === 'Split' && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+                Split Payment Breakdown
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💵 Cash</span>
+                  <input
+                    type="number"
+                    value={splitCash}
+                    onChange={(e) => setSplitCash(e.target.value)}
+                    placeholder="Cash ₹"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💳 Card</span>
+                  <input
+                    type="number"
+                    value={splitCard}
+                    onChange={(e) => setSplitCard(e.target.value)}
+                    placeholder="Card ₹"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>📱 UPI</span>
+                  <input
+                    type="number"
+                    value={splitUPI}
+                    onChange={(e) => setSplitUPI(e.target.value)}
+                    placeholder="UPI ₹"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  padding: '10px 14px',
+                  background: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#f0fdf4' : '#fff7ed',
+                  border: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+                  borderRadius: 8,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#15803d' : '#c2410c',
+                }}>
+                  <span>
+                    {Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '✓ Exact Split Amount' : `Remaining: ${formatCurrency(totals.grandTotal - splitTotal)}`}
+                  </span>
+                  <span>Sum: {formatCurrency(splitTotal)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bill Summary */}
           <div style={{
             background: '#f8fafc',
@@ -303,8 +406,12 @@ export default function POSPaymentModal({
             Back
           </button>
           <button
-            onClick={onConfirm}
-            disabled={saving || (paymentMethod === 'Cash' && cashGiven && parseFloat(cashGiven) < totals.grandTotal)}
+            onClick={handleConfirmClick}
+            disabled={
+              saving ||
+              (paymentMethod === 'Cash' && cashGiven && parseFloat(cashGiven) < totals.grandTotal) ||
+              (paymentMethod === 'Split' && Math.abs(splitTotal - totals.grandTotal) > 0.01)
+            }
             style={{
               flex: 2,
               padding: '14px',

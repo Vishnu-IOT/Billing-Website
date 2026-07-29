@@ -45,6 +45,7 @@ const ownerSidebar = [
   },
   { key: 'compliance', icon: <FiShield />, label: 'Compliance Hub' },
   { key: 'products', icon: <FiBox />, label: 'Products' },
+  { key: 'inventory', icon: <FiBox />, label: 'Inventory & Warehouses' },
   { key: 'categories', icon: <FiTag />, label: 'Categories' },
   {
     key: 'reports',
@@ -69,6 +70,7 @@ const ownerSidebar = [
   { key: 'payment-out', icon: <TbMoneybagMove />, label: 'Payment Out' },
   { key: 'company', icon: <FiBriefcase />, label: 'Company' },
   { key: 'financials', icon: <FiCreditCard />, label: 'Financial Details' },
+  { key: 'accounting', icon: <FiCreditCard />, label: 'Financial Accounting' },
   { key: 'user-management', icon: <FiCreditCard />, label: 'User Management' },
   {
     key: 'settings',

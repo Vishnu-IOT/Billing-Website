@@ -17,6 +17,8 @@ import { formatCurrency } from '../../utils/currency';
 import '../../styles/products.css';
 import useSalesStore from '../../store/salesStore';
 import usePurchaseStore from '../../store/purchaseStore';
+import BrandManagerModal from '../../components/shared/BrandManagerModal';
+import ProductVariantModal from '../../components/shared/ProductVariantModal';
 
 const EMPTY_FORM = {
   name: '',
@@ -54,6 +56,9 @@ export default function Products() {
   const [saving, setSaving] = useState(false);
   const [activeProduct, setActiveProduct] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [brandModalOpen, setBrandModalOpen] = useState(false);
+  const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [brands, setBrands] = useState([]);
 
   const [txnPage, setTxnPage] = useState(1);
   const TXN_ITEMS_PER_PAGE = 5;
@@ -64,6 +69,8 @@ export default function Products() {
   useEffect(() => {
     loadAllSalesBills();
     loadAllPurchaseBills();
+    // Load brands for product form dropdown
+    import('../../api/brands').then(({ fetchBrandsAPI }) => fetchBrandsAPI().then(setBrands));
   }, [loadAllSalesBills, loadAllPurchaseBills]);
 
   // Filter products by Name, Barcode (SKU), or HSN Code
@@ -330,6 +337,23 @@ export default function Products() {
         title="Delete Product?"
       />
 
+      {/* Brand Manager Modal */}
+      <BrandManagerModal
+        open={brandModalOpen}
+        onClose={() => {
+          setBrandModalOpen(false);
+          // Reload brands after closing
+          import('../../api/brands').then(({ fetchBrandsAPI }) => fetchBrandsAPI().then(setBrands));
+        }}
+      />
+
+      {/* Product Variant Manager Modal */}
+      <ProductVariantModal
+        open={variantModalOpen}
+        onClose={() => setVariantModalOpen(false)}
+        product={activeProduct}
+      />
+
       <Modal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setFormErrors({}) }}
@@ -418,6 +442,21 @@ export default function Products() {
             {formErrors.categoryId && (
               <span className="um-error-text">{formErrors.categoryId}</span>
             )}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Brand</label>
+            <select
+              className="form-select"
+              value={form.brandId || ''}
+              onChange={(e) => setForm((f) => ({ ...f, brandId: e.target.value || null }))}
+            >
+              <option value="">No Brand</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label className="form-label">GST % *</label>
@@ -576,9 +615,25 @@ export default function Products() {
             layout
           </p>
         </div>
-        <Button variant="primary" onClick={openAdd}>
-          + Add Product
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            variant="secondary"
+            onClick={() => setBrandModalOpen(true)}
+          >
+            🏷️ Manage Brands
+          </Button>
+          {activeProduct && (
+            <Button
+              variant="secondary"
+              onClick={() => setVariantModalOpen(true)}
+            >
+              📦 Variants
+            </Button>
+          )}
+          <Button variant="primary" onClick={openAdd}>
+            + Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Upgraded Split Layout */}

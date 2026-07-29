@@ -16,3 +16,9 @@ export * from './compliance';
 export * from './notifications';
 export * from './inventory';
 export * from './expenses';
+export * from './pos';
+export * from './accounting';
+export * from './brands';
+export * from './variants';
+export * from './audit';
+

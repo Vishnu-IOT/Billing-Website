@@ -6,6 +6,7 @@ import InvoiceBillingTab from './tabs/InvoiceBillingTab';
 import TaxGSTTab from './tabs/TaxGSTTab';
 import PaymentsTab from './tabs/PaymentsTab';
 import POSPrintingTab from './tabs/POSPrintingTab';
+import AuditLogsTab from './tabs/AuditLogsTab';
 import {
   FiFileText,
   FiPercent,
@@ -13,6 +14,7 @@ import {
   FiPrinter,
   FiBriefcase,
   FiUsers,
+  FiShield,
 } from 'react-icons/fi';
 
 const TABS = [
@@ -20,6 +22,7 @@ const TABS = [
   { id: 'tax', label: 'Tax & GST', icon: <FiPercent /> },
   { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
   { id: 'pos', label: 'POS & Printing', icon: <FiPrinter /> },
+  { id: 'audit', label: 'Audit Logs', icon: <FiShield /> },
 ];
 
 export default function Settings() {
@@ -177,6 +180,7 @@ export default function Settings() {
           {activeTab === 'tax' && <TaxGSTTab onSaveToast={handleSaveToast} />}
           {activeTab === 'payments' && <PaymentsTab onSaveToast={handleSaveToast} />}
           {activeTab === 'pos' && <POSPrintingTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'audit' && <AuditLogsTab />}
         </div>
       </div>
     </div>

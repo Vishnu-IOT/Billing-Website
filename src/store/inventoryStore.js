@@ -1,69 +1,122 @@
-/* ===== INVENTORY STORE — Zustand ===== */
 import { create } from 'zustand';
 import {
-  fetchStockAdjustmentsAPI,
-  addStockAdjustmentAPI,
-  updateProductsBulkAPI,
-  fetchProductBatchesAPI,
-  addProductBatchAPI,
-  deleteProductBatchAPI,
-} from '../api';
+  fetchWarehousesAPI,
+  createWarehouseAPI,
+  updateWarehouseAPI,
+  deleteWarehouseAPI,
+  fetchStockLedgerAPI,
+  fetchReorderAlertsAPI,
+  fetchStockTransfersAPI,
+  createStockTransferAPI,
+  receiveStockTransferAPI,
+} from '../api/inventory';
 
 const useInventoryStore = create((set, get) => ({
-  adjustments: [],
-  batches: {},
-  loading: false,
-  error: null,
+  warehouses: [],
+  stockLedger: [],
+  reorderAlerts: [],
+  transfers: [],
+  loadingWarehouses: false,
+  loadingLedger: false,
+  loadingTransfers: false,
 
-  loadAdjustments: async () => {
-    set({ loading: true });
+  // Warehouses Actions
+  loadWarehouses: async () => {
+    set({ loadingWarehouses: true });
     try {
-      const data = await fetchStockAdjustmentsAPI();
-      set({ adjustments: Array.isArray(data) ? data : data?.data ?? [], loading: false });
+      const warehouses = await fetchWarehousesAPI();
+      set({ warehouses, loadingWarehouses: false });
+      return warehouses;
     } catch (err) {
-      set({ loading: false, error: err.message });
-    }
-  },
-
-  addAdjustment: async (payload) => {
-    const result = await addStockAdjustmentAPI(payload);
-    await get().loadAdjustments();
-    return result;
-  },
-
-  bulkUpdateStock: async (updates) => {
-    set({ loading: true });
-    try {
-      const result = await updateProductsBulkAPI(updates);
-      set({ loading: false });
-      return result;
-    } catch (err) {
-      set({ loading: false, error: err.message });
-      throw err;
-    }
-  },
-
-  loadBatches: async (productId) => {
-    try {
-      const data = await fetchProductBatchesAPI(productId);
-      const bList = Array.isArray(data) ? data : data?.data ?? [];
-      set((s) => ({ batches: { ...s.batches, [productId]: bList } }));
-      return bList;
-    } catch (err) {
-      console.error(err);
+      set({ loadingWarehouses: false });
       return [];
     }
   },
 
-  addBatch: async (productId, batchData) => {
-    const result = await addProductBatchAPI(productId, batchData);
-    await get().loadBatches(productId);
-    return result;
+  addWarehouse: async (payload) => {
+    try {
+      const res = await createWarehouseAPI(payload);
+      await get().loadWarehouses();
+      return res;
+    } catch (err) {
+      throw err;
+    }
   },
 
-  deleteBatch: async (productId, batchId) => {
-    await deleteProductBatchAPI(productId, batchId);
-    await get().loadBatches(productId);
+  editWarehouse: async (id, payload) => {
+    try {
+      const res = await updateWarehouseAPI(id, payload);
+      await get().loadWarehouses();
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  removeWarehouse: async (id) => {
+    try {
+      const res = await deleteWarehouseAPI(id);
+      await get().loadWarehouses();
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Stock Ledger & Alerts
+  loadStockLedger: async (params = {}) => {
+    set({ loadingLedger: true });
+    try {
+      const ledger = await fetchStockLedgerAPI(params);
+      set({ stockLedger: ledger, loadingLedger: false });
+      return ledger;
+    } catch (err) {
+      set({ loadingLedger: false });
+      return [];
+    }
+  },
+
+  loadReorderAlerts: async () => {
+    try {
+      const alerts = await fetchReorderAlertsAPI();
+      set({ reorderAlerts: alerts });
+      return alerts;
+    } catch (err) {
+      return [];
+    }
+  },
+
+  // Stock Transfers
+  loadTransfers: async () => {
+    set({ loadingTransfers: true });
+    try {
+      const transfers = await fetchStockTransfersAPI();
+      set({ transfers, loadingTransfers: false });
+      return transfers;
+    } catch (err) {
+      set({ loadingTransfers: false });
+      return [];
+    }
+  },
+
+  createTransfer: async (payload) => {
+    try {
+      const res = await createStockTransferAPI(payload);
+      await get().loadTransfers();
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  receiveTransfer: async (id) => {
+    try {
+      const res = await receiveStockTransferAPI(id);
+      await get().loadTransfers();
+      return res;
+    } catch (err) {
+      throw err;
+    }
   },
 }));
 
