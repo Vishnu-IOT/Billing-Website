@@ -5,12 +5,13 @@ import { Button } from '../../components/ui';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { numberToWords } from '../../utils/numbers';
+import '../../styles/Billpreview.css';
+import { useToast } from '../../hooks/useToast';
 
 export default function BillPreview({ bill, billType = 'SALE', onBack }) {
   const companies = useAppStore((s) => s.companies);
-  console.log(companies);
+  const toast = useToast();
   const printRef = useRef(null);
-  console.log(bill);
   if (!bill) return null;
 
   const isSale = billType === 'SALE';
@@ -21,12 +22,17 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
 
   function handlePrint() {
     const el = printRef.current;
-    if (!el) return;
-    const originalBody = document.body.innerHTML;
-    document.body.innerHTML = el.outerHTML;
-    window.print();
-    document.body.innerHTML = originalBody;
-    window.location.reload();
+    if (!el) {
+      toast.error('Error: Unable to prepare invoice for printing');
+      return;
+    }
+
+    try {
+      window.print();  // That's it! CSS handles the rest
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Failed to print invoice');
+    }
   }
 
   const invoiceLabel = isSale ? 'TAX INVOICE' : 'PURCHASE BILL';
@@ -106,7 +112,7 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
                 <div>Phone: {companies.phone}</div>
               )}
               {companies.companyGstin && (
-                <div>GSTIN: {companies.email}</div>
+                <div>GSTIN: {companies.gstin}</div>
               )}
             </div>
             <div style={{ textAlign: 'right' }}>

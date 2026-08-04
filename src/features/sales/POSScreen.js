@@ -48,6 +48,8 @@ export default function POSScreen({
   const cameraEnabled = useSettingsStore((s) => s.cameraEnabled);
   const getComputedTotals = usePOSStore((s) => s.getComputedTotals);
   const addToCart = usePOSStore((s) => s.addToCart);
+  const addCartItemDirect = usePOSStore((s) => s.addCartItemDirect);
+  const addMultipleCartItemsDirect = usePOSStore((s) => s.addMultipleCartItemsDirect);
   const updateCartItem = usePOSStore((s) => s.updateCartItem);
   const removeFromCart = usePOSStore((s) => s.removeFromCart);
   const clearCart = usePOSStore((s) => s.clearCart);
@@ -83,12 +85,15 @@ export default function POSScreen({
   const [holdDrawerOpen, setHoldDrawerOpen] = useState(false);
   const [holdNote, setHoldNote] = useState('');
 
+  const [printReady, setPrintReady] = useState(false);
+
   /* ── Init & Edit Mode ── */
   useEffect(() => {
     if (editMode && billId) {
       const existingBill = saleBills.find(
-        (b) => String(b.id || b._id) === String(billId)
+        (b) => String(b.id) === String(billId)
       );
+      console.log('Editing existing bill:', existingBill);
       if (existingBill) {
         setInvoiceNo(
           existingBill.invoiceNumber || existingBill.invoiceNo || ''
@@ -98,43 +103,18 @@ export default function POSScreen({
             ? existingBill.saleDate.split('T')[0]
             : todayISO()
         );
+        console.log('Loaded existing bill for edit:', existingBill.name || existingBill.Customer?.name || '');
         setCustomerInfo({
-          name: existingBill.name || existingBill.Party?.name || '',
-          phone: existingBill.phone || existingBill.Party?.phone || '',
+          name: existingBill.name || existingBill.Customer?.name || '',
+          phone: existingBill.phone || existingBill.Customer?.phone || '',
+          userId: existingBill.User?.id || null,
         });
         setGlobalDiscount(existingBill.global_discount_amount || 0);
 
         clearCart();
-        if (existingBill.items && existingBill.items.length > 0) {
-          existingBill.items.forEach((item) => {
-            addToCart({
-              id: item.productId,
-              _id: item.productId,
-              name: item.productName,
-              barcode: item.barcode || '',
-              hsnCode: item.hsnCode || '',
-              sku: item.sku || '',
-              sellingPrice: item.price || 0,
-              taxRate: item.taxPercentage || 0,
-              taxType: 'Inclusive', // POS is mostly inclusive, or adapt to what backend sends
-              discountPercent: item.discountPercentage || 0,
-              stockQuantity: 100, // Unknown from bill, assume OK
-            });
-            // Need to update the cart item precisely with the bill quantities
-            // Wait, addToCart automatically does quantity: 1, so we should update it afterwards.
-          });
-
-          // Since addToCart sets quantity to 1, we need a small timeout to let the store update,
-          // or we can use updateCartItem immediately.
-          setTimeout(() => {
-            existingBill.items.forEach((item) => {
-              updateCartItem(item.productId, {
-                quantity: item.quantity,
-                price: item.price,
-                discountPercent: item.discountPercentage || 0,
-              });
-            });
-          }, 0);
+        const items = existingBill.SalesItems || existingBill.saleItems || [];
+        if (items.length > 0) {
+          addMultipleCartItemsDirect(items);
         }
       }
     } else {
@@ -227,12 +207,12 @@ export default function POSScreen({
       const data = res;
       clearCart();
       const items = Array.isArray(data.cartData) ? data.cartData : JSON.parse(data.cartData || '[]');
-      items.forEach((item) => addToCart(item));
-      setTimeout(() => {
-        items.forEach((item) => {
-          updateCartItem(item.productId, { quantity: item.quantity, price: item.price });
-        });
-      }, 0);
+
+      // ✅ NEW: Use addMultipleCartItemsDirect
+      if (items.length > 0) {
+        addMultipleCartItemsDirect(items);
+      }
+
       if (data.customerName) setCustomerInfo({ name: data.customerName, phone: data.customerPhone || '' });
       toast.success('Held cart restored ✓');
       setHoldDrawerOpen(false);
@@ -355,16 +335,20 @@ export default function POSScreen({
         paymentMethod,
         cashier: settings?.legal_name || '',
       };
+      // setLastPrintedBill(billForPrint);
+
+      // setPaymentOpen(false);
+
+      // // Print
+      // if (autoPrint) {
+      //   setTimeout(() => window.print(), 400);
+      // } else {
+      //   setTimeout(() => window.print(), 400);
+      // }
+
       setLastPrintedBill(billForPrint);
-
       setPaymentOpen(false);
-
-      // Print
-      if (autoPrint) {
-        setTimeout(() => window.print(), 400);
-      } else {
-        setTimeout(() => window.print(), 400);
-      }
+      setPrintReady(true);
 
       // Reset
       clearCart();
@@ -429,6 +413,19 @@ export default function POSScreen({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [cart, paymentOpen, cameraOpen, holdDrawerOpen, shiftModalOpen, shiftCloseModal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Add useEffect hook (paste before return statement)
+  useEffect(() => {
+    if (!printReady || !lastPrintedBill) return;
+
+    setTimeout(() => {
+      const thermalBillElement = document.getElementById('thermal-bill-print');
+      if (thermalBillElement && thermalBillElement.innerHTML.trim()) {
+        window.print();
+      }
+      setPrintReady(false);
+    }, 200);
+  }, [printReady, lastPrintedBill, toast]);
 
   return (
     <div className="pos-b2c-root">
@@ -721,7 +718,7 @@ export default function POSScreen({
             {/* Global Discount */}
             <div className="pos-totals-row">
               <span>Subtotal</span>
-              <span>{formatCurrency(totals.subtotal)}</span>
+              <span>{formatCurrency(saleBills.baseRate)}</span>
             </div>
             <div className="pos-totals-row">
               <span>GST</span>

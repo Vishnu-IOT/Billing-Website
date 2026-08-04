@@ -176,6 +176,16 @@ export default function SaleBills({ searchParams }) {
         </div>
       </div>
 
+      {/* Date Filter */}
+      <DateRangeFilter
+        filter={filter}
+        dateRange={dateRange}
+        onFilterChange={setFilter}
+        onDateChange={setDateRange}
+        onApply={applyFilter}
+        onClear={clearFilter}
+      />
+
       {/* Stats */}
       <div className="stat-grid">
         <StatCard
@@ -193,16 +203,6 @@ export default function SaleBills({ searchParams }) {
           sub="Unpaid invoices"
         />
       </div>
-
-      {/* Date Filter */}
-      <DateRangeFilter
-        filter={filter}
-        dateRange={dateRange}
-        onFilterChange={setFilter}
-        onDateChange={setDateRange}
-        onApply={applyFilter}
-        onClear={clearFilter}
-      />
 
       {/* Search */}
       <div

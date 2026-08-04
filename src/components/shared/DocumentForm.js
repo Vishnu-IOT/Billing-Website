@@ -80,6 +80,8 @@ export default function DocumentForm({
   const [close, setClose] = useState(false);
   const [address, setAddress] = useState('');
 
+  const [loaded, setLoaded] = useState(false);
+
   const [billForm, setBillForm] = useState({
     invoiceNo: getNextInvoiceNo(numberingBills, numberingSettings),
     date: todayISO(),
@@ -113,7 +115,7 @@ export default function DocumentForm({
   }, [config.requireUserRep, documentType]);
 
   useEffect(() => {
-    if (!editMode || !recordId) return;
+    if (!editMode || !recordId || loaded) return;
 
     let existing = null;
     if (documentType === 'SALE_INVOICE') {
@@ -164,7 +166,13 @@ export default function DocumentForm({
       transportRef: existing.transportRef || '',
       state: existing.state || '',
     });
-  }, [editMode, recordId, documentType, saleBills, purchaseBills, existingDocs, config]);
+
+    setLoaded(true);
+  }, [editMode, recordId, documentType, saleBills, purchaseBills, existingDocs, config, loaded]);
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [recordId, editMode]);
 
   const validItems = billForm.items.filter((i) => i.productName?.trim());
   const totals = calcBillTotals(validItems, billForm.globalDiscount);
@@ -185,10 +193,10 @@ export default function DocumentForm({
       toast.error('Add at least one item');
       return;
     }
-    if (!customerForm.validUntil) {
-      toast.error('Select a proper valid date');
-      return;
-    }
+    // if (!customerForm.validUntil) {
+    //   toast.error('Select a proper valid date');
+    //   return;
+    // }
     if (!selectedPartyId) {
       toast.error(config.side === 'purchase' ? 'Select a vendor' : 'Select a party');
       return;
@@ -440,6 +448,7 @@ export default function DocumentForm({
                         onChange={(e) =>
                           setCustomerForm((p) => ({ ...p, validUntil: e.target.value }))
                         }
+                        required
                       />
                     </div>
                   )}
@@ -564,10 +573,10 @@ export default function DocumentForm({
                     style={
                       isInvoice
                         ? {
-                            background: 'var(--danger-light)',
-                            color: 'var(--danger)',
-                            borderColor: 'var(--danger-light)',
-                          }
+                          background: 'var(--danger-light)',
+                          color: 'var(--danger)',
+                          borderColor: 'var(--danger-light)',
+                        }
                         : {}
                     }
                   />

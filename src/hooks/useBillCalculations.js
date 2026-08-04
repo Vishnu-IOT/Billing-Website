@@ -18,19 +18,19 @@ export function useBillCalculations() {
       if (product) {
         item = {
           ...item,
-          productId:      String(product.id || product._id),
-          productName:    product.name,
-          hsnCode:        product.HSNCode || product.hsnCode || '',
-          sku:            product.sku || product.skuCode || '',
-          batchNumber:    product.batchNumber || product.batchNo || '',
-          serialNumber:   product.serialNumber ||product.serialNo|| '',
-          expiryDate:     product.expiryDate || '',
-          mrp:            Number(product.MRP || product.mrp) || 0,
-          price:          Number(billType==='sales' ? product.salesPrice : product.purchasePrice) || 0,
-          taxRate:        Number(product.taxRate) || 0,
-          discountPercent:Number(product.discount) || 0,
-          unit:           product.unit || 'pcs',
-          quantity:       1,
+          productId: String(product.id || product._id),
+          productName: product.name,
+          hsnCode: product.HSNCode || product.hsnCode || '',
+          sku: product.sku || product.skuCode || '',
+          batchNumber: product.batchNumber || product.batchNo || '',
+          serialNumber: product.serialNumber || product.serialNo || '',
+          expiryDate: product.expiryDate || '',
+          mrp: Number(product.MRP || product.mrp) || 0,
+          price: Number(billType === 'sales' ? product.salesPrice : product.purchasePrice) || 0,
+          taxRate: Number(product.taxRate) || 0,
+          discountPercent: Number(product.discount) || 0,
+          unit: product.unit || 'pcs',
+          quantity: 1,
         };
       }
     } else {

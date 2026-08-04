@@ -23,6 +23,8 @@ export default function POSCartItem({ item, onUpdate, onRemove, index }) {
     setEditingQty(false);
   }
 
+  console.log('Rendering POSCartItem:', item);
+
   function commitDisc() {
     const val = Math.min(100, Math.max(0, parseFloat(localDisc) || 0));
     setLocalDisc(String(val));

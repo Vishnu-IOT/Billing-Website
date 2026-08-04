@@ -39,7 +39,8 @@ export async function addSaleBillAPI(bill) {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    console.error('Failed to add sales bill:', err);
+    throw new Error(err.response?.data?.message || 'Failed to save bill');
   }
 }
 

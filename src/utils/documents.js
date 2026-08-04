@@ -26,7 +26,7 @@ export const DOCUMENT_TYPES = {
     showTax: true,
     showPayment: true,
     showRoundOff: true,
-    isInvoice: true,
+    isInvoice: false,
     partyLabel: 'Vendor / Party *',
     dateLabel: 'Date',
     numberLabel: 'Bill No',
@@ -125,9 +125,9 @@ export function getDocumentPrefix(documentType, settings = {}) {
   if (documentType === 'SALE_INVOICE') {
     return settings.invoicePrefix || 'INV';
   }
-  if (documentType === 'PURCHASE_BILL') {
-    return settings.purchasePrefix || 'PUR';
-  }
+  // if (documentType === 'PURCHASE_BILL') {
+  //   return settings.purchasePrefix || 'PUR';
+  // }
   const config = getDocumentConfig(documentType);
   const key = `${documentType.toLowerCase()}Prefix`;
   return settings[key] || config.prefix;

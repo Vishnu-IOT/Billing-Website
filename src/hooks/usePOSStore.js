@@ -32,9 +32,108 @@ const usePOSStore = create((set, get) => ({
   ───────────────────────────────────────── */
 
   /**
+   * Add a pre-calculated cart item directly (from API response).
+   * Use this when loading existing bills for editing — no product lookup needed.
+   * 
+   * USAGE:
+   *   const item = {
+   *     productId: "7",
+   *     productName: "Energy Chocolate",
+   *     price: 90,
+   *     quantity: 1,
+   *     taxRate: 12,
+   *     ...
+   *   };
+   *   addCartItemDirect(item);
+   * 
+   * @param {object} item - Cart item from API (already has quantity, taxAmount, etc.)
+   */
+  addCartItemDirect: (item) => {
+    set((state) => {
+      const existingIdx = state.cart.findIndex(
+        (cartItem) => String(cartItem.productId) === String(item.productId)
+      );
+
+      if (existingIdx >= 0) {
+        // Item already in cart → increment quantity and recalculate
+        const updated = [...state.cart];
+        updated[existingIdx].quantity += toFloat(item.quantity || 1);
+        updated[existingIdx] = calcItemRow(updated[existingIdx]);
+        return { cart: updated };
+      } else {
+        // Add new item directly with all API fields
+        const newItem = {
+          productId: String(item.productId),
+          productName: item.productName || '',
+          hsnCode: item.hsnCode || '',
+          barcode: item.barcode || '',
+          sku: item.sku || '',
+          mrp: toFloat(item.mrp || 0),
+          price: toFloat(item.price || 0),
+          taxRate: toFloat(item.taxRate || 0),
+          discountPercent: toFloat(item.discountPercent || 0),
+          unit: item.unit || 'pcs',
+          quantity: toFloat(item.quantity || 1),
+          batchNumber: item.batchNumber || '',
+          expiryDate: item.expiryDate || '',
+          serialNumber: item.serialNumber || '',
+          notes: item.notes || '',
+        };
+        return { cart: [...state.cart, newItem] };
+      }
+    });
+  },
+
+  /**
+   * Add multiple pre-calculated items at once (batch add from API).
+   * 
+   * @param {array} items - Array of cart items from API
+   */
+  addMultipleCartItemsDirect: (items) => {
+    set((state) => {
+      let updated = [...state.cart];
+
+      items.forEach((item) => {
+        const existingIdx = updated.findIndex(
+          (cartItem) => String(cartItem.productId) === String(item.productId)
+        );
+
+        if (existingIdx >= 0) {
+          updated[existingIdx].quantity += toFloat(item.quantity || 1);
+          updated[existingIdx] = calcItemRow(updated[existingIdx]);
+        } else {
+          const newItem = {
+            productId: String(item.productId),
+            productName: item.productName || '',
+            hsnCode: item.hsnCode || '',
+            barcode: item.barcode || '',
+            sku: item.sku || '',
+            mrp: toFloat(item.mrp || 0),
+            price: toFloat(item.price || 0),
+            taxRate: toFloat(item.taxRate || 0),
+            discountPercent: toFloat(item.discountPercent || 0),
+            unit: item.unit || 'pcs',
+            quantity: toFloat(item.quantity || 1),
+            batchNumber: item.batchNumber || '',
+            expiryDate: item.expiryDate || '',
+            serialNumber: item.serialNumber || '',
+            notes: item.notes || '',
+          };
+          updated = [...updated, newItem];
+        }
+      });
+
+      return { cart: updated };
+    });
+  },
+
+  /**
    * Add product to cart.
    * If product already exists → increment qty.
    * Else → add new row.
+   * 
+   * Use this for adding from product catalog (needs product lookup).
+   * Use addCartItemDirect() for API responses instead.
    */
   addToCart: (product) => {
     set((state) => {
@@ -72,21 +171,31 @@ const usePOSStore = create((set, get) => ({
   },
 
   /**
-   * Update a specific field of a cart item and recalculate.
+   * Update cart item fields (single or multiple).
+   * 
+   * USAGE:
+   *   updateCartItem(id, { quantity: 2, price: 100 })  // Multi-field
+   *   updateCartItem(id, 'quantity', 2)                // Single field (legacy)
    */
-  updateCartItem: (productId, field, value) => {
+  updateCartItem: (productId, fieldOrObj, value) => {
     set((state) => {
+      const numericFields = ['quantity', 'price', 'discountPercent', 'taxRate'];
+
+      const updates = typeof fieldOrObj === 'object'
+        ? fieldOrObj
+        : { [fieldOrObj]: value };
+
       const updated = state.cart.map((item) => {
         if (String(item.productId) !== String(productId)) return item;
-        const updated = {
-          ...item,
-          [field]: ['quantity', 'price', 'discountPercent', 'taxRate'].includes(
-            field
-          )
-            ? Math.max(0, toFloat(value))
-            : value,
-        };
-        return calcItemRow(updated);
+
+        const modified = { ...item };
+        Object.entries(updates).forEach(([field, val]) => {
+          modified[field] = numericFields.includes(field)
+            ? Math.max(0, toFloat(val))
+            : val;
+        });
+
+        return calcItemRow(modified);
       });
       return { cart: updated };
     });

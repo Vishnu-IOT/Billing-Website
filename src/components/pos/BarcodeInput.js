@@ -49,6 +49,8 @@ export default function BarcodeInput({ products, onProductFound, onNotFound, dis
     }
   }, [disabled, isMobile]);
 
+  console.log(products);
+
   /* F2 shortcut to refocus barcode bar */
   useEffect(() => {
     function handleKey(e) {
@@ -426,18 +428,18 @@ export default function BarcodeInput({ products, onProductFound, onNotFound, dis
                 </div>
                 <div style={{ textAlign: 'right', marginLeft: '12px' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                    {formatCurrency(item.sellingPrice || item.price || 0)}
+                    {formatCurrency(item.sellingPrice || item.salesPrice || 0)}
                   </div>
-                  {item.stock !== undefined && (
+                  {item.stockQuantity !== undefined && (
                     <div
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
-                        color: item.stock > 0 ? '#16a34a' : '#dc2626',
+                        color: item.stockQuantity > 0 ? '#16a34a' : '#dc2626',
                         marginTop: '4px',
                       }}
                     >
-                      {item.stock} in stock
+                      {item.stockQuantity} in stock
                     </div>
                   )}
                 </div>

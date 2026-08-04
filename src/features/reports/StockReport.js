@@ -74,7 +74,7 @@ export default function StockReport() {
           <label className="filter-label">Category</label>
           <select className="form-select" value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
             <option value="">All Categories</option>
-            {categories.map((c) => <option key={c.id || c._id} value={String(c.id || c._id)}>{c.name}</option>)}
+            {categories.map((c) => <option key={c.id || c._id} value={String(c.id || c._id)}>{c.category}</option>)}
           </select>
         </div>
       </div>

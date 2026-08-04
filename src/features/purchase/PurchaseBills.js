@@ -131,6 +131,15 @@ export default function PurchaseBills() {
         </Button>
       </div>
 
+      <DateRangeFilter
+        filter={filter}
+        dateRange={dateRange}
+        onFilterChange={setFilter}
+        onDateChange={setDateRange}
+        onApply={applyFilter}
+        onClear={clearFilter}
+      />
+
       <div className="stat-grid">
         <StatCard
           label="Total Purchases"
@@ -140,15 +149,6 @@ export default function PurchaseBills() {
           sub={`${purchaseBills.length} bills`}
         />
       </div>
-
-      <DateRangeFilter
-        filter={filter}
-        dateRange={dateRange}
-        onFilterChange={setFilter}
-        onDateChange={setDateRange}
-        onApply={applyFilter}
-        onClear={clearFilter}
-      />
 
       <div className="search-bar" style={{ maxWidth: 400 }}>
         <span className="search-bar__icon">🔍</span>

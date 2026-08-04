@@ -9,6 +9,7 @@ import { usePagination } from '../../hooks/usePagination';
 import ProductBatchTable from '../../components/shared/ProductBatchTable';
 import BarcodeLabelPrint from '../../components/shared/BarcodeLabelPrint';
 import { FiPrinter, FiLayers } from 'react-icons/fi';
+import { updateProductsBulkAPI } from '../../api';
 
 export default function ProductTable() {
   const { products, refreshProducts } = useAppStore();
@@ -56,7 +57,7 @@ export default function ProductTable() {
     setSaving(true);
     try {
       const payload = keys.map((id) => ({ id, ...edits[id] }));
-      await bulkUpdateStock(payload);
+      await updateProductsBulkAPI(payload);
       toast.success('Inventory updated successfully');
       setEdits({});
       await refreshProducts();

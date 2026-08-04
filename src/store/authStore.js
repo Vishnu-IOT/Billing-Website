@@ -14,8 +14,6 @@ const useAuthStore = create(
         // 1. Fall back to backend API
         try {
           const response = await loginUsersAPI(data);
-          console.log(response);
-
           if (response.user && response.success) {
             const data = response.user;
             const roleStr = String(data.role || 'STAFF').toUpperCase();
@@ -35,9 +33,8 @@ const useAuthStore = create(
             });
             return loggedInUser;
           } else {
+            console.log('Login failed:', response.data);
             throw new Error(response.data?.message || 'Invalid credentials');
-            console.log(response.data);
-            return response.data;
           }
         } catch (err) {
           console.error('API login failed:', err);
