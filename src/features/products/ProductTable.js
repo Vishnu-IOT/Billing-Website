@@ -167,6 +167,7 @@ export default function ProductTable() {
                         style={{ height: 32, minWidth: 100 }}
                         value={e.HSNCode ?? p.HSNCode ?? ''}
                         onChange={(ev) => handleEdit(id, 'HSNCode', ev.target.value)}
+                        readOnly
                       />
                     </td>
                     <td>
@@ -176,6 +177,7 @@ export default function ProductTable() {
                         type="number"
                         value={e.MRP ?? p.MRP ?? ''}
                         onChange={(ev) => handleEdit(id, 'MRP', ev.target.value)}
+                        readOnly
                       />
                     </td>
                     <td>
