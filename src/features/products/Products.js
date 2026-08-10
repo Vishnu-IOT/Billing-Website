@@ -19,6 +19,7 @@ import useSalesStore from '../../store/salesStore';
 import usePurchaseStore from '../../store/purchaseStore';
 import BrandManagerModal from '../../components/shared/BrandManagerModal';
 import ProductVariantModal from '../../components/shared/ProductVariantModal';
+import { MdOutlineEdit } from 'react-icons/md';
 
 const EMPTY_FORM = {
   name: '',
@@ -59,6 +60,8 @@ export default function Products() {
   const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [brands, setBrands] = useState([]);
+
+  const [logoPreview, setLogoPreview] = useState(null);
 
   const [txnPage, setTxnPage] = useState(1);
   const TXN_ITEMS_PER_PAGE = 5;
@@ -124,7 +127,7 @@ export default function Products() {
     if (!form.HSNCode) {
       errors.HSNCode = 'HSN Code is required';
     }
-     if (!form.barcode) {
+    if (!form.barcode) {
       errors.barcode = 'Barcode is required';
     }
     // Category
@@ -150,6 +153,25 @@ export default function Products() {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    // Optional validation
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+
+    // Show selected image immediately
+    const imageUrl = URL.createObjectURL(file);
+    setLogoPreview(imageUrl);
+
+    // Keep the file if you want to upload it to backend later
+    // setLogoFile(file);
+  };
 
   async function handleSave(e) {
     e.preventDefault();
@@ -371,6 +393,25 @@ export default function Products() {
         }
       >
         <div className="form-grid-4">
+          <div className="com-pro-form-img">
+            <img
+              src={logoPreview || "/mps.png"}
+              alt="LOGO"
+              className="company-logo"
+            />
+
+            <label htmlFor="logo-upload" className="logo-edit-btn">
+              <MdOutlineEdit />
+            </label>
+
+            <input
+              id="logo-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              hidden
+            />
+          </div>
           <div className="form-col-full form-group">
             <label className="form-label">Name *</label>
             <input
@@ -611,11 +652,11 @@ export default function Products() {
         <div className="page-header__left">
           <h1>Products</h1>
           <p className="page-header__sub">
-            Manage inventory and pricing analytics in a premium split-pane
+            Manage inventory and pricing analytics in a premium split-panel
             layout
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button
             variant="secondary"
             onClick={() => setBrandModalOpen(true)}

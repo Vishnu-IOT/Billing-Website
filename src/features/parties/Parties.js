@@ -63,8 +63,38 @@ export default function Parties() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [txPage, setTxPage] = useState(1);
   const [txFilter, setTxFilter] = useState('all'); // 'all' | 'sales' | 'purchase'
+  const [formErrors, setFormErrors] = useState({});
 
   const debouncedSearch = useDebounce(search, 250);
+
+  // ── Form Validation ──
+  function validateForm() {
+    const errors = {};
+    if (!form.name.trim()) {
+      errors.name = 'Full name is required';
+    }
+    if (!form.email.trim()) {
+      errors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      errors.email = 'Invalid email address';
+    }
+    if (!form.phone.trim()) {
+      errors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(form.phone)) {
+      errors.phone = 'Phone number must be exactly 10 digits';
+    }
+    if (!form.address.trim()) {
+      errors.address = 'Address is required';
+    }
+    if (!form.GST.trim()) {
+      errors.GST = 'GST number is required';
+    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.GST)) {
+      errors.GST = 'Invalid GST number';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   // Left sidebar search filter
   const filteredParties = useMemo(() => {
@@ -122,10 +152,11 @@ export default function Parties() {
   }
 
   async function handleSave() {
-    if (!form.name.trim()) {
-      toast.error('Name is required');
-      return;
-    }
+    // if (!form.name.trim()) {
+    //   toast.error('Name is required');
+    //   return;
+    // }
+    if (!validateForm()) return;
     setSaving(true);
     try {
       if (editParty) {
@@ -225,11 +256,11 @@ export default function Parties() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFormErrors({}) }}
         title={editParty ? 'Edit Party' : 'Add New Party'}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFormErrors({}) }}>
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleSave}>
@@ -252,6 +283,9 @@ export default function Parties() {
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
+            {formErrors.name && (
+              <div className="um-error-text">{formErrors.name}</div>
+            )}
           </div>
           <div className="form-grid-2">
             <div className="form-group">
@@ -264,6 +298,9 @@ export default function Parties() {
                   setForm((f) => ({ ...f, phone: e.target.value }))
                 }
               />
+              {formErrors.phone && (
+                <div className="um-error-text">{formErrors.phone}</div>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">Email</label>
@@ -275,6 +312,9 @@ export default function Parties() {
                   setForm((f) => ({ ...f, email: e.target.value }))
                 }
               />
+              {formErrors.email && (
+                <div className="um-error-text">{formErrors.email}</div>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">GSTIN</label>
@@ -285,6 +325,9 @@ export default function Parties() {
                   setForm((f) => ({ ...f, GST: e.target.value }))
                 }
               />
+              {formErrors.GST && (
+                <div className="um-error-text">{formErrors.GST}</div>
+              )}
             </div>
           </div>
           <div className="form-group">
@@ -296,6 +339,9 @@ export default function Parties() {
                 setForm((f) => ({ ...f, address: e.target.value }))
               }
             />
+            {formErrors.address && (
+              <div className="um-error-text">{formErrors.address}</div>
+            )}
           </div>
         </div>
       </Modal>
@@ -343,7 +389,7 @@ export default function Parties() {
                 const isActive =
                   selectedParty &&
                   String(selectedParty.id || selectedParty._id) ===
-                    String(p.id || p._id);
+                  String(p.id || p._id);
                 return (
                   <div
                     key={p.id || p._id}
@@ -557,13 +603,13 @@ export default function Parties() {
                               <td>
                                 {dateVal
                                   ? new Date(dateVal).toLocaleDateString(
-                                      'en-US',
-                                      {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                      }
-                                    )
+                                    'en-US',
+                                    {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                    }
+                                  )
                                   : '—'}
                               </td>
                               <td>

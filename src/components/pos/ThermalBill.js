@@ -19,9 +19,12 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
     totals = {},
     customerName,
     customerPhone,
+    customerGSTIN,
     paymentMethod,
     cashier,
   } = bill;
+
+  const isB2B = (bill.bill_type || bill.billType) === 'B2B';
 
   const company = settings || {};
   const now = new Date();
@@ -32,15 +35,15 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
   });
   const dateStr = saleDate
     ? new Date(saleDate).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
     : now.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
 
   /* UPI QR for payment */
   const upiId = company.financials?.upi_id || company.upiId || '';
@@ -114,7 +117,9 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
       <Divider char="=" />
 
       {/* ── INVOICE INFO ── */}
-      <div className="thermal-invoice-type">*** RETAIL INVOICE ***</div>
+      <div className="thermal-invoice-type">
+        *** {isB2B ? 'TAX INVOICE (B2B)' : 'RETAIL INVOICE'} ***
+      </div>
       <Divider />
       <Row left="Invoice No" right={invoiceNo || '—'} />
       <Row left="Date" right={dateStr} />
@@ -122,6 +127,7 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
       {cashier && <Row left="Cashier" right={cashier} />}
       {customerName && <Row left="Customer" right={customerName} />}
       {customerPhone && <Row left="Phone" right={customerPhone} />}
+      {isB2B && <Row left="GSTIN" right={customerGSTIN || 'Not provided'} />}
 
       <Divider char="=" />
 
@@ -181,7 +187,14 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
           right={`-${formatCurrency(totals.rawTotal - totals.grandTotal - (totals.roundOff || 0))}`}
         />
       )}
-      <Row left="GST" right={formatCurrency(totals.totalTax || 0)} />
+      {isB2B ? (
+        <>
+          <Row left="CGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
+          <Row left="SGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
+        </>
+      ) : (
+        <Row left="GST" right={formatCurrency(totals.totalTax || 0)} />
+      )}
       {totals.roundOff !== 0 && totals.roundOff !== undefined && (
         <Row left="Round Off" right={totals.roundOff?.toFixed(2)} />
       )}
@@ -200,8 +213,8 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
 
       <Divider />
 
-      {/* ── GST SUMMARY ── */}
-      {Object.keys(gstSlabs).length > 0 && (
+      {/* ── GST SUMMARY (B2B only — B2C receipts stay short) ── */}
+      {isB2B && Object.keys(gstSlabs).length > 0 && (
         <>
           <div className="thermal-section-title">GST SUMMARY</div>
           <div className="thermal-gst-header">

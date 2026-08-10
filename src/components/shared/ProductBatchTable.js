@@ -20,7 +20,7 @@ function getExpiryStatus(expiryDate) {
   return { label: 'OK', variant: 'success' };
 }
 
-const EMPTY_BATCH = { batchNo: '', quantity: '', expiryDate: '', mfgDate: '' };
+const EMPTY_BATCH = { batchNumber: '', quantity: '', expiryDate: '', mfgDate: '' };
 
 export default function ProductBatchTable({ productId, productName }) {
   const toast = useToast();
@@ -30,6 +30,7 @@ export default function ProductBatchTable({ productId, productName }) {
   const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState(EMPTY_BATCH);
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   async function loadBatches() {
     if (!productId) return;
@@ -48,9 +49,30 @@ export default function ProductBatchTable({ productId, productName }) {
     loadBatches();
   }, [productId]);
 
+  // ── Form Validation ──
+  function validateForm() {
+    const errors = {};
+    if (!form.batchNumber.trim()) {
+      errors.batchNumber = 'Batch number is required';
+    }
+    if (!form.quantity || Number(form.quantity) <= 0) {
+      errors.quantity = 'Quantity must be greater than 0';
+    }
+    if (!form.expiryDate) {
+      errors.expiryDate = 'Expiry date is required';
+    } else if (form.expiryDate < new Date().toISOString().split('T')[0]) {
+      errors.expiryDate = 'Expiry date cannot be in the past';
+    }
+    if (!form.mfgDate) {
+      errors.mfgDate = 'Manufacture date is required';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   async function handleSave() {
-    if (!form.batchNo.trim()) {
-      toast.error('Batch number is required');
+    if (!validateForm()) {
+      toast.error('Please fill in all required fields');
       return;
     }
     setSaving(true);
@@ -95,11 +117,11 @@ export default function ProductBatchTable({ productId, productName }) {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFormErrors({}) }}
         title={`Add Batch — ${productName}`}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setFormErrors({}) }}>
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleSave}>
@@ -113,9 +135,12 @@ export default function ProductBatchTable({ productId, productName }) {
             <label className="form-label">Batch No *</label>
             <input
               className="form-input"
-              value={form.batchNo}
-              onChange={(e) => setForm((f) => ({ ...f, batchNo: e.target.value }))}
+              value={form.batchNumber}
+              onChange={(e) => setForm((f) => ({ ...f, batchNumber: e.target.value }))}
             />
+            {formErrors.batchNumber && (
+              <span className="um-error-text">{formErrors.batchNumber}</span>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Quantity</label>
@@ -125,6 +150,9 @@ export default function ProductBatchTable({ productId, productName }) {
               value={form.quantity}
               onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
             />
+            {formErrors.quantity && (
+              <span className="um-error-text">{formErrors.quantity}</span>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Mfg Date</label>
@@ -134,6 +162,9 @@ export default function ProductBatchTable({ productId, productName }) {
               value={form.mfgDate}
               onChange={(e) => setForm((f) => ({ ...f, mfgDate: e.target.value }))}
             />
+            {formErrors.mfgDate && (
+              <span className="um-error-text">{formErrors.mfgDate}</span>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Expiry Date</label>
@@ -143,6 +174,9 @@ export default function ProductBatchTable({ productId, productName }) {
               value={form.expiryDate}
               onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))}
             />
+            {formErrors.expiryDate && (
+              <span className="um-error-text">{formErrors.expiryDate}</span>
+            )}
           </div>
         </div>
       </Modal>

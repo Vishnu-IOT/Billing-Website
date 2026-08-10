@@ -87,14 +87,20 @@ export default function POSScreen({
 
   const [printReady, setPrintReady] = useState(false);
 
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+
   /* ── Init & Edit Mode ── */
   useEffect(() => {
     if (editMode && billId) {
       const existingBill = saleBills.find(
         (b) => String(b.id) === String(billId)
       );
-      console.log('Editing existing bill:', existingBill);
+      console.log('Editing existing bill:', existingBill.Customer.name);
+
       if (existingBill) {
+        // ✅ CRITICAL: Clear cart BEFORE loading items
+        clearCart();
+        // Set invoice details
         setInvoiceNo(
           existingBill.invoiceNumber || existingBill.invoiceNo || ''
         );
@@ -103,21 +109,49 @@ export default function POSScreen({
             ? existingBill.saleDate.split('T')[0]
             : todayISO()
         );
-        console.log('Loaded existing bill for edit:', existingBill.name || existingBill.Customer?.name || '');
-        setCustomerInfo({
-          name: existingBill.name || existingBill.Customer?.name || '',
-          phone: existingBill.phone || existingBill.Customer?.phone || '',
-          userId: existingBill.User?.id || null,
-        });
-        setGlobalDiscount(existingBill.global_discount_amount || 0);
+        console.log('Editing existing bill:', existingBill.Customer?.name, existingBill);
 
-        clearCart();
-        const items = existingBill.SalesItems || existingBill.saleItems || [];
+        // Set customer info with proper field mapping
+        setCustomerInfo({
+          name: existingBill.Customer?.name || existingBill.customerName || '',
+          phone: existingBill.Customer?.phone || existingBill.customerPhone || '',
+          userId: existingBill.User?.id || existingBill.userId || customerInfo.userId || null,
+        });
+
+        setLoyaltyPoints(existingBill.Customer?.loyalty_points || existingBill.customerLoyaltyPoints || 0);
+
+        // Set global discount
+        setGlobalDiscount(existingBill.global_discount_amount || existingBill.globalDiscount || 0);
+
+        // Get items array - handle multiple naming conventions
+        let items = existingBill.SalesItems || existingBill.saleItems || existingBill.items || [];
+
+        // ✅ Map item fields properly before adding to cart
         if (items.length > 0) {
-          addMultipleCartItemsDirect(items);
+          const mappedItems = items.map(item => ({
+            productId: String(item.productId || item.product_id || item.id || ''),
+            productName: item.productName || item.product_name || item.name || '',
+            price: parseFloat(item.price || item.rate || item.unitPrice || 0),
+            quantity: parseFloat(item.quantity || 1),
+            taxRate: parseFloat(item.taxRate || item.tax_rate || item.gstPercentage || 0),
+            discountPercent: parseFloat(item.discountPercent || item.discount_percent || item.discount || 0),
+            unit: item.unit || 'pcs',
+            hsnCode: item.hsnCode || item.hsn_code || '',
+            barcode: item.barcode || '',
+            sku: item.sku || '',
+            mrp: parseFloat(item.mrp || 0),
+            batchNumber: item.batchNumber || item.batch_number || '',
+            expiryDate: item.expiryDate || item.expiry_date || '',
+            serialNumber: item.serialNumber || item.serial_number || '',
+            notes: item.notes || '',
+          }));
+
+          console.log('Mapped items for edit:', mappedItems);
+          addMultipleCartItemsDirect(mappedItems);
         }
       }
     } else {
+      // New bill mode
       if (!invoiceNo) {
         setInvoiceNo(getNextInvoiceNo(saleBills, settings));
       }
@@ -127,6 +161,8 @@ export default function POSScreen({
     }
   }, [editMode, billId, saleBills]); // eslint-disable-line react-hooks/exhaustive-deps
 
+
+  console.log(customerInfo, 'customerInfo');
   // ── Fetch Users ──
   async function loadUsers() {
     try {
@@ -138,6 +174,25 @@ export default function POSScreen({
   }
 
   useEffect(() => {
+    const storedAuth = localStorage.getItem('thrive-auth-storage');
+
+    if (storedAuth) {
+      try {
+        const authData = JSON.parse(storedAuth);
+        const userId = authData?.state?.user?.id;
+        console.log('Loaded userId from localStorage:', userId);
+
+        if (userId) {
+          setCustomerInfo((prev) => ({
+            ...prev,
+            userId: String(userId),
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to read user from localStorage:', error);
+      }
+    }
+
     loadUsers();
     checkCurrentShift();
     loadHoldCarts();
@@ -213,7 +268,13 @@ export default function POSScreen({
         addMultipleCartItemsDirect(items);
       }
 
-      if (data.customerName) setCustomerInfo({ name: data.customerName, phone: data.customerPhone || '' });
+      if (data.customerName) {
+        setCustomerInfo((prev) => ({
+          ...prev,
+          name: data.customerName,
+          phone: data.customerPhone || '',
+        }));
+      }
       toast.success('Held cart restored ✓');
       setHoldDrawerOpen(false);
     } catch (err) {
@@ -280,6 +341,8 @@ export default function POSScreen({
       phone,
       name: existing ? existing.name : customerInfo.name
     });
+
+    setLoyaltyPoints(existing?.loyalty_points || existing?.loyalty_points || 0);
   }
 
   /* ── Save bill ── */
@@ -288,15 +351,40 @@ export default function POSScreen({
       toast.error('Cart is empty');
       return;
     }
+
+    // Get logged-in user
+    let loggedInUserId = customerInfo.userId;
+
+    try {
+      const storedAuth = localStorage.getItem('thrive-auth-storage');
+
+      if (storedAuth) {
+        const authData = JSON.parse(storedAuth);
+        loggedInUserId =
+          authData?.state?.user?.id || loggedInUserId;
+      }
+    } catch (error) {
+      console.error('Failed to read user from localStorage:', error);
+    }
+
+    if (!customerInfo.name || !customerInfo.phone) {
+      toast.error('Customer Details is Required!!');
+      return;
+    }
+
+    if (!loggedInUserId) {
+      toast.error('User Details is Required!!');
+      return;
+    }
+
+    const finalCustomerInfo = {
+      ...customerInfo,
+      userId: loggedInUserId,
+    };
+
     setSaving(true);
 
     try {
-      if (!customerInfo.name || !customerInfo.phone) {
-        return toast.error('Customer Details is Required!!');
-      }
-      if (!customerInfo.userId) {
-        return toast.error('User Details is Required!!');
-      }
       const payload = buildSaleBillPayload({
         billForm: {
           invoiceNo,
@@ -304,7 +392,7 @@ export default function POSScreen({
           items: cart,
           globalDiscount,
         },
-        customerForm: customerInfo,
+        customerForm: finalCustomerInfo,
         validItems: cart,
       });
 
@@ -316,49 +404,80 @@ export default function POSScreen({
         paymentDetails: paymentDetails || null,
       };
 
-      if (editMode) {
-        await updateBill(billId, { ...payload, ...extraFields });
+      // ✅ FIXED: Check editMode properly
+      if (editMode && billId) {
+        // Update existing bill
+        console.log('Updating bill:', billId);
+        await updateBill(billId, {
+          ...payload,
+          ...extraFields,
+        });
+
         toast.success('Invoice updated ✓');
+
+        // After successful update, go back
+        if (onSaved) {
+          onSaved();
+        } else if (onBack) {
+          onBack();
+        }
       } else {
-        await addBill({ ...payload, ...extraFields });
+        // Create new bill
+        console.log('Creating new bill');
+        await addBill({
+          ...payload,
+          ...extraFields,
+        });
+
         toast.success('Invoice saved ✓');
+
+        // Prepare bill for printing
+        const billForPrint = {
+          ...payload,
+          ...extraFields,
+          invoiceNo,
+          saleDate,
+        };
+
+        setLastPrintedBill(billForPrint);
+        setPaymentOpen(false);
+        setPrintReady(true);
+
+        // Reset for new bill
+        clearCart();
+
+        // Get logged-in user again
+        let newBillUserId = '';
+        const storedAuthAfterSave = localStorage.getItem('thrive-auth-storage');
+
+        if (storedAuthAfterSave) {
+          try {
+            const authData = JSON.parse(storedAuthAfterSave);
+            newBillUserId = String(authData?.state?.user?.id || '');
+          } catch (error) {
+            console.error('Failed to read user:', error);
+          }
+        }
+
+        // Keep logged-in user
+        setCustomerInfo({
+          name: '',
+          phone: '',
+          userId: newBillUserId,
+        });
+
+        // Reset customer-related data
+        setLoyaltyPoints(0);
+        setGlobalDiscount(0);
+
+        // Generate next bill
+        setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+        setSaleDate(todayISO());
+        setRecentProductIds([]);
       }
-
-      // Store for thermal print
-      const billForPrint = {
-        invoiceNo,
-        saleDate,
-        items: cart,
-        totals,
-        customerName: customerInfo.name,
-        customerPhone: customerInfo.phone,
-        paymentMethod,
-        cashier: settings?.legal_name || '',
-      };
-      // setLastPrintedBill(billForPrint);
-
-      // setPaymentOpen(false);
-
-      // // Print
-      // if (autoPrint) {
-      //   setTimeout(() => window.print(), 400);
-      // } else {
-      //   setTimeout(() => window.print(), 400);
-      // }
-
-      setLastPrintedBill(billForPrint);
-      setPaymentOpen(false);
-      setPrintReady(true);
-
-      // Reset
-      clearCart();
-      setInvoiceNo(getNextInvoiceNo(saleBills, settings));
-      setSaleDate(todayISO());
-      setRecentProductIds([]);
-      onSaved?.();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save invoice');
+      toast.error('Failed to save invoice: ' + (err.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -366,7 +485,30 @@ export default function POSScreen({
 
   /* ── New bill ── */
   function handleNewBill() {
+    const storedAuth = localStorage.getItem('thrive-auth-storage');
+
+    let loggedInUserId = '';
+
+    if (storedAuth) {
+      try {
+        const authData = JSON.parse(storedAuth);
+        loggedInUserId = String(authData?.state?.user?.id || '');
+      } catch (error) {
+        console.error('Failed to read user:', error);
+      }
+    }
+
     clearCart();
+
+    setCustomerInfo({
+      name: '',
+      phone: '',
+      userId: loggedInUserId,
+    });
+
+    setLoyaltyPoints(0);
+    setGlobalDiscount(0);
+
     setInvoiceNo(getNextInvoiceNo(saleBills, settings));
     setSaleDate(todayISO());
     setRecentProductIds([]);
@@ -418,14 +560,20 @@ export default function POSScreen({
   useEffect(() => {
     if (!printReady || !lastPrintedBill) return;
 
-    setTimeout(() => {
-      const thermalBillElement = document.getElementById('thermal-bill-print');
+    const timer = setTimeout(() => {
+      const thermalBillElement =
+        document.getElementById('thermal-bill-print');
+
       if (thermalBillElement && thermalBillElement.innerHTML.trim()) {
         window.print();
       }
+
       setPrintReady(false);
+      setLastPrintedBill(null);
     }, 200);
-  }, [printReady, lastPrintedBill, toast]);
+
+    return () => clearTimeout(timer);
+  }, [printReady, lastPrintedBill]);
 
   return (
     <div className="pos-b2c-root">
@@ -463,7 +611,19 @@ export default function POSScreen({
       {/* ── Top Bar ── */}
       <div className="pos-topbar">
         <div className="pos-topbar-left">
-          <button className="pos-back-btn" onClick={onBack} title="Back (Esc)">
+          <button className="pos-back-btn"
+            onClick={() => {
+              onBack();
+              setCustomerInfo({
+                name: '',
+                phone: '',
+                userId: '',
+              });
+              setLoyaltyPoints(0);
+              clearCart();
+            }}
+            title="Back (Esc)"
+          >
             ‹ Back
           </button>
           <div className="pos-topbar-title">
@@ -555,7 +715,7 @@ export default function POSScreen({
 
       <div className="bill-form-card__body">
         <div className="form-grid-2" style={{ marginBottom: 0 }}>
-          <div className="form-group">
+          {/* <div className="form-group">
             <label className="form-label">Biller / User</label>
             <select
               className="form-input"
@@ -574,7 +734,7 @@ export default function POSScreen({
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
           <div className="form-group">
             <label className="form-label">Customer Name *</label>
             <input
@@ -599,6 +759,23 @@ export default function POSScreen({
               onChange={handlePhoneChange}
               maxLength={10}
             />
+          </div>
+
+          {/* Loyalty Points */}
+          <div className="pos-loyalty-display">
+            <div className="pos-loyalty-icon">
+              ⭐
+            </div>
+
+            <div className="pos-loyalty-info">
+              <span className="pos-loyalty-label">
+                Loyalty Points
+              </span>
+
+              <strong className="pos-loyalty-points">
+                {loyaltyPoints || 0}
+              </strong>
+            </div>
           </div>
         </div>
       </div>

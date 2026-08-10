@@ -300,6 +300,14 @@ export default function SaleBills({ searchParams }) {
                             },
                           },
                           {
+                            label: 'Print',
+                            icon: '🖨️',
+                            onClick: () => {
+                              setPreviewBill(bill);
+                              setView('preview');
+                            },
+                          },
+                          {
                             label: 'Edit',
                             icon: '✏️',
                             onClick: () => {

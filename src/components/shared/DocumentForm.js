@@ -197,6 +197,14 @@ export default function DocumentForm({
     //   toast.error('Select a proper valid date');
     //   return;
     // }
+
+    if (documentType === 'QUOTATION') {
+      if (!customerForm.validUntil) {
+        toast.error('Valid until date is required');
+        return;
+      }
+    }
+
     if (!selectedPartyId) {
       toast.error(config.side === 'purchase' ? 'Select a vendor' : 'Select a party');
       return;

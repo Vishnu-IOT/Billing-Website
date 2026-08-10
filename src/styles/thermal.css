@@ -5,10 +5,16 @@
   display: none;
 }
 
-/* ── Print: show ONLY thermal bill ── */
+/* ── Print: show ONLY thermal bill (only when it's actually on screen) ── */
 @media print {
-  /* Hide entire app */
-  body > * {
+  /* Hide everything else, but ONLY when we're printing the thermal
+     receipt on its own. ThermalBill is mounted unconditionally inside
+     POSScreen (just display:none on screen), so .thermal-bill-wrapper
+     is present even while the A4 invoice preview (.print-area) is showing.
+     The :not(:has(.print-area)) guard makes sure this rule backs off
+     whenever an A4 invoice is also on the page, so the two printable
+     views never fight over "body > *". */
+  body:has(.thermal-bill-wrapper):not(:has(.print-area)) > * {
     display: none !important;
   }
 

@@ -301,6 +301,50 @@
   gap: var(--sp-4);
 }
 
+/* ── Logo for Products ── */
+
+.com-pro-form-img {
+  position: relative;
+  /* width: 120px;
+  height: 120px; */
+  display: flex;
+  justify-content: center;
+  grid-row: span 2 / span 2;
+}
+
+.company-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 3px solid #eee;
+}
+
+.logo-edit-btn {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  /* background: #2563eb; */
+  color: black;
+  cursor: pointer;
+  border: 1px solid #2563eb;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.logo-edit-btn:hover {
+  background: #1d4ed8;
+  transform: scale(1.08);
+  color: white;
+}
+
 /* ── Forms ── */
 .form-group {
   display: flex;

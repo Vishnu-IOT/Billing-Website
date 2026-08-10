@@ -85,41 +85,60 @@ const usePOSStore = create((set, get) => ({
   },
 
   /**
-   * Add multiple pre-calculated items at once (batch add from API).
-   * 
-   * @param {array} items - Array of cart items from API
-   */
+ * Add multiple pre-calculated items at once (batch add from API).
+ * ✅ IMPROVED: Better field mapping and null handling
+ * 
+ * @param {array} items - Array of cart items from API
+ */
   addMultipleCartItemsDirect: (items) => {
     set((state) => {
       let updated = [...state.cart];
 
+      if (!Array.isArray(items)) {
+        console.warn('addMultipleCartItemsDirect: items is not an array', items);
+        return { cart: updated };
+      }
+
       items.forEach((item) => {
+        if (!item) return;
+
+        const productId = String(item.productId || item.product_id || item.id || '');
+
+        if (!productId) {
+          console.warn('Skipping item without productId:', item);
+          return;
+        }
+
         const existingIdx = updated.findIndex(
-          (cartItem) => String(cartItem.productId) === String(item.productId)
+          (cartItem) => String(cartItem.productId) === productId
         );
 
+        const newItem = {
+          productId: productId,
+          productName: item.productName || item.product_name || item.name || '',
+          hsnCode: item.hsnCode || item.hsn_code || item.HSNCode || '',
+          barcode: item.barcode || '',
+          sku: item.sku || '',
+          mrp: toFloat(item.mrp || item.MRP || 0),
+          price: toFloat(item.price || item.rate || item.unitPrice || 0),
+          taxRate: toFloat(item.taxRate || item.tax_rate || item.gstPercentage || 0),
+          discountPercent: toFloat(item.discountPercent || item.discount_percent || item.discount || 0),
+          unit: item.unit || 'pcs',
+          quantity: toFloat(item.quantity || 1),
+          batchNumber: item.batchNumber || item.batch_number || '',
+          expiryDate: item.expiryDate || item.expiry_date || '',
+          serialNumber: item.serialNumber || item.serial_number || '',
+          notes: item.notes || '',
+        };
+
         if (existingIdx >= 0) {
+          // Item already exists - increment quantity
           updated[existingIdx].quantity += toFloat(item.quantity || 1);
           updated[existingIdx] = calcItemRow(updated[existingIdx]);
         } else {
-          const newItem = {
-            productId: String(item.productId),
-            productName: item.productName || '',
-            hsnCode: item.hsnCode || '',
-            barcode: item.barcode || '',
-            sku: item.sku || '',
-            mrp: toFloat(item.mrp || 0),
-            price: toFloat(item.price || 0),
-            taxRate: toFloat(item.taxRate || 0),
-            discountPercent: toFloat(item.discountPercent || 0),
-            unit: item.unit || 'pcs',
-            quantity: toFloat(item.quantity || 1),
-            batchNumber: item.batchNumber || '',
-            expiryDate: item.expiryDate || '',
-            serialNumber: item.serialNumber || '',
-            notes: item.notes || '',
-          };
-          updated = [...updated, newItem];
+          // Recalculate before adding
+          const calculated = calcItemRow(newItem);
+          updated = [...updated, calculated];
         }
       });
 
