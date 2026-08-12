@@ -14,6 +14,7 @@ import { useToast } from '../hooks/useToast';
 import ProtectedRoute from '../components/shared/ProtectedRoute';
 import RoleGuard from '../components/shared/RoleGuard';
 import useAuthStore from '../store/authStore';
+import { useSettingsInit } from '../hooks/useSettingsInit';
 
 /* ── Lazy-loaded page components ── */
 const Auth = lazy(() => import('../features/auth/Auth'));
@@ -50,6 +51,8 @@ const GSTR1Report = lazy(() => import('../features/reports/GSTR1Report'));
 const GSTR3BReport = lazy(() => import('../features/reports/GSTR3BReport'));
 const InventoryHub = lazy(() => import('../features/inventory/InventoryHub'));
 const AccountingHub = lazy(() => import('../features/financials/AccountingHub'));
+
+const ShiftManagement = lazy(() => import('../features/pos/ShiftManagement'));
 
 function renderPage(page, searchParams, isAuthenticated) {
   if (page.startsWith('sales/edit/')) {
@@ -292,6 +295,14 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'shift-management':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <ShiftManagement />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
     default:
       return (
         <ProtectedRoute>
@@ -313,6 +324,7 @@ const ALL_MORE_ITEMS = [
     allowed: ['OWNER', 'STAFF'],
   },
   { key: 'stock-report', label: 'Stock Report', allowed: ['OWNER', 'STAFF'] },
+  { key: 'shift-management', label: 'Shift Management', allowed: ['OWNER', 'STAFF'] },
   { key: 'payment-in', label: 'Payment In', allowed: ['OWNER', 'STAFF'] },
   {
     key: 'payment-out',
@@ -334,6 +346,9 @@ export function AppShell() {
 
   const { user, isAuthenticated } = useAuthStore();
   const role = user?.role || 'STAFF';
+
+  // ADD inside AppShell component
+  const { isInitializing, initError } = useSettingsInit();
 
   /* Global redirect to login if not authenticated */
   useEffect(() => {
@@ -363,6 +378,11 @@ export function AppShell() {
       loadPurchase('thisMonth', { startDate: '', endDate: '' });
     }
   }, [loadAll, loadSales, loadPurchase, isAuthenticated]);
+
+
+  if (isInitializing) {
+    return <LoadingSpinner message="Loading settings..." />;
+  }
 
   if (!isAuthenticated) {
     return (

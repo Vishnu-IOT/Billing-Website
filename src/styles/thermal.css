@@ -1,4 +1,9 @@
-/* ===== THERMAL BILL — @media print styles ===== */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FILE: thermal.css
+   DESCRIPTION: Print styling for the POS thermal receipt (ThermalBill.js).
+   Restyled to match the "Apna Billbook" reference: bold sans-serif header,
+   badge-style GSTIN/UPI tags, item Qty/Amount table, "SCAN TO PAY" pill button.
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Hide thermal bill on screen */
 .thermal-bill-wrapper {
@@ -7,14 +12,13 @@
 
 /* ── Print: show ONLY thermal bill (only when it's actually on screen) ── */
 @media print {
-  /* Hide everything else, but ONLY when we're printing the thermal
-     receipt on its own. ThermalBill is mounted unconditionally inside
-     POSScreen (just display:none on screen), so .thermal-bill-wrapper
-     is present even while the A4 invoice preview (.print-area) is showing.
-     The :not(:has(.print-area)) guard makes sure this rule backs off
-     whenever an A4 invoice is also on the page, so the two printable
-     views never fight over "body > *". */
-  body:has(.thermal-bill-wrapper):not(:has(.print-area)) > * {
+  /* Hide the rest of the POS screen while a thermal receipt is printing.
+     The 'printing-thermal-receipt' class is added to <body> right before
+     window.print() is called (see POSScreen.js) and removed right after —
+     this is used instead of a CSS :has() selector because :has() isn't
+     supported in every browser, which was letting the full POS page print
+     instead of (or alongside) the clean receipt. */
+  body.printing-thermal-receipt > *:not(.thermal-bill-wrapper) {
     display: none !important;
   }
 
@@ -50,12 +54,12 @@
   }
 
   .thermal-bill-wrapper {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 9pt;
-    line-height: 1.3;
+    line-height: 1.35;
     color: #000;
     background: #fff;
-    padding: 3mm 2mm;
+    padding: 3mm 2.5mm;
     page-break-inside: avoid;
   }
 
@@ -66,16 +70,23 @@
   }
 
   .thermal-store-name {
-    font-size: 13pt;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 14.5pt;
+    font-weight: 800;
+    letter-spacing: 0.2px;
   }
 
   .thermal-store-addr,
   .thermal-phone {
     font-size: 8pt;
-    color: #333;
+    color: #222;
+  }
+
+  .thermal-header-note {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #1a56db;
+    margin-top: 2pt;
+    text-transform: uppercase;
   }
 
   .thermal-gstin {
@@ -111,23 +122,44 @@
     font-size: 8.5pt;
   }
 
-  .thermal-row.thermal-bold {
-    font-weight: 700;
-  }
-
-  .thermal-row.thermal-large {
-    font-size: 11pt;
-    margin-top: 3pt;
-  }
-
   .thermal-row-left {
     flex: 1;
+    color: #333;
   }
 
   .thermal-row-right {
     text-align: right;
     font-weight: 700;
-    font-family: 'Courier New', monospace;
+  }
+
+  .thermal-row.thermal-bold .thermal-row-left,
+  .thermal-row.thermal-bold .thermal-row-right {
+    font-weight: 800;
+    color: #000;
+  }
+
+  .thermal-row.thermal-large {
+    font-size: 12pt;
+    margin-top: 3pt;
+  }
+
+  .thermal-row.thermal-large .thermal-row-left,
+  .thermal-row.thermal-large .thermal-row-right {
+    font-weight: 900;
+  }
+
+  /* ── Section titles (e.g. "Billing To", "T&C", "GST SUMMARY") ── */
+  .thermal-section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: 3pt 0 1pt;
+  }
+
+  .thermal-section-title--left {
+    text-align: left;
   }
 
   /* ── Item header ── */
@@ -145,43 +177,42 @@
     margin-bottom: 4pt;
   }
 
-  .thermal-item-name {
+  .thermal-item-detail {
+    display: flex;
+    align-items: baseline;
     font-size: 8.5pt;
     font-weight: 700;
+  }
+
+  .thermal-item-name {
+    flex: 1;
     word-break: break-word;
   }
 
-  .thermal-item-hsn {
-    font-size: 7.5pt;
-    color: #555;
-  }
-
-  .thermal-item-detail {
-    display: flex;
-    font-size: 8pt;
-    margin-top: 1pt;
-  }
-
   .thermal-item-name-col { flex: 1; }
-  .thermal-item-qty-col  { width: 28pt; text-align: center; }
-  .thermal-item-rate-col { width: 40pt; text-align: right; }
-  .thermal-item-amt-col  { width: 44pt; text-align: right; }
-  .thermal-item-disc     { width: 36pt; text-align: right; color: #666; }
+  .thermal-item-qty-col  { width: 26pt; text-align: center; }
+  .thermal-item-amt-col  { width: 48pt; text-align: right; }
 
-  .thermal-item-gst {
+  .thermal-item-sub {
     font-size: 7.5pt;
     color: #555;
-    padding-left: 4pt;
+    padding-left: 2pt;
   }
 
-  /* ── Section title ── */
-  .thermal-section-title {
+  /* ── Billing to / totals words ── */
+  .thermal-words {
     font-size: 8pt;
+    margin: 3pt 0;
+  }
+
+  .thermal-words-label {
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    text-align: center;
-    margin: 3pt 0 1pt;
+    display: block;
+  }
+
+  .thermal-words-value {
+    display: block;
+    color: #222;
   }
 
   /* ── GST Summary ── */
@@ -206,24 +237,58 @@
     text-align: left;
   }
 
-  /* ── QR Code ── */
+  /* ── QR / UPI Scan-to-pay block ── */
   .thermal-qr-section {
     text-align: center;
     margin: 6pt 0;
   }
 
-  .thermal-qr-label {
-    font-size: 8pt;
-    font-weight: 700;
-    margin-bottom: 4pt;
-    text-transform: uppercase;
+  .thermal-qr-code {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 3pt;
+  }
+
+  .thermal-qr-upi-badge {
+    display: inline-block;
+    font-size: 6.5pt;
+    font-weight: 800;
     letter-spacing: 0.5px;
+    color: #fff;
+    background: #6a1b9a;
+    border-radius: 3px;
+    padding: 1pt 5pt;
+    margin-bottom: 3pt;
+  }
+
+  .thermal-scan-btn {
+    display: block;
+    margin: 3pt auto;
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    color: #fff;
+    background: #1a56db;
+    border: none;
+    border-radius: 4px;
+    padding: 3pt 10pt;
   }
 
   .thermal-qr-upi {
     font-size: 7pt;
     color: #555;
-    margin-top: 3pt;
+    margin-top: 2pt;
+  }
+
+  /* ── Terms & Conditions ── */
+  .thermal-tnc {
+    margin: 2pt 0;
+  }
+
+  .thermal-tnc-text {
+    font-size: 7pt;
+    color: #444;
+    white-space: pre-wrap;
   }
 
   /* ── Footer ── */
@@ -234,7 +299,7 @@
 
   .thermal-thanks {
     font-size: 10pt;
-    font-weight: 700;
+    font-weight: 800;
     margin-bottom: 3pt;
   }
 

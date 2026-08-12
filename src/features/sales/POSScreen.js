@@ -1,9 +1,25 @@
 /* ===== POS SCREEN — Main B2C POS Layout ===== */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  FiUser,
+  FiShoppingCart,
+  FiFileText,
+  FiPauseCircle,
+  FiXCircle,
+  FiPlus,
+  FiTrash2,
+  FiSearch,
+  FiCreditCard,
+  FiUserCheck,
+  FiPrinter,
+  FiClock,
+  FiLayers,
+  FiStar
+} from 'react-icons/fi';
 import useAppStore from '../../store/appStore';
 import useSalesStore from '../../store/salesStore';
 import usePOSStore from '../../hooks/usePOSStore';
-import useSettingsStore from '../../store/settingsStore';
+import useSettingsStore from '../../store/settingsStore-DB';
 import usePosStore from '../../store/posStore';
 import { formatCurrency } from '../../utils/currency';
 import { todayISO } from '../../utils/date';
@@ -12,13 +28,12 @@ import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui';
 import BarcodeInput from '../../components/pos/BarcodeInput';
 import CameraScanner from '../../components/pos/CameraScanner';
-import POSProductGrid from '../../components/pos/POSProductGrid';
 import POSCartItem from '../../components/pos/POSCartItem';
 import POSPaymentModal from '../../components/pos/POSPaymentModal';
 import ThermalBill from '../../components/pos/ThermalBill';
 import '../../styles/pos-b2c.css';
 import '../../styles/thermal.css';
-import { fetchCompanyUsersAPI } from '../../api';
+import { fetchCompanyUsersAPI, fetchFinancialDetailsAPI } from '../../api';
 
 export default function POSScreen({
   editMode = false,
@@ -28,6 +43,7 @@ export default function POSScreen({
 }) {
   const products = useAppStore((s) => s.products);
   const categories = useAppStore((s) => s.categories);
+  const companyRecord = useAppStore((s) => s.companies);
   const settings = useSettingsStore();
   const saleBills = useSalesStore((s) => s.saleBills);
   const addBill = useSalesStore((s) => s.addBill);
@@ -75,8 +91,6 @@ export default function POSScreen({
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastPrintedBill, setLastPrintedBill] = useState(null);
-  const [recentProductIds, setRecentProductIds] = useState([]);
-  const [mobileView, setMobileView] = useState('products'); // 'products' | 'cart'
   const [users, setUsers] = useState([]);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftFloat, setShiftFloat] = useState('');
@@ -84,10 +98,38 @@ export default function POSScreen({
   const [closingCash, setClosingCash] = useState('');
   const [holdDrawerOpen, setHoldDrawerOpen] = useState(false);
   const [holdNote, setHoldNote] = useState('');
-
   const [printReady, setPrintReady] = useState(false);
-
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+
+  /* ── Add Item Form State ── */
+  const [addItemSearch, setAddItemSearch] = useState('');
+  const [addItemProduct, setAddItemProduct] = useState(null);
+  const [addItemQty, setAddItemQty] = useState(1);
+  const [addItemRate, setAddItemRate] = useState('');
+  const [addItemDisc, setAddItemDisc] = useState('');
+  const [addItemSuggestions, setAddItemSuggestions] = useState([]);
+  const [addItemDropdownOpen, setAddItemDropdownOpen] = useState(false);
+  const formDropdownRef = useRef(null);
+
+  const [companyFinancials, setCompanyFinancials] = useState({});
+
+  useEffect(() => {
+    const companyId = companyRecord?.id;
+    if (!companyId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchFinancialDetailsAPI(companyId);
+        const financials = res?.data?.data || res?.data || {};
+        if (!cancelled) setCompanyFinancials(financials);
+      } catch (err) {
+        console.error('Could not load company financial details for receipt:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [companyRecord?.id]);
+
+  const companyForReceipt = { ...companyRecord, financials: companyFinancials };
 
   /* ── Init & Edit Mode ── */
   useEffect(() => {
@@ -95,78 +137,164 @@ export default function POSScreen({
       const existingBill = saleBills.find(
         (b) => String(b.id) === String(billId)
       );
-      console.log('Editing existing bill:', existingBill.Customer.name);
 
-      if (existingBill) {
-        // ✅ CRITICAL: Clear cart BEFORE loading items
-        clearCart();
-        // Set invoice details
-        setInvoiceNo(
-          existingBill.invoiceNumber || existingBill.invoiceNo || ''
-        );
-        setSaleDate(
-          existingBill.saleDate
-            ? existingBill.saleDate.split('T')[0]
-            : todayISO()
-        );
-        console.log('Editing existing bill:', existingBill.Customer?.name, existingBill);
+      if (!existingBill) return;
 
-        // Set customer info with proper field mapping
-        setCustomerInfo({
-          name: existingBill.Customer?.name || existingBill.customerName || '',
-          phone: existingBill.Customer?.phone || existingBill.customerPhone || '',
-          userId: existingBill.User?.id || existingBill.userId || customerInfo.userId || null,
-        });
+      console.log('Initializing POS with existing bill:', existingBill);
 
-        setLoyaltyPoints(existingBill.Customer?.loyalty_points || existingBill.customerLoyaltyPoints || 0);
+      clearCart();
 
-        // Set global discount
-        setGlobalDiscount(existingBill.global_discount_amount || existingBill.globalDiscount || 0);
+      // Invoice details
+      setInvoiceNo(
+        existingBill.invoiceNumber ||
+        existingBill.invoiceNo ||
+        ''
+      );
 
-        // Get items array - handle multiple naming conventions
-        let items = existingBill.SalesItems || existingBill.saleItems || existingBill.items || [];
+      setSaleDate(
+        existingBill.saleDate
+          ? existingBill.saleDate.split('T')[0]
+          : todayISO()
+      );
 
-        // ✅ Map item fields properly before adding to cart
-        if (items.length > 0) {
-          const mappedItems = items.map(item => ({
-            productId: String(item.productId || item.product_id || item.id || ''),
-            productName: item.productName || item.product_name || item.name || '',
-            price: parseFloat(item.price || item.rate || item.unitPrice || 0),
-            quantity: parseFloat(item.quantity || 1),
-            taxRate: parseFloat(item.taxRate || item.tax_rate || item.gstPercentage || 0),
-            discountPercent: parseFloat(item.discountPercent || item.discount_percent || item.discount || 0),
-            unit: item.unit || 'pcs',
-            hsnCode: item.hsnCode || item.hsn_code || '',
-            barcode: item.barcode || '',
-            sku: item.sku || '',
-            mrp: parseFloat(item.mrp || 0),
-            batchNumber: item.batchNumber || item.batch_number || '',
-            expiryDate: item.expiryDate || item.expiry_date || '',
-            serialNumber: item.serialNumber || item.serial_number || '',
-            notes: item.notes || '',
-          }));
+      // Customer details
+      const customerName =
+        existingBill.Customer?.name ||
+        existingBill.customerName ||
+        existingBill.name ||
+        '';
 
-          console.log('Mapped items for edit:', mappedItems);
-          addMultipleCartItemsDirect(mappedItems);
-        }
+      const customerPhone =
+        existingBill.Customer?.phone ||
+        existingBill.customerPhone ||
+        existingBill.phone ||
+        '';
+
+      const customerUserId =
+        existingBill.User?.id ||
+        existingBill.userId ||
+        customerInfo?.userId ||
+        null;
+
+      setCustomerInfo({
+        name: existingBill.Customer?.name || customerName,
+        phone: existingBill.Customer?.phone || customerPhone,
+        userId: existingBill.userId || customerUserId,
+      });
+
+      // Loyalty points
+      setLoyaltyPoints(
+        existingBill.Customer?.loyalty_points ||
+        existingBill.customerLoyaltyPoints ||
+        0
+      );
+
+      // Discount
+      setGlobalDiscount(
+        existingBill.global_discount_amount ||
+        existingBill.globalDiscount ||
+        0
+      );
+
+      // Items
+      const items =
+        existingBill.SalesItems ||
+        existingBill.saleItems ||
+        existingBill.items ||
+        [];
+
+      if (Array.isArray(items) && items.length > 0) {
+        const mappedItems = items.map((item) => ({
+          productId: String(
+            item.productId ||
+            item.product_id ||
+            item.id ||
+            ''
+          ),
+
+          productName:
+            item.productName ||
+            item.product_name ||
+            item.name ||
+            '',
+
+          price: parseFloat(
+            item.price ||
+            item.rate ||
+            item.unitPrice ||
+            0
+          ),
+
+          quantity: parseFloat(item.quantity || 1),
+
+          taxRate: parseFloat(
+            item.taxRate ||
+            item.tax_rate ||
+            item.gstPercentage ||
+            item.taxPercentage ||
+            0
+          ),
+
+          discountPercent: parseFloat(
+            item.discountPercent ||
+            item.discount_percent ||
+            item.discount ||
+            item.discountPercentage ||
+            0
+          ),
+
+          unit: item.unit || 'pcs',
+
+          hsnCode:
+            item.hsnCode ||
+            item.hsn_code ||
+            '',
+
+          barcode: item.barcode || '',
+
+          sku: item.sku || '',
+
+          mrp: parseFloat(item.mrp || 0),
+
+          batchNumber:
+            item.batchNumber ||
+            item.batch_number ||
+            '',
+
+          expiryDate:
+            item.expiryDate ||
+            item.expiry_date ||
+            '',
+
+          serialNumber:
+            item.serialNumber ||
+            item.serial_number ||
+            '',
+
+          notes: item.notes || '',
+        }));
+
+        addMultipleCartItemsDirect(mappedItems);
       }
-    } else {
-      // New bill mode
+    } else if (!editMode) {
+      // Only initialize a completely new bill here
       if (!invoiceNo) {
         setInvoiceNo(getNextInvoiceNo(saleBills, settings));
       }
+
       if (!saleDate) {
         setSaleDate(todayISO());
       }
     }
-  }, [editMode, billId, saleBills]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // IMPORTANT:
+    // Do NOT put saleBills in this dependency list.
+  }, [editMode, billId]);
 
-  console.log(customerInfo, 'customerInfo');
   // ── Fetch Users ──
   async function loadUsers() {
     try {
-      const data = await fetchCompanyUsersAPI(1); // Default company ID = 1
+      const data = await fetchCompanyUsersAPI(1);
       setUsers(data.data || []);
     } catch (err) {
       toast.error('Failed to load user listing.');
@@ -180,7 +308,6 @@ export default function POSScreen({
       try {
         const authData = JSON.parse(storedAuth);
         const userId = authData?.state?.user?.id;
-        console.log('Loaded userId from localStorage:', userId);
 
         if (userId) {
           setCustomerInfo((prev) => ({
@@ -198,7 +325,96 @@ export default function POSScreen({
     loadHoldCarts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (formDropdownRef.current && !formDropdownRef.current.contains(e.target)) {
+        setAddItemDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const totals = getComputedTotals();
+
+  /* ── Add Item Form Handlers ── */
+  const handleAddItemSearchChange = (e) => {
+    const val = e.target.value;
+    setAddItemSearch(val);
+    setAddItemProduct(null);
+
+    if (!val.trim()) {
+      setAddItemSuggestions([]);
+      setAddItemDropdownOpen(false);
+      return;
+    }
+
+    const query = val.toLowerCase().trim();
+    const matches = (products || []).filter((p) => {
+      return (
+        (p.name && p.name.toLowerCase().includes(query)) ||
+        (p.barcode && p.barcode.toLowerCase().includes(query)) ||
+        (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.HSNCode && p.HSNCode.toLowerCase().includes(query))
+      );
+    }).slice(0, 15);
+
+    setAddItemSuggestions(matches);
+    setAddItemDropdownOpen(matches.length > 0);
+  };
+
+  const handleSelectFormProduct = (prod) => {
+    setAddItemProduct(prod);
+    setAddItemSearch(prod.name);
+    setAddItemRate(prod.salesPrice || prod.price || prod.MRP || 0);
+    setAddItemDisc(prod.discount || 0);
+    setAddItemDropdownOpen(false);
+  };
+
+  const handleAddItemSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (!addItemProduct && !addItemSearch.trim()) {
+      toast.error('Please select or enter a product name/barcode');
+      return;
+    }
+
+    const prodToUse = addItemProduct || products.find(p => p.name.toLowerCase() === addItemSearch.toLowerCase()) || {
+      id: 'custom-' + Date.now(),
+      name: addItemSearch.trim(),
+      salesPrice: parseFloat(addItemRate) || 0,
+      price: parseFloat(addItemRate) || 0,
+      discount: parseFloat(addItemDisc) || 0,
+      taxRate: 0,
+      unit: 'pcs',
+    };
+
+    const rate = addItemRate !== '' ? parseFloat(addItemRate) : (prodToUse.salesPrice || prodToUse.price || 0);
+    const disc = parseFloat(addItemDisc) || 0;
+    const qty = Math.max(1, parseFloat(addItemQty) || 1);
+
+    const productPayload = {
+      ...prodToUse,
+      salesPrice: rate,
+      price: rate,
+      discount: disc,
+    };
+
+    for (let i = 0; i < qty; i++) {
+      addToCart(productPayload);
+    }
+
+    toast.success(`Added ${productPayload.name}`);
+
+    // Reset Form
+    setAddItemSearch('');
+    setAddItemProduct(null);
+    setAddItemQty(1);
+    setAddItemRate('');
+    setAddItemDisc('');
+    setAddItemSuggestions([]);
+    setAddItemDropdownOpen(false);
+  };
 
   /* ── Shift handlers ── */
   async function handleStartShift() {
@@ -263,7 +479,6 @@ export default function POSScreen({
       clearCart();
       const items = Array.isArray(data.cartData) ? data.cartData : JSON.parse(data.cartData || '[]');
 
-      // ✅ NEW: Use addMultipleCartItemsDirect
       if (items.length > 0) {
         addMultipleCartItemsDirect(items);
       }
@@ -282,19 +497,13 @@ export default function POSScreen({
     }
   }
 
-  /* ── Add to cart handler ── */
+  /* ── Add to cart handler (from scanner) ── */
   const handleAddProduct = useCallback(
     (product) => {
       addToCart(product);
-      setRecentProductIds((prev) => {
-        const id = String(product.id || product._id);
-        const filtered = prev.filter((x) => x !== id);
-        return [...filtered, id].slice(-10);
-      });
-      // Switch to cart on mobile
-      setMobileView('cart');
+      toast.success(`Added: ${product.name}`);
     },
-    [addToCart]
+    [addToCart, toast]
   );
 
   /* ── Barcode not found ── */
@@ -318,7 +527,6 @@ export default function POSScreen({
 
       if (product) {
         handleAddProduct(product);
-        toast.success(`Added: ${product.name}`);
       } else {
         toast.error(`No product found for: "${decodedText}"`);
       }
@@ -342,7 +550,7 @@ export default function POSScreen({
       name: existing ? existing.name : customerInfo.name
     });
 
-    setLoyaltyPoints(existing?.loyalty_points || existing?.loyalty_points || 0);
+    setLoyaltyPoints(existing?.loyalty_points || 0);
   }
 
   /* ── Save bill ── */
@@ -352,16 +560,20 @@ export default function POSScreen({
       return;
     }
 
-    // Get logged-in user
     let loggedInUserId = customerInfo.userId;
+    let loggedInCompanyId = null;
 
     try {
       const storedAuth = localStorage.getItem('thrive-auth-storage');
-
+      const companyDetails = localStorage.getItem('erp-settings');
       if (storedAuth) {
         const authData = JSON.parse(storedAuth);
-        loggedInUserId =
-          authData?.state?.user?.id || loggedInUserId;
+        loggedInUserId = authData?.state?.user?.id || loggedInUserId;
+      }
+      console.log('Logged in user ID:', companyDetails);
+      if (companyDetails) {
+        const companyData = JSON.parse(companyDetails);
+        loggedInCompanyId = companyData?.state?.companyId || null;
       }
     } catch (error) {
       console.error('Failed to read user from localStorage:', error);
@@ -374,6 +586,10 @@ export default function POSScreen({
 
     if (!loggedInUserId) {
       toast.error('User Details is Required!!');
+      return;
+    }
+    if (!loggedInCompanyId) {
+      toast.error('Company Details is Required!!');
       return;
     }
 
@@ -402,12 +618,11 @@ export default function POSScreen({
         paymentMethod,
         shiftId: activeShift?.id || null,
         paymentDetails: paymentDetails || null,
+        companyId: loggedInCompanyId || null,
+
       };
 
-      // ✅ FIXED: Check editMode properly
       if (editMode && billId) {
-        // Update existing bill
-        console.log('Updating bill:', billId);
         await updateBill(billId, {
           ...payload,
           ...extraFields,
@@ -415,15 +630,27 @@ export default function POSScreen({
 
         toast.success('Invoice updated ✓');
 
-        // After successful update, go back
+        // Clear edited bill data from POS store
+        clearCart();
+
+        setCustomerInfo({
+          name: '',
+          phone: '',
+          userId: loggedInUserId,
+        });
+
+        setLoyaltyPoints(0);
+        setGlobalDiscount(0);
+        setPaymentOpen(false);
+
         if (onSaved) {
           onSaved();
         } else if (onBack) {
           onBack();
         }
+
+        return;
       } else {
-        // Create new bill
-        console.log('Creating new bill');
         await addBill({
           ...payload,
           ...extraFields,
@@ -431,22 +658,23 @@ export default function POSScreen({
 
         toast.success('Invoice saved ✓');
 
-        // Prepare bill for printing
         const billForPrint = {
-          ...payload,
-          ...extraFields,
           invoiceNo,
           saleDate,
+          items: cart,          // cart items already have .total/.taxRate/.discountAmount computed correctly
+          totals,                // the totals object you already computed via getComputedTotals()
+          customerName: finalCustomerInfo.name,
+          customerPhone: finalCustomerInfo.phone,
+          paymentMethod,
+          ...extraFields,
         };
 
         setLastPrintedBill(billForPrint);
         setPaymentOpen(false);
         setPrintReady(true);
 
-        // Reset for new bill
         clearCart();
 
-        // Get logged-in user again
         let newBillUserId = '';
         const storedAuthAfterSave = localStorage.getItem('thrive-auth-storage');
 
@@ -459,21 +687,17 @@ export default function POSScreen({
           }
         }
 
-        // Keep logged-in user
         setCustomerInfo({
           name: '',
           phone: '',
           userId: newBillUserId,
         });
 
-        // Reset customer-related data
         setLoyaltyPoints(0);
         setGlobalDiscount(0);
 
-        // Generate next bill
         setInvoiceNo(getNextInvoiceNo(saleBills, settings));
         setSaleDate(todayISO());
-        setRecentProductIds([]);
       }
     } catch (err) {
       console.error(err);
@@ -483,10 +707,9 @@ export default function POSScreen({
     }
   }
 
-  /* ── New bill ── */
+  /* ── New bill / Void bill ── */
   function handleNewBill() {
     const storedAuth = localStorage.getItem('thrive-auth-storage');
-
     let loggedInUserId = '';
 
     if (storedAuth) {
@@ -511,40 +734,33 @@ export default function POSScreen({
 
     setInvoiceNo(getNextInvoiceNo(saleBills, settings));
     setSaleDate(todayISO());
-    setRecentProductIds([]);
   }
 
   /* ── Keyboard shortcuts ── */
   useEffect(() => {
     function onKey(e) {
-      // F2 → focus barcode
       if (e.key === 'F2') {
         e.preventDefault();
-        const barcodeInput = document.querySelector('.pos-barcode-input input');
+        const barcodeInput = document.querySelector('.barcode-input-wrap input');
         if (barcodeInput) barcodeInput.focus();
       }
-      // F4 → focus customer name
       if (e.key === 'F4') {
         e.preventDefault();
-        const custInput = document.querySelector('.pos-customer-name-input');
+        const custInput = document.querySelector('.pos-cust-phone-input');
         if (custInput) custInput.focus();
       }
-      // F8 → checkout
       if (e.key === 'F8') {
         e.preventDefault();
         if (cart.length > 0) setPaymentOpen(true);
       }
-      // F9 → new bill
       if (e.key === 'F9') {
         e.preventDefault();
         handleNewBill();
       }
-      // F10 → hold cart
       if (e.key === 'F10') {
         e.preventDefault();
         handleHoldCart();
       }
-      // Escape → close modals or go back
       if (e.key === 'Escape') {
         if (holdDrawerOpen) { setHoldDrawerOpen(false); return; }
         if (shiftModalOpen) { setShiftModalOpen(false); return; }
@@ -556,16 +772,29 @@ export default function POSScreen({
     return () => window.removeEventListener('keydown', onKey);
   }, [cart, paymentOpen, cameraOpen, holdDrawerOpen, shiftModalOpen, shiftCloseModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Add useEffect hook (paste before return statement)
   useEffect(() => {
     if (!printReady || !lastPrintedBill) return;
 
     const timer = setTimeout(() => {
-      const thermalBillElement =
-        document.getElementById('thermal-bill-print');
+      const thermalBillElement = document.getElementById('thermal-bill-print');
 
       if (thermalBillElement && thermalBillElement.innerHTML.trim()) {
+        // Hide the rest of the POS screen for the duration of the print job.
+        // (Done here with a plain body class, rather than a CSS :has()
+        // selector, so it works in every browser — not just the newest ones.)
+        document.body.classList.add('printing-thermal-receipt');
+
+        const cleanup = () => {
+          document.body.classList.remove('printing-thermal-receipt');
+          window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+
         window.print();
+
+        // Safety net: some browsers (older Safari) don't fire 'afterprint'
+        // reliably, so also clear the class shortly after as a fallback.
+        setTimeout(cleanup, 2000);
       }
 
       setPrintReady(false);
@@ -575,14 +804,23 @@ export default function POSScreen({
     return () => clearTimeout(timer);
   }, [printReady, lastPrintedBill]);
 
+  const formattedDateTimeStr = new Date().toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
   return (
-    <div className="pos-b2c-root">
+    <div className="pos-b2c-root pos-exact-layout">
       <ToastContainer toasts={toast.toasts} />
 
       {/* ── Thermal Bill (print-only) ── */}
       <ThermalBill
         bill={lastPrintedBill}
-        settings={settings}
+        company={companyForReceipt}
         printerWidth={printerWidth}
       />
 
@@ -608,11 +846,11 @@ export default function POSScreen({
         saving={saving}
       />
 
-      {/* ── Top Bar ── */}
-      <div className="pos-topbar">
-        <div className="pos-topbar-left">
-          <button className="pos-back-btn"
-            onClick={() => {
+      {/* ═══ TOP NAVBAR ═══ */}
+      <div className="pos-exact-topbar">
+        <div className="pos-exact-topbar__search">
+          {onBack && (
+            <button className="pos-exact-back-btn" onClick={() => {
               onBack();
               setCustomerInfo({
                 name: '',
@@ -622,412 +860,386 @@ export default function POSScreen({
               setLoyaltyPoints(0);
               clearCart();
             }}
-            title="Back (Esc)"
-          >
-            ‹ Back
-          </button>
-          <div className="pos-topbar-title">
-            <span className="pos-topbar-badge">POS</span>
-            <span>
-              {editMode ? `Edit Invoice · #${invoiceNo}` : 'B2C Counter Billing'}
-            </span>
-          </div>
-        </div>
-
-        <div className="pos-topbar-center">
-          {scannerEnabled && (
-            <BarcodeInput
-              products={products}
-              onProductFound={handleAddProduct}
-              onNotFound={handleBarcodeNotFound}
+              title="Back (Esc)">
+              ‹ Back
+            </button>
+          )}
+          <div className="pos-exact-search-wrap">
+            <FiSearch className="pos-exact-search-icon" />
+            <input
+              type="text"
+              placeholder="Search product..."
+              className="pos-exact-search-input"
+              value={addItemSearch}
+              onChange={handleAddItemSearchChange}
+              onFocus={() => {
+                if (addItemSuggestions.length > 0) setAddItemDropdownOpen(true);
+              }}
             />
-          )}
-        </div>
+            {addItemDropdownOpen && addItemSuggestions.length > 0 && (
+              <div className="pos-exact-dropdown" ref={formDropdownRef}>
+                {addItemSuggestions.map((item) => (
+                  <div
+                    key={item.id || item._id}
+                    className="pos-exact-dropdown-item"
+                    onClick={() => handleSelectFormProduct(item)}
+                  >
+                    <span className="pos-exact-dropdown-name">{item.name}</span>
+                    <span className="pos-exact-dropdown-price">{formatCurrency(item.salesPrice || item.price || 0)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="pos-topbar-right">
-          {/* Shift indicator */}
-          {activeShift ? (
-            <button
-              className="pos-topbar-btn"
-              onClick={() => setShiftCloseModal(true)}
-              style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 700, fontSize: 11 }}
-              title="Active shift – click to close"
-            >
-              🟢 Shift #{activeShift.id}
-            </button>
-          ) : (
-            <button
-              className="pos-topbar-btn"
-              onClick={() => setShiftModalOpen(true)}
-              style={{ background: '#fef9c3', color: '#a16207', border: '1px solid #fde047', fontWeight: 700, fontSize: 11 }}
-              title="No active shift – click to open"
-            >
-              ⏸ Start Shift
-            </button>
-          )}
-          {/* Hold carts badge */}
           <button
-            className="pos-topbar-btn"
-            onClick={() => { loadHoldCarts(); setHoldDrawerOpen(true); }}
-            title="Held Carts"
-            style={{ position: 'relative' }}
+            className="pos-exact-scan-btn"
+            onClick={() => setCameraOpen(true)}
+            title="Scan Barcode with Camera"
           >
-            📋 Held
+            <span className="scan-icon-box">📷</span>
+            <span>Scan</span>
+          </button>
+        </div>
+
+        <div className="pos-exact-topbar__meta">
+          <span className="pos-exact-inv-badge">
+            {invoiceNo || 'INV-2024-001'}
+          </span>
+          <div className="pos-exact-date-pill">
+            📅 {saleDate || formattedDateTimeStr}
+          </div>
+
+          {/* ── Shift Button ── */}
+          <button
+            className={`pos-exact-topbar-btn pos-exact-topbar-btn--shift ${activeShift ? 'active' : ''}`}
+            onClick={() => activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)}
+            title={activeShift ? `Shift #${activeShift.id} Active — Click to Close` : 'Start New Shift'}
+          >
+            <FiClock />
+            <span>{activeShift ? `Shift #${activeShift.id}` : 'Start Shift'}</span>
+            {activeShift && <span className="pos-exact-topbar-dot pos-exact-topbar-dot--green" />}
+          </button>
+
+          {/* ── Hold Bill Button ── */}
+          <button
+            className="pos-exact-topbar-btn pos-exact-topbar-btn--hold"
+            onClick={() => {
+              if (cart.length > 0) {
+                handleHoldCart();
+              } else {
+                setHoldDrawerOpen(true);
+              }
+            }}
+            title={cart.length > 0 ? 'Hold Current Bill (F10)' : 'View Held Bills'}
+          >
+            <FiLayers />
+            <span>{cart.length > 0 ? 'Hold Bill' : 'Held Bills'}</span>
             {holdCarts.length > 0 && (
-              <span style={{
-                position: 'absolute', top: -4, right: -4, background: '#ef4444', color: '#fff',
-                borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 800,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{holdCarts.length}</span>
+              <span className="pos-exact-topbar-badge">{holdCarts.length}</span>
             )}
           </button>
-          {cameraEnabled && (
-            <button
-              className="pos-topbar-btn"
-              onClick={() => setCameraOpen(true)}
-              title="Camera Scanner"
-            >
-              📷 Scan
-            </button>
-          )}
-          <div className="pos-invoice-meta">
-            <span className="pos-inv-no"># {invoiceNo}</span>
-            <input
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-              className="pos-date-input"
-              readOnly={editMode}
-              style={editMode ? { opacity: 0.7, pointerEvents: 'none' } : {}}
-            />
-          </div>
-          {!editMode && (
-            <button
-              className="pos-topbar-btn pos-new-btn"
-              onClick={handleNewBill}
-              title="New Bill (F9)"
-            >
-              ＋ New Bill
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="bill-form-card__body">
-        <div className="form-grid-2" style={{ marginBottom: 0 }}>
-          {/* <div className="form-group">
-            <label className="form-label">Biller / User</label>
-            <select
-              className="form-input"
-              value={customerInfo.userId}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  userId: e.target.value || '',
-                })
-              }
-            >
-              <option value="">— Select User —</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div> */}
-          <div className="form-group">
-            <label className="form-label">Customer Name *</label>
-            <input
-              className="form-input"
-              placeholder="Walk-in customer"
-              value={customerInfo.name || ''}
-              onChange={(e) =>
-                setCustomerInfo({
-                  ...customerInfo,
-                  name: e.target.value || '',
-                })
-              }
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Phone *</label>
-            <input
-              className="form-input"
-              type="tel"
-              placeholder="10-digit mobile number"
-              value={customerInfo.phone || ''}
-              onChange={handlePhoneChange}
-              maxLength={10}
-            />
-          </div>
-
-          {/* Loyalty Points */}
-          <div className="pos-loyalty-display">
-            <div className="pos-loyalty-icon">
-              ⭐
-            </div>
-
-            <div className="pos-loyalty-info">
-              <span className="pos-loyalty-label">
-                Loyalty Points
-              </span>
-
-              <strong className="pos-loyalty-points">
-                {loyaltyPoints || 0}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Mobile Tab Switch ── */}
-      <div className="pos-mobile-tabs">
-        <button
-          className={`pos-mobile-tab-btn ${mobileView === 'products' ? 'active' : ''}`}
-          onClick={() => setMobileView('products')}
-        >
-          🛍 Products
-        </button>
-        <button
-          className={`pos-mobile-tab-btn ${mobileView === 'cart' ? 'active' : ''}`}
-          onClick={() => setMobileView('cart')}
-        >
-          🛒 Cart
-          {cart.length > 0 && (
-            <span className="pos-cart-badge">{cart.length}</span>
-          )}
-        </button>
-      </div>
-
-      {/* ── Main POS Body ── */}
-      <div className="pos-body">
-        {/* ── LEFT: Product Grid ── */}
-        <div
-          className={`pos-left ${mobileView === 'cart' ? 'pos-mobile-hidden' : ''}`}
-        >
-          <POSProductGrid
-            products={products}
-            categories={categories}
-            onAddProduct={handleAddProduct}
-            recentProductIds={recentProductIds}
-          />
-        </div>
-
-        {/* ── RIGHT: Cart + Totals ── */}
-        <div
-          className={`pos-right ${mobileView === 'products' ? 'pos-mobile-hidden' : ''}`}
-        >
-          {/* Customer quick-fill */}
-          {/* <div className="pos-customer-strip">
-            <input
-              className="pos-customer-input"
-              placeholder="👤 Customer name (optional)"
-              value={customerInfo.name}
-              onChange={(e) =>
-                setCustomerInfo((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
-            />
-            <input
-              className="pos-customer-input"
-              placeholder="📞 Phone"
-              value={customerInfo.phone}
-              onChange={(e) =>
-                setCustomerInfo((prev) => ({
-                  ...prev,
-                  phone: e.target.value,
-                }))
-              }
-              type="tel"
-            />
-          </div> */}
-
-          {/* Cart Table Container */}
-          <div className="pos-table-container">
-            <table className="pos-billing-table">
-              <thead>
-                <tr>
-                  <th className="pos-th-sno">S.No</th>
-                  <th className="pos-th-product">Product</th>
-                  <th className="pos-th-barcode">Barcode</th>
-                  <th className="pos-th-qty">Qty</th>
-                  <th className="pos-th-price">Price</th>
-                  <th className="pos-th-disc">Disc</th>
-                  <th className="pos-th-gst">GST</th>
-                  <th className="pos-th-total">Total</th>
-                  <th className="pos-th-action"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.length === 0 ? (
-                  <tr>
-                    <td colSpan="9">
-                      <div className="pos-cart-empty">
-                        <div style={{ fontSize: 46, marginBottom: 10, opacity: 0.4 }}>🛒</div>
-                        <div style={{ fontWeight: 700, color: '#334155', marginBottom: 4, fontSize: 14 }}>
-                          Cart is Empty
-                        </div>
-                        <div style={{ fontSize: 12, color: '#1e293b', lineHeight: 1.6 }}>
-                          Scan a barcode or select a product from the left panel
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  cart.map((item, index) => (
-                    <POSCartItem
-                      key={item.productId}
-                      item={item}
-                      index={index}
-                      onUpdate={updateCartItem}
-                      onRemove={removeFromCart}
+      {/* ═══ MAIN LAYOUT GRID ═══ */}
+      <div className="pos-exact-container">
+        {/* LEFT COLUMN: Customer + Add Item + Cart Table */}
+        <div className="pos-exact-left-col">
+          {/* Top Row: Two Cards */}
+          <div className="pos-exact-cards-row">
+            {/* Card 1: Customer Details */}
+            <div className="pos-exact-card pos-exact-card--customer">
+              <div className="pos-exact-card__title">
+                <FiUser className="pos-exact-card__icon" />
+                <span>Customer Details</span>
+              </div>
+              <div className="pos-exact-card__body">
+                <div className="pos-exact-form-group">
+                  <label>Phone Number</label>
+                  <div className="pos-exact-input-icon-wrap">
+                    <span className="pos-exact-input-icon">📞</span>
+                    <input
+                      type="tel"
+                      className="pos-exact-input pos-cust-phone-input"
+                      placeholder="Enter phone..."
+                      value={customerInfo.phone || ''}
+                      onChange={handlePhoneChange}
+                      maxLength={10}
                     />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals Panel */}
-          <div className="pos-totals-panel">
-            {/* Global Discount */}
-            <div className="pos-totals-row">
-              <span>Subtotal</span>
-              <span>{formatCurrency(saleBills.baseRate)}</span>
-            </div>
-            <div className="pos-totals-row">
-              <span>GST</span>
-              <span>{formatCurrency(totals.totalTax)}</span>
-            </div>
-            <div className="pos-totals-row pos-discount-row">
-              <span>Global Discount (₹)</span>
-              <input
-                className="pos-global-disc-input"
-                type="number"
-                value={globalDiscount || ''}
-                onChange={(e) => setGlobalDiscount(e.target.value)}
-                placeholder="0"
-                min="0"
-              />
-            </div>
-            {totals.roundOff !== 0 && (
-              <div className="pos-totals-row pos-roundoff-row">
-                <span>Round Off</span>
-                <span>{totals.roundOff?.toFixed(2)}</span>
-              </div>
-            )}
-
-            {/* GST breakdown */}
-            {totals.totalTax > 0 && (
-              <div className="pos-gst-summary">
-                <div className="pos-gst-summary-title">GST Breakdown</div>
-                {cart
-                  .filter((i) => i.taxRate > 0)
-                  .reduce((acc, item) => {
-                    const existing = acc.find((x) => x.rate === item.taxRate);
-                    if (existing) {
-                      existing.cgst += (item.taxAmount || 0) / 2;
-                      existing.sgst += (item.taxAmount || 0) / 2;
-                    } else {
-                      acc.push({
-                        rate: item.taxRate,
-                        cgst: (item.taxAmount || 0) / 2,
-                        sgst: (item.taxAmount || 0) / 2,
-                      });
+                  </div>
+                </div>
+                <div className="pos-exact-form-group">
+                  <label>Customer Name (Optional)</label>
+                  <input
+                    type="text"
+                    className="pos-exact-input"
+                    placeholder="Walk-in Customer"
+                    value={customerInfo.name || ''}
+                    onChange={(e) =>
+                      setCustomerInfo({
+                        ...customerInfo,
+                        name: e.target.value || '',
+                      })
                     }
-                    return acc;
-                  }, [])
-                  .map((slab) => (
-                    <div key={slab.rate} className="pos-gst-slab-row">
-                      <span>GST @{slab.rate}%</span>
-                      <span>
-                        CGST: {formatCurrency(slab.cgst)} | SGST:{' '}
-                        {formatCurrency(slab.sgst)}
-                      </span>
-                    </div>
-                  ))}
+                  />
+                </div>
+                {/* ── Loyalty Points ── */}
+                <div className="pos-exact-loyalty-row">
+                  <FiStar className="pos-exact-loyalty-icon" />
+                  <span className="pos-exact-loyalty-label">Loyalty Points</span>
+                  <span className="pos-exact-loyalty-value">{loyaltyPoints || 0}</span>
+                </div>
               </div>
-            )}
+            </div>
 
-            <div className="pos-grand-total-row">
-              <span>GRAND TOTAL</span>
-              <span>{formatCurrency(totals.grandTotal)}</span>
+            {/* Card 2: Add Item to Cart */}
+            <div className="pos-exact-card pos-exact-card--add-item">
+              <div className="pos-exact-card__title">
+                <FiShoppingCart className="pos-exact-card__icon" />
+                <span>Add Item to Cart</span>
+              </div>
+              <form className="pos-exact-card__body" onSubmit={handleAddItemSubmit}>
+                <div className="pos-exact-add-grid">
+                  <div className="pos-exact-form-group pos-exact-form-group--product">
+                    <label>Product Name / Barcode</label>
+                    <div className="pos-exact-input-icon-wrap" style={{ position: 'relative' }}>
+                      <span className="pos-exact-input-icon">📊</span>
+                      <input
+                        type="text"
+                        className="pos-exact-input"
+                        placeholder="Scan or type..."
+                        value={addItemSearch}
+                        onChange={handleAddItemSearchChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pos-exact-form-group pos-exact-form-group--sm">
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      className="pos-exact-input pos-exact-input--center"
+                      value={addItemQty}
+                      onChange={(e) => setAddItemQty(e.target.value)}
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="pos-exact-form-group pos-exact-form-group--sm">
+                    <label>Rate ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="pos-exact-input pos-exact-input--center"
+                      placeholder="0.0"
+                      value={addItemRate}
+                      onChange={(e) => setAddItemRate(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pos-exact-form-group pos-exact-form-group--sm">
+                    <label>Disc (%)</label>
+                    <input
+                      type="number"
+                      className="pos-exact-input pos-exact-input--center"
+                      placeholder="0"
+                      value={addItemDisc}
+                      onChange={(e) => setAddItemDisc(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pos-exact-form-group pos-exact-form-group--btn">
+                    <button
+                      type="submit"
+                      className="pos-exact-add-btn"
+                      title="Add to cart"
+                    >
+                      <FiPlus />
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pos-cart-actions">
+          {/* Bottom Row: Current Order Table */}
+          <div className="pos-exact-card pos-exact-card--order">
+            <div className="pos-exact-card__header">
+              <div className="pos-exact-card__title">
+                <FiFileText className="pos-exact-card__icon" />
+                <span>Current Order</span>
+              </div>
+              <span className="pos-exact-item-count-badge">
+                {cart.length} Items
+              </span>
+            </div>
+
+            <div className="pos-exact-table-wrap">
+              <table className="pos-exact-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                    <th>Item Name</th>
+                    <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
+                    <th style={{ width: 100, textAlign: 'right' }}>Rate</th>
+                    <th style={{ width: 100, textAlign: 'right' }}>Discount</th>
+                    <th style={{ width: 110, textAlign: 'right' }}>Total</th>
+                    <th style={{ width: 60, textAlign: 'center' }}>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.length === 0 ? (
+                    <tr>
+                      <td colSpan="7">
+                        <div className="pos-exact-empty-cart">
+                          <div className="pos-exact-empty-icon">🛒</div>
+                          <div className="pos-exact-empty-title">No Items in Order</div>
+                          <div className="pos-exact-empty-sub">
+                            Use the top search bar or form above to add products to this sale
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    cart.map((item, idx) => {
+                      const rate = item.price || 0;
+                      const discAmount = item.discountAmount || 0;
+                      const discDisplay = item.discountPercent > 0 ? `-${formatCurrency(discAmount)}` : '-';
+                      const itemTotal = item.total || 0;
+
+                      return (
+                        <tr key={item.productId || idx}>
+                          <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                            {idx + 1}
+                          </td>
+                          <td>
+                            <div className="pos-exact-item-name">{item.productName}</div>
+                            {item.hsnCode && <div className="pos-exact-item-sub">HSN: {item.hsnCode}</div>}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div className="pos-exact-qty-controls">
+                              <button
+                                className="pos-exact-qty-btn"
+                                onClick={() => updateCartItem(item.productId, 'quantity', Math.max(1, item.quantity - 1))}
+                              >
+                                −
+                              </button>
+                              <span className="pos-exact-qty-val">{item.quantity}</span>
+                              <button
+                                className="pos-exact-qty-btn"
+                                onClick={() => updateCartItem(item.productId, 'quantity', item.quantity + 1)}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: '#334155' }}>
+                            {formatCurrency(rate)}
+                          </td>
+                          <td style={{ textAlign: 'right', color: item.discountPercent > 0 ? '#ef4444' : '#94a3b8', fontWeight: item.discountPercent > 0 ? 600 : 400 }}>
+                            {discDisplay}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
+                            {formatCurrency(itemTotal)}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              className="pos-exact-remove-btn"
+                              onClick={() => removeFromCart(item.productId)}
+                              title="Remove item"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Sidebar (User + Shift + Hold/Void + Totals) */}
+        <div className="pos-exact-right-col">
+          {/* Store User & Shift Card */}
+          <div className="pos-exact-user-card">
+            <div className="pos-exact-user-avatar">
+              <FiUser />
+            </div>
+            <div className="pos-exact-user-info">
+              <div className="pos-exact-user-name">
+                {activeShift?.user?.name || 'Store Manager'}
+              </div>
+              <div
+                className="pos-exact-user-shift"
+                onClick={() => activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)}
+                title="Click to manage shift"
+              >
+                <span className="pos-exact-shift-dot"></span>
+                <span>{activeShift ? `Active Shift (#${activeShift.id})` : 'Start Shift'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions: Hold Sale & Void Sale */}
+          <div className="pos-exact-sidebar-actions">
             <button
-              className="pos-btn-discard"
-              onClick={handleNewBill}
-              title="Clear cart (F9)"
-            >
-              🗑 Clear
-            </button>
-            <button
-              className="pos-btn-discard"
+              className="pos-exact-sidebar-btn pos-exact-sidebar-btn--hold"
               onClick={handleHoldCart}
               disabled={cart.length === 0}
-              title="Hold Cart (F10)"
-              style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
             >
-              ⏸ Hold
+              <FiPauseCircle />
+              <span>Hold Sale</span>
             </button>
+
             <button
-              className="pos-btn-checkout"
-              onClick={() => setPaymentOpen(true)}
-              disabled={cart.length === 0}
-              title="Checkout (F8)"
+              className="pos-exact-sidebar-btn pos-exact-sidebar-btn--void"
+              onClick={handleNewBill}
             >
-              🖨 &nbsp;Checkout &amp; Print
-              {cart.length > 0 && (
-                <span style={{ opacity: 0.85, fontWeight: 600, fontSize: 13 }}>
-                  &nbsp;· {formatCurrency(totals.grandTotal)}
-                </span>
-              )}
+              <FiXCircle />
+              <span>Void Sale</span>
             </button>
           </div>
 
-          {/* Keyboard shortcuts hint */}
-          <div className="pos-shortcuts-hint">
-            <span>F2 · Barcode</span>
-            <span style={{ color: '#1e293b' }}>|</span>
-            <span>F4 · Customer</span>
-            <span style={{ color: '#1e293b' }}>|</span>
-            <span>F8 · Checkout</span>
-            <span style={{ color: '#1e293b' }}>|</span>
-            <span>F9 · New Bill</span>
-            <span style={{ color: '#1e293b' }}>|</span>
-            <span>F10 · Hold</span>
-            <span style={{ color: '#1e293b' }}>|</span>
-            <span>Esc · Back</span>
+          {/* Totals & Payment Section */}
+          <div className="pos-exact-totals-box">
+            <div className="pos-exact-summary-row">
+              <span>Subtotal</span>
+              <span className="pos-exact-summary-val">{formatCurrency(totals.subtotal)}</span>
+            </div>
+
+            <div className="pos-exact-summary-row">
+              <span>Tax (8%)</span>
+              <span className="pos-exact-summary-val">{formatCurrency(totals.totalTax)}</span>
+            </div>
+
+            {globalDiscount > 0 && (
+              <div className="pos-exact-summary-row" style={{ color: '#ef4444' }}>
+                <span>Global Discount</span>
+                <span className="pos-exact-summary-val">−{formatCurrency(globalDiscount)}</span>
+              </div>
+            )}
+
+            <div className="pos-exact-grand-total">
+              <span className="pos-exact-gt-label">GRAND TOTAL</span>
+              <span className="pos-exact-gt-val">{formatCurrency(totals.grandTotal)}</span>
+            </div>
+
+            <button
+              className="pos-exact-pay-btn"
+              onClick={() => setPaymentOpen(true)}
+              disabled={cart.length === 0}
+            >
+              <FiCreditCard />
+              <span>Pay Now</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Floating Action Buttons (Mobile) */}
-      {/* <div className="pos-fab-container pos-mobile-only">
-        {cameraEnabled && (
-          <button className="pos-fab pos-fab-scan" onClick={() => setCameraOpen(true)} title="Scan Barcode">
-            📷
-          </button>
-        )}
-        <button className="pos-fab pos-fab-add" onClick={() => setMobileView('products')} title="Add Product">
-          +
-        </button>
-        <button
-          className="pos-fab pos-fab-checkout"
-          onClick={() => setPaymentOpen(true)}
-          disabled={cart.length === 0}
-          title="Save & Checkout"
-        >
-          🖨
-        </button>
-      {/* </div> */}
-
-      {/* ═══ SHIFT START MODAL ═══ */}
       {shiftModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }} onClick={(e) => { if (e.target === e.currentTarget) setShiftModalOpen(false); }}>
           <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 400, boxShadow: '0 30px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
@@ -1082,37 +1294,35 @@ export default function POSScreen({
 
       {/* ═══ HELD CARTS DRAWER ═══ */}
       {holdDrawerOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 9998, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(3px)' }} onClick={(e) => { if (e.target === e.currentTarget) setHoldDrawerOpen(false); }}>
-          <div style={{ width: '100%', maxWidth: 400, background: '#fff', height: '100%', boxShadow: '-10px 0 40px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>📋 Held Carts ({holdCarts.length})</div>
-              <button onClick={() => setHoldDrawerOpen(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        <div className="pos-exact-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) setHoldDrawerOpen(false); }}>
+          <div className="pos-exact-drawer">
+            <div className="pos-exact-drawer-header">
+              <h3>📋 Held Carts ({holdCarts.length})</h3>
+              <button onClick={() => setHoldDrawerOpen(false)}>✕</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="pos-exact-drawer-body">
               {holdCarts.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
-                  <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
-                  <div style={{ fontWeight: 600 }}>No held carts</div>
-                  <div style={{ fontSize: 12, marginTop: 4 }}>Press F10 or click Hold to save a cart for later</div>
-                </div>
-              ) : holdCarts.map((h) => {
-                const items = Array.isArray(h.cartData) ? h.cartData : [];
-                return (
-                  <div key={h.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{h.customerName || 'Walk-in'}</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{h.holdNumber} · {items.length} items · {h.note || ''}</div>
+                <div className="pos-exact-empty-drawer">No held sales found</div>
+              ) : (
+                holdCarts.map((h) => {
+                  const items = Array.isArray(h.cartData) ? h.cartData : [];
+                  return (
+                    <div key={h.id} className="pos-exact-held-item">
+                      <div className="pos-exact-held-top">
+                        <div>
+                          <strong>{h.customerName || 'Walk-in Customer'}</strong>
+                          <div>{h.holdNumber} · {items.length} items</div>
+                        </div>
+                        <div className="pos-exact-held-total">{formatCurrency(h.totalAmount || 0)}</div>
                       </div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#2563eb' }}>{formatCurrency(h.totalAmount || 0)}</div>
+                      <div className="pos-exact-held-actions">
+                        <button className="pos-exact-btn-primary" onClick={() => handleResumeCart(h.id)}>Resume</button>
+                        <button className="pos-exact-btn-subtle" onClick={() => { cancelHoldCart(h.id); toast.success('Held cart cancelled'); }}>Cancel</button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleResumeCart(h.id)} style={{ flex: 2, padding: '8px 12px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>▶ Resume</button>
-                      <button onClick={() => { cancelHoldCart(h.id); toast.success('Held cart cancelled'); }} style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>✕ Cancel</button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

@@ -1,10 +1,25 @@
-/* ===== B2C INVOICE (Retail) — simple layout, no GSTIN / HSN tax breakup ===== */
+/* ===== B2C INVOICE (Retail) — simple layout, no GSTIN / HSN tax breakup =====
+   SETTINGS RESPECTED (from useSettingsStore / settingsStore-DB.js):
+   - termsAndConditions -> fills the Terms & Conditions box (falls back to the
+                            two default lines below when nothing is set)
+   - showSignature      -> gates the "Authorized Signatory" block
+*/
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDate } from '../../../utils/date';
 import { numberToWords } from '../../../utils/numbers';
+import useSettingsStore from '../../../store/settingsStore-DB';
 
 export default function B2CInvoice({ bill, companies, party, items, invoiceLabel, partyLabel, printRef }) {
+  // See ThermalBill.js for why we select primitives with useShallow instead
+  // of calling store.getSettings() inside the selector (infinite-loop bug).
+  const settings = useSettingsStore(
+    useShallow((s) => ({
+      termsAndConditions: s.termsAndConditions,
+      showSignature: s.showSignature,
+    }))
+  );
   return (
     <div
       ref={printRef}
@@ -99,9 +114,9 @@ export default function B2CInvoice({ bill, companies, party, items, invoiceLabel
             }}
           >
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-              {party.name || 'Walk-in Customer'}
+              {bill.Customer.name || 'Walk-in Customer'}
             </div>
-            {party.phone && <div>Phone: {party.phone}</div>}
+            {bill.Customer.phone && <div>Phone: {bill.Customer.phone}</div>}
             {party.address && <div>Address: {party.address}</div>}
           </div>
         </div>
@@ -162,10 +177,14 @@ export default function B2CInvoice({ bill, companies, party, items, invoiceLabel
             <div style={{ fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>
               Terms & Conditions
             </div>
-            <ol style={{ margin: 0, paddingLeft: 16, color: '#555' }}>
-              <li>Goods once sold will not be taken back.</li>
-              <li>Subject to local jurisdiction.</li>
-            </ol>
+            {settings.termsAndConditions ? (
+              <div style={{ color: '#555', whiteSpace: 'pre-wrap' }}>{settings.termsAndConditions}</div>
+            ) : (
+              <ol style={{ margin: 0, paddingLeft: 16, color: '#555' }}>
+                <li>Goods once sold will not be taken back.</li>
+                <li>Subject to local jurisdiction.</li>
+              </ol>
+            )}
           </div>
         </div>
         <div style={{ width: '40%' }}>
@@ -208,20 +227,22 @@ export default function B2CInvoice({ bill, companies, party, items, invoiceLabel
             </tbody>
           </table>
 
-          <div style={{ textAlign: 'center', marginTop: 40 }}>
-            <div
-              style={{
-                borderTop: '1px solid #444',
-                width: 140,
-                margin: '0 auto',
-                paddingTop: 8,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              Authorized Signatory
+          {settings.showSignature && (
+            <div style={{ textAlign: 'center', marginTop: 40 }}>
+              <div
+                style={{
+                  borderTop: '1px solid #444',
+                  width: 140,
+                  margin: '0 auto',
+                  paddingTop: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Authorized Signatory
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 /* ===== PAYMENTS SETTINGS TAB ===== */
 import React, { useState } from 'react';
-import useSettingsStore from '../../../store/settingsStore';
+import useSettingsStore from '../../../store/settingsStore-DB';
 import { Button } from '../../../components/ui';
 
 const ALL_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Credit Card', 'Debit Card'];

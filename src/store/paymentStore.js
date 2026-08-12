@@ -14,13 +14,27 @@ const usePaymentStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  loadPaymentsIn: async () => {
+  loadPaymentsIn: async (startDate = '', endDate = '') => {
     set({ loading: true, error: null });
+
     try {
-      const data = await fetchPaymentsInAPI();
-      set({ paymentsIn: Array.isArray(data) ? data : (data?.data ?? []), loading: false });
+      const data = await fetchPaymentsInAPI(
+        startDate,
+        endDate
+      );
+
+      set({
+        paymentsIn: Array.isArray(data)
+          ? data
+          : (data?.data ?? []),
+        loading: false,
+      });
+
     } catch (err) {
-      set({ error: err.message, loading: false });
+      set({
+        error: err.message,
+        loading: false,
+      });
     }
   },
 
@@ -39,16 +53,33 @@ const usePaymentStore = create((set, get) => ({
     }));
   },
 
-  loadPaymentsOut: async () => {
-    set({ loading: true, error: null });
+  loadPaymentsOut: async (startDate = '', endDate = '') => {
+    set({
+      loading: true,
+      error: null,
+    });
+
     try {
-      const data = await fetchPaymentsOutAPI();
-      set({ paymentsOut: Array.isArray(data) ? data : (data?.data ?? []), loading: false });
+      const data = await fetchPaymentsOutAPI(
+        startDate,
+        endDate
+      );
+
+      set({
+        paymentsOut: Array.isArray(data)
+          ? data
+          : (data?.data ?? []),
+        loading: false,
+      });
+
     } catch (err) {
-      set({ error: err.message, loading: false });
+      set({
+        error: err.message,
+        loading: false,
+      });
     }
   },
-
+  
   addPaymentOut: async (payment) => {
     const saved = await addPaymentOutAPI(payment);
     if (saved) {

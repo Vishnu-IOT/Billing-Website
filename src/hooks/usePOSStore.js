@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { calcItemRow, calcBillTotals, createEmptyItem } from '../utils/invoice';
 import { toFloat } from '../utils/currency';
-import useSettingsStore from '../store/settingsStore';
+import useSettingsStore from '../store/settingsStore-DB';
 
 const usePOSStore = create((set, get) => ({
   /* ── Cart ── */

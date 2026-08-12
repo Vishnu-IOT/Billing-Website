@@ -83,7 +83,10 @@ export default function DocumentForm({
   const [loaded, setLoaded] = useState(false);
 
   const [billForm, setBillForm] = useState({
-    invoiceNo: getNextInvoiceNo(numberingBills, numberingSettings),
+    invoiceNo:
+      documentType === 'PURCHASE_BILL'
+        ? ''
+        : getNextInvoiceNo(numberingBills, numberingSettings),
     date: todayISO(),
     items: Array.from({ length: 3 }, createEmptyItem),
     globalDiscount: 0,
@@ -217,21 +220,51 @@ export default function DocumentForm({
       toast.error('Select a proper date');
       return;
     }
+    if (documentType === 'PURCHASE_BILL' && !billForm.invoiceNo.trim()) {
+      toast.error('Purchase Bill No is required');
+      return;
+    }
 
     setSaving(true);
     try {
+      let createdRecord = null;
       if (documentType === 'SALE_INVOICE') {
+        let companyId = null;
+
+        try {
+          const erpSettings = localStorage.getItem('erp-settings');
+          console.log('ERP Settings from localStorage:', erpSettings);
+          if (erpSettings) {
+            const companydata = JSON.parse(erpSettings);
+            companyId = companydata?.state?.companyId;
+          }
+        } catch (error) {
+          console.error('Error reading company ID:', error);
+        }
+
+        if (!companyId) {
+          toast.error('Company ID not found');
+          return;
+        }
+
         const payload = buildSaleBillPayload({
           billForm,
           customerForm,
           validItems,
           partyId: selectedPartyId,
         });
+
+        const salePayload = {
+          ...payload,
+          companyId: Number(companyId),
+          bill_type: billingType,
+        };
+
         if (editMode) {
-          await updateSaleBill(recordId, { ...payload, bill_type: billingType });
+          await updateSaleBill(recordId, salePayload);
           toast.success('Invoice updated ✓');
         } else {
-          await addSaleBill({ ...payload, bill_type: billingType });
+          createdRecord = await addSaleBill(salePayload); // ← capture it here
           toast.success('Invoice saved ✓');
         }
       } else if (documentType === 'PURCHASE_BILL') {
@@ -264,7 +297,7 @@ export default function DocumentForm({
           toast.success(`${config.label} saved ✓`);
         }
       }
-      onSaved?.();
+      onSaved?.(createdRecord.data);
     } catch (err) {
       console.error(err);
       toast.error(`Failed to save ${config.label.toLowerCase()}`);
@@ -480,11 +513,17 @@ export default function DocumentForm({
                     <input
                       className="form-input"
                       value={billForm.invoiceNo}
-                      readOnly={editMode || isInvoice}
-                      style={
-                        editMode && isInvoice
-                          ? { backgroundColor: 'var(--bg-hover)', cursor: 'not-allowed' }
-                          : {}
+                      onChange={(e) =>
+                        setBillForm((p) => ({
+                          ...p,
+                          invoiceNo: e.target.value,
+                        }))
+                      }
+                      readOnly={documentType !== 'PURCHASE_BILL' && (editMode || isInvoice)}
+                      placeholder={
+                        documentType === 'PURCHASE_BILL'
+                          ? 'Enter vendor bill number'
+                          : 'Document No'
                       }
                     />
                   </div>

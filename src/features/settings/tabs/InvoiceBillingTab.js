@@ -1,6 +1,6 @@
 /* ===== INVOICE & BILLING SETTINGS TAB ===== */
 import React, { useState } from 'react';
-import useSettingsStore from '../../../store/settingsStore';
+import useSettingsStore from '../../../store/settingsStore-DB';
 import { Button } from '../../../components/ui';
 import { formatInvoicePrefix } from '../../../utils/invoice';
 

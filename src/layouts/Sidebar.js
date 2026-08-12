@@ -20,6 +20,7 @@ import {
 import { TbReport, TbMoneybagMoveBack, TbMoneybagMove, TbMoneybag } from 'react-icons/tb';
 import { RiAlignItemBottomLine } from 'react-icons/ri';
 import { HiOutlineAdjustmentsVertical } from 'react-icons/hi2';
+import { GiClockwork } from 'react-icons/gi';
 
 /* ── Centralized Role-Based Sidebar Menus ── */
 
@@ -68,6 +69,7 @@ const ownerSidebar = [
   },
   { key: 'payment-in', icon: <TbMoneybagMoveBack />, label: 'Payment Inn' },
   { key: 'payment-out', icon: <TbMoneybagMove />, label: 'Payment Out' },
+  { key: 'shift-management', icon: <GiClockwork />, label: 'Shift Management' },
   { key: 'company', icon: <FiBriefcase />, label: 'Company' },
   { key: 'financials', icon: <FiCreditCard />, label: 'Financial Details' },
   { key: 'accounting', icon: <FiCreditCard />, label: 'Financial Accounting' },

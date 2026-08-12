@@ -67,3 +67,36 @@ export function buildStockExportRows(products) {
     TaxRate: p.taxRate || 0,
   }));
 }
+
+/**
+ * Export an array of objects to a CSV file (client-side, no dependency)
+ * @param {Object[]} rows - data rows
+ * @param {string} fileName - output file name (without extension)
+ */
+export function exportToCSV(rows, fileName = 'Report') {
+  if (!rows || rows.length === 0) {
+    throw new Error('No data to export');
+  }
+  const headers = Object.keys(rows[0]);
+  const escape = (val) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const csvLines = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
+  ];
+  const csvContent = csvLines.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${fileName}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

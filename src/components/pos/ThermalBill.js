@@ -1,15 +1,54 @@
-/* ===== THERMAL BILL — 58mm / 80mm thermal print layout ===== */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FILE: ThermalBill.js
+   DESCRIPTION: 58mm / 80mm thermal print layout for POS receipts.
+   Visually matched to the "Apna Billbook" style receipt reference supplied
+   by the user: bold centered store header, Bill No/Date/Time meta rows,
+   Billing-To block, Item/Qty/Amount table with HSN + batch subtext,
+   full charge & tax breakdown, Grand Total, Paid Amount, amount in words,
+   "SCAN TO PAY" UPI QR block and T&C footer.
+
+   Screen-hidden, print-visible via @media print (unchanged behaviour —
+   this component is only ever shown through window.print()).
+
+   SETTINGS RESPECTED (from useSettingsStore / settingsStore-DB.js):
+   - receiptHeader          -> small subtext line under the store name
+   - receiptFooter          -> footer message above "Thank you"
+   - showGstOnReceipt       -> gates the CGST/SGST/GST rows + GST summary block
+   - showUpiQr              -> gates the "Scan to Pay" QR section
+   - termsAndConditions     -> gates + fills the T&C line above the footer
+   - printerWidth (58 / 80) -> receipt width (also passed as a prop)
+   ═══════════════════════════════════════════════════════════════════════════════ */
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../../utils/currency';
+import { numberToWords } from '../../utils/numbers';
+import useSettingsStore from '../../store/settingsStore-DB';
 
 /**
  * ThermalBill
- * Screen-hidden, print-visible via @media print.
- * Renders a compact 58mm or 80mm thermal receipt.
+ * @param {object}  bill          - the completed sale bill (see POSScreen billForPrint)
+ * @param {object}  company       - the real company/business record (name, address, GST, UPI…)
+ * @param {string}  printerWidth  - '58' | '80'
  */
-export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
-  console.log(bill);
+export default function ThermalBill({ bill, company, printerWidth = '80' }) {
+  // NOTE: never call store.getSettings() (or any function that builds a new
+  // object) *inside* a Zustand selector — it returns a fresh reference every
+  // render, which Zustand reads as "the store changed", triggering another
+  // render, calling the selector again, forever ("Maximum update depth
+  // exceeded"). Select only the primitive fields we actually need instead,
+  // wrapped in useShallow so the returned object is only "new" when one of
+  // those primitives actually changes.
+  const settings = useSettingsStore(
+    useShallow((s) => ({
+      receiptHeader: s.receiptHeader,
+      receiptFooter: s.receiptFooter,
+      showGstOnReceipt: s.showGstOnReceipt,
+      showUpiQr: s.showUpiQr,
+      termsAndConditions: s.termsAndConditions,
+    }))
+  );
+
   if (!bill) return null;
 
   const {
@@ -21,12 +60,19 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
     customerPhone,
     customerGSTIN,
     paymentMethod,
+    paymentStatus,
     cashier,
+    staffName,
+    createdBy,
+    orderType,
+    orderStatus,
+    amountPaid,
   } = bill;
 
   const isB2B = (bill.bill_type || bill.billType) === 'B2B';
+  const showGst = settings.showGstOnReceipt !== false; // default true, respects toggle when off
 
-  const company = settings || {};
+  const biz = company || {};
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN', {
     hour: '2-digit',
@@ -45,22 +91,32 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
       year: 'numeric',
     });
 
-  /* UPI QR for payment */
-  const upiId = company.financials?.upi_id || company.upiId || '';
+  /* UPI QR for payment — only rendered when the "Show UPI QR Code" setting is ON */
+  // const upiId = biz.financials?.upi_id || biz.upi_id || biz.upiId || '';
+  const upiId = 'vishnubharani153@oksbi';
   const upiLink = upiId
-    ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(company.legal_name || 'Store')}&am=${totals.grandTotal || 0}&cu=INR&tn=${invoiceNo || 'Bill'}`
+    ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(biz.legal_name || biz.companyName || 'Store')}&am=${totals.grandTotal || 0}&cu=INR&tn=${invoiceNo || 'Bill'}`
     : null;
+  const showQrBlock = !!settings.showUpiQr && !!upiLink;
 
-  /* GST slab summary */
+  /* GST slab summary (B2B only, and only while showGstOnReceipt is ON) */
   const gstSlabs = {};
-  items.forEach((item) => {
-    if (!item.taxRate) return;
-    const rate = item.taxRate;
-    if (!gstSlabs[rate]) gstSlabs[rate] = { taxable: 0, cgst: 0, sgst: 0 };
-    gstSlabs[rate].taxable += item.afterDiscount || 0;
-    gstSlabs[rate].cgst += (item.taxAmount || 0) / 2;
-    gstSlabs[rate].sgst += (item.taxAmount || 0) / 2;
-  });
+  if (showGst) {
+    items.forEach((item) => {
+      const rate = item.taxRate;
+      if (!rate) return;
+      if (!gstSlabs[rate]) gstSlabs[rate] = { taxable: 0, cgst: 0, sgst: 0 };
+      gstSlabs[rate].taxable += item.afterDiscount || 0;
+      gstSlabs[rate].cgst += (item.taxAmount || 0) / 2;
+      gstSlabs[rate].sgst += (item.taxAmount || 0) / 2;
+    });
+  }
+
+  const discountTotal =
+    (totals.rawTotal || 0) - (totals.grandTotal || 0) - (totals.roundOff || 0);
+
+  const paidAmount = amountPaid ?? (paymentStatus !== 'Unpaid' ? totals.grandTotal : 0);
+  const billStatus = bill.billStatus || paymentStatus || 'Paid';
 
   const Divider = ({ char = '-' }) => (
     <div className="thermal-divider">
@@ -85,58 +141,80 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
       {/* ── HEADER ── */}
       <div className="thermal-header">
         <div className="thermal-store-name">
-          {company.legal_name || company.companyName || 'Store Name'}
+          {biz.legal_name || biz.companyName || 'Store Name'}
         </div>
-        {(company.address_line1 || company.companyAddress) && (
+        {(biz.address_line1 || biz.companyAddress) && (
           <div className="thermal-store-addr">
-            {company.address_line1 || company.companyAddress}
+            {biz.address_line1 || biz.companyAddress}
           </div>
         )}
-        {company.address_line2 && (
-          <div className="thermal-store-addr">{company.address_line2}</div>
+        {biz.address_line2 && (
+          <div className="thermal-store-addr">{biz.address_line2}</div>
         )}
-        {(company.city || company.state_code || company.pincode) && (
+        {(biz.city || biz.state_code || biz.pincode) && (
           <div className="thermal-store-addr">
-            {[company.city, company.state_code, company.pincode]
-              .filter(Boolean)
-              .join(', ')}
+            {[biz.city, biz.state_code, biz.pincode].filter(Boolean).join(', ')}
           </div>
         )}
-        {(company.financials?.gstin || company.companyGstin) && (
+        {settings.receiptHeader && (
+          <div className="thermal-header-note">{settings.receiptHeader}</div>
+        )}
+        {(biz.contactName || biz.contact_name) && (
+          <div className="thermal-store-addr">
+            Contact: {biz.contactName || biz.contact_name}
+          </div>
+        )}
+        {(biz.email || biz.companyEmail) && (
+          <div className="thermal-store-addr">
+            Email: {biz.email || biz.companyEmail}
+          </div>
+        )}
+        {(biz.financials?.gstin || biz.companyGstin || biz.gstin) && (
           <div className="thermal-gstin">
-            GSTIN: {company.financials?.gstin || company.companyGstin}
+            GSTIN: {biz.financials?.gstin || biz.companyGstin || biz.gstin}
           </div>
         )}
-        {(company.companyPhone || company.phone) && (
+        {(biz.companyPhone || biz.phone) && (
           <div className="thermal-phone">
-            Ph: {company.companyPhone || company.phone}
+            Ph: {biz.companyPhone || biz.phone}
           </div>
         )}
       </div>
 
       <Divider char="=" />
 
-      {/* ── INVOICE INFO ── */}
+      {/* ── INVOICE META ── */}
       <div className="thermal-invoice-type">
         *** {isB2B ? 'TAX INVOICE (B2B)' : 'RETAIL INVOICE'} ***
       </div>
       <Divider />
-      <Row left="Invoice No" right={invoiceNo || '—'} />
+      <Row left="Bill No" right={invoiceNo || '—'} />
       <Row left="Date" right={dateStr} />
       <Row left="Time" right={timeStr} />
-      {cashier && <Row left="Cashier" right={cashier} />}
-      {customerName && <Row left="Customer" right={customerName} />}
-      {customerPhone && <Row left="Phone" right={customerPhone} />}
-      {isB2B && <Row left="GSTIN" right={customerGSTIN || 'Not provided'} />}
+      {orderType && <Row left="Customer Type" right={orderType} />}
+      {orderStatus && <Row left="Order Status" right={orderStatus} />}
+      <Row left="Payment Method" right={paymentMethod || '—'} />
+      <Row left="Payment Status" right={billStatus} />
+      {(staffName || cashier) && <Row left="Staff Name" right={staffName || cashier} />}
+      {createdBy && <Row left="Created By" right={createdBy} />}
+
+      {(customerName || customerPhone) && (
+        <>
+          <Divider char="=" />
+          <div className="thermal-section-title thermal-section-title--left">Billing To</div>
+          {customerName && <Row left="Name" right={customerName} />}
+          {customerPhone && <Row left="Contact No." right={customerPhone} />}
+          {isB2B && <Row left="GSTIN" right={customerGSTIN || 'Not provided'} />}
+        </>
+      )}
 
       <Divider char="=" />
 
       {/* ── ITEM HEADER ── */}
       <div className="thermal-item-header">
-        <span className="thermal-item-name-col">Item</span>
+        <span className="thermal-item-name-col">Items</span>
         <span className="thermal-item-qty-col">Qty</span>
-        <span className="thermal-item-rate-col">Rate</span>
-        <span className="thermal-item-amt-col">Amt</span>
+        <span className="thermal-item-amt-col">Amount</span>
       </div>
       <Divider />
 
@@ -148,28 +226,29 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
         const total = item.total || 0;
         return (
           <div key={i} className="thermal-item-row">
-            <div className="thermal-item-name">{item.productName}</div>
-            {item.hsnCode && (
-              <div className="thermal-item-hsn">HSN: {item.hsnCode}</div>
-            )}
             <div className="thermal-item-detail">
+              <span className="thermal-item-name">{item.productName}</span>
               <span className="thermal-item-qty-col">{qty}</span>
-              <span className="thermal-item-rate-col">
-                {formatCurrency(rate).replace('₹', '')}
-              </span>
-              {disc > 0 && (
-                <span className="thermal-item-disc">
-                  -{formatCurrency(disc).replace('₹', '')}
-                </span>
-              )}
               <span className="thermal-item-amt-col">
-                {formatCurrency(total).replace('₹', '')}
+                {formatCurrency(total)}
               </span>
             </div>
-            {item.taxRate > 0 && (
-              <div className="thermal-item-gst">
-                GST({item.taxRate}%):{' '}
-                {formatCurrency(item.taxAmount || 0).replace('₹', '')}
+            {(item.variantName || item.notes) && (
+              <div className="thermal-item-sub">({item.variantName || item.notes})</div>
+            )}
+            <div className="thermal-item-sub">
+              {qty} x {formatCurrency(rate)}
+              {showGst && item.taxRate > 0 ? ` (GST ${item.taxRate}%)` : ''}
+            </div>
+            {item.hsnCode && (
+              <div className="thermal-item-sub">HSN: {item.hsnCode}</div>
+            )}
+            {item.batchNumber && (
+              <div className="thermal-item-sub">Batch: {item.batchNumber}</div>
+            )}
+            {disc > 0 && (
+              <div className="thermal-item-sub">
+                Discount: -{formatCurrency(disc)}
               </div>
             )}
           </div>
@@ -179,43 +258,48 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
       <Divider char="=" />
 
       {/* ── TOTALS ── */}
-      <Row left="Items" right={items.length} />
-      <Row left="Sub Total" right={formatCurrency(totals.subtotal || 0)} />
-      {totals.rawTotal - totals.grandTotal - (totals.roundOff || 0) > 0 && (
-        <Row
-          left="Discount"
-          right={`-${formatCurrency(totals.rawTotal - totals.grandTotal - (totals.roundOff || 0))}`}
-        />
+      <Row left="Item Total" right={formatCurrency(totals.rawTotal || 0)} />
+      <Row left="Subtotal" right={formatCurrency(totals.subtotal || 0)} />
+      {discountTotal > 0 && (
+        <Row left="Discount" right={`-${formatCurrency(discountTotal)}`} />
       )}
-      {isB2B ? (
-        <>
-          <Row left="CGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
-          <Row left="SGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
-        </>
-      ) : (
-        <Row left="GST" right={formatCurrency(totals.totalTax || 0)} />
+      {showGst && (
+        isB2B ? (
+          <>
+            <Row left="CGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
+            <Row left="SGST" right={formatCurrency((totals.totalTax || 0) / 2)} />
+          </>
+        ) : (
+          <Row left="GST" right={formatCurrency(totals.totalTax || 0)} />
+        )
       )}
       {totals.roundOff !== 0 && totals.roundOff !== undefined && (
         <Row left="Round Off" right={totals.roundOff?.toFixed(2)} />
       )}
 
       <Divider char="=" />
-      <Row
-        left="TOTAL"
-        right={formatCurrency(totals.grandTotal || 0)}
-        bold
-        large
-      />
+      <Row left="Grand Total" right={formatCurrency(totals.grandTotal || 0)} bold large />
+      <Row left="Paid Amount" right={formatCurrency(paidAmount || 0)} />
       <Divider char="=" />
 
       {/* ── PAYMENT ── */}
-      {paymentMethod && <Row left="Payment" right={paymentMethod} bold />}
+      <Row left="Payment Method" right={paymentMethod || '—'} bold />
+      <Row left="Bill Status" right={billStatus} bold />
 
       <Divider />
 
-      {/* ── GST SUMMARY (B2B only — B2C receipts stay short) ── */}
-      {isB2B && Object.keys(gstSlabs).length > 0 && (
+      {/* ── AMOUNT IN WORDS ── */}
+      <div className="thermal-words">
+        <span className="thermal-words-label">Amount in Words:</span>
+        <span className="thermal-words-value">
+          {numberToWords(Math.round(totals.grandTotal || 0))}
+        </span>
+      </div>
+
+      {/* ── GST SUMMARY (B2B only, gated by showGstOnReceipt) ── */}
+      {isB2B && showGst && Object.keys(gstSlabs).length > 0 && (
         <>
+          <Divider />
           <div className="thermal-section-title">GST SUMMARY</div>
           <div className="thermal-gst-header">
             <span>Rate</span>
@@ -232,29 +316,39 @@ export default function ThermalBill({ bill, settings, printerWidth = '80' }) {
               <span>{formatCurrency(vals.sgst).replace('₹', '')}</span>
             </div>
           ))}
-          <Divider />
         </>
       )}
 
-      {/* ── QR CODE ── */}
-      {upiLink && (
+      {/* ── QR CODE — only rendered when "Show UPI QR Code" is ON in settings ── */}
+      {showQrBlock && (
         <div className="thermal-qr-section">
-          <div className="thermal-qr-label">Scan to Pay</div>
-          <QRCodeSVG value={upiLink} size={printerWidth === '58' ? 90 : 110} />
+          <div className="thermal-qr-code">
+            <QRCodeSVG value={upiLink} size={printerWidth === '58' ? 90 : 110} />
+          </div>
+          <div className="thermal-qr-upi-badge">UPI</div>
+          <button type="button" className="thermal-scan-btn">SCAN TO PAY</button>
           <div className="thermal-qr-upi">{upiId}</div>
         </div>
+      )}
+
+      {/* ── TERMS & CONDITIONS — only rendered when set in settings ── */}
+      {settings.termsAndConditions && (
+        <>
+          <Divider />
+          <div className="thermal-tnc">
+            <div className="thermal-section-title thermal-section-title--left">T&amp;C</div>
+            <div className="thermal-tnc-text">{settings.termsAndConditions}</div>
+          </div>
+        </>
       )}
 
       {/* ── FOOTER ── */}
       <Divider char="=" />
       <div className="thermal-footer">
         <div className="thermal-thanks">Thank You! Visit Again 🙏</div>
-        <div className="thermal-footer-sub">
-          Goods once sold will not be returned
-        </div>
-        <div className="thermal-footer-sub" style={{ marginTop: 4 }}>
-          Powered by NithiX
-        </div>
+        {settings.receiptFooter && (
+          <div className="thermal-footer-sub">{settings.receiptFooter}</div>
+        )}
       </div>
     </div>
   );

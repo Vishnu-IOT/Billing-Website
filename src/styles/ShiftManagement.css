@@ -1,0 +1,257 @@
+/* ========================================================
+   Shift Management Module Stylesheet — sm- prefix
+   ======================================================== */
+
+.sm-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    width: 100%;
+    animation: sm-fadeIn 0.22s ease-out;
+}
+
+@keyframes sm-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Filter Bar ── */
+.sm-filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    flex-wrap: wrap;
+}
+
+.sm-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    min-width: 160px;
+}
+
+.sm-filter-group--range {
+    min-width: 260px;
+}
+
+.sm-date-range {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.sm-date-range .form-input {
+    min-width: 0;
+}
+
+.sm-date-sep {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.sm-filter-actions {
+    display: flex;
+    gap: var(--sp-2);
+    margin-left: auto;
+    align-self: flex-end;
+}
+
+/* ── Table Card ── */
+.sm-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.sm-table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.sm-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.sm-table th {
+    padding: 14px 16px;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    color: var(--text-secondary);
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.sm-table td {
+    padding: 14px 16px;
+    font-size: var(--fs-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.sm-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sm-table tbody tr {
+    transition: background-color var(--tr-fast);
+}
+
+.sm-table tbody tr:hover {
+    background-color: var(--bg-hover);
+}
+
+.sm-shift-id {
+    font-weight: var(--fw-semibold);
+    color: var(--primary);
+}
+
+.sm-time-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sm-time-sub {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+}
+
+.sm-diff--zero {
+    color: var(--success);
+    font-weight: var(--fw-semibold);
+}
+
+.sm-diff--pos {
+    color: var(--success);
+    font-weight: var(--fw-semibold);
+}
+
+.sm-diff--neg {
+    color: var(--danger);
+    font-weight: var(--fw-semibold);
+}
+
+.sm-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.sm-eye-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--primary);
+    cursor: pointer;
+    transition: background-color var(--tr-fast);
+}
+
+.sm-eye-btn:hover {
+    background: var(--primary-light);
+}
+
+/* ── Details Modal ── */
+.sm-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.sm-detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    font-size: var(--fs-sm);
+}
+
+.sm-detail-row span {
+    color: var(--text-muted);
+}
+
+.sm-detail-row strong {
+    color: var(--text-primary);
+    font-weight: var(--fw-semibold);
+}
+
+.sm-detail-row--notes {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sm-detail-row--notes p {
+    margin: var(--sp-1) 0 0;
+    color: var(--text-primary);
+}
+
+.sm-detail-divider {
+    height: 1px;
+    background: var(--border);
+    margin: var(--sp-1) 0;
+}
+
+/* ── Print styles ── */
+@media print {
+    .sm-no-print {
+        display: none !important;
+    }
+
+    .sm-card {
+        border: none;
+        box-shadow: none;
+    }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .sm-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sm-filter-group,
+    .sm-filter-group--range {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .sm-filter-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .sm-filter-actions .btn {
+        width: 100%;
+    }
+}

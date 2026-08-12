@@ -2,12 +2,34 @@ import axios from 'axios';
 import { BASE_URL, getAuthHeaders } from './client';
 
 /* ── Payments In ── */
-export async function fetchPaymentsInAPI() {
+export async function fetchPaymentsInAPI(
+  startDate = '',
+  endDate = ''
+) {
   try {
-    const response = await axios.get(`${BASE_URL}/payments/in`, getAuthHeaders());
+    const params = {};
+
+    if (startDate) {
+      params.startDate = startDate;
+    }
+
+    if (endDate) {
+      params.endDate = endDate;
+    }
+
+    const response = await axios.get(
+      `${BASE_URL}/payments/in`,
+      {
+        ...getAuthHeaders(),
+        params,
+      }
+    );
+
     return response.data;
+
   } catch (err) {
-    alert(err);
+    console.error('Fetch Payments In Error:', err);
+    throw err;
   }
 }
 
@@ -30,12 +52,34 @@ export async function deletePaymentInAPI(id) {
 }
 
 /* ── Payments Out ── */
-export async function fetchPaymentsOutAPI() {
+export async function fetchPaymentsOutAPI(
+  startDate = '',
+  endDate = ''
+) {
   try {
-    const response = await axios.get(`${BASE_URL}/payments/out`, getAuthHeaders());
+    const params = {};
+
+    if (startDate) {
+      params.startDate = startDate;
+    }
+
+    if (endDate) {
+      params.endDate = endDate;
+    }
+
+    const response = await axios.get(
+      `${BASE_URL}/payments/out`,
+      {
+        ...getAuthHeaders(),
+        params,
+      }
+    );
+
     return response.data;
+
   } catch (err) {
-    alert(err);
+    console.error('Fetch Payments Out Error:', err);
+    throw err;
   }
 }
 

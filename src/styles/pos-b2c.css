@@ -1400,3 +1400,1057 @@
     content: "Action" !important;
   }
 }
+
+/* ==========================================================================
+   EXACT POS INVOICE BILLING LAYOUT STYLES (MATCHING SCREENSHOT)
+   ========================================================================== */
+
+.pos-exact-layout {
+  background-color: #f1f5f9;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+/* ── Top Bar ── */
+.pos-exact-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  z-index: 10;
+}
+
+.pos-exact-topbar__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 580px;
+}
+
+.pos-exact-search-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.pos-exact-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+.pos-exact-search-input {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: #f8fafc;
+  transition: all 0.15s ease;
+}
+
+.pos-exact-search-input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.pos-exact-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.pos-exact-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.pos-exact-dropdown-item:hover {
+  background: #f1f5f9;
+}
+
+.pos-exact-dropdown-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.pos-exact-dropdown-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.pos-exact-scan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pos-exact-scan-btn:hover {
+  background: #0369a1;
+}
+
+.scan-icon-box {
+  font-size: 15px;
+}
+
+.pos-exact-topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pos-exact-inv-badge {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: #334155;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.pos-exact-date-pill {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  background: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.pos-exact-back-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pos-exact-back-btn:hover {
+  background: #e2e8f0;
+}
+
+/* ── Container Layout Grid ── */
+.pos-exact-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.pos-exact-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.pos-exact-cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 16px;
+}
+
+/* Cards Design */
+.pos-exact-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pos-exact-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pos-exact-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  padding: 14px 18px;
+}
+
+.pos-exact-card__icon {
+  font-size: 18px;
+  color: #0284c7;
+}
+
+.pos-exact-card__body {
+  padding: 0 18px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pos-exact-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pos-exact-form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pos-exact-input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pos-exact-input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.pos-exact-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #ffffff;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.pos-exact-input-icon-wrap .pos-exact-input {
+  padding-left: 34px;
+}
+
+.pos-exact-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.1);
+}
+
+.pos-exact-input--center {
+  text-align: center;
+}
+
+/* Add Item Form Grid */
+.pos-exact-add-grid {
+  display: grid;
+  grid-template-columns: 2fr 0.8fr 0.9fr 0.8fr 44px;
+  gap: 10px;
+  align-items: end;
+}
+
+.pos-exact-add-btn {
+  width: 44px;
+  height: 35px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pos-exact-add-btn:hover {
+  background: #0369a1;
+}
+
+/* Current Order Table Card */
+.pos-exact-card--order {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pos-exact-item-count-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.pos-exact-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pos-exact-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.pos-exact-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 2;
+}
+
+.pos-exact-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.pos-exact-table tr:hover {
+  background: #f8fafc;
+}
+
+.pos-exact-item-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.pos-exact-item-sub {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.pos-exact-qty-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.pos-exact-qty-btn {
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.pos-exact-qty-btn:hover {
+  color: #0f172a;
+}
+
+.pos-exact-qty-val {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.pos-exact-remove-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.pos-exact-remove-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.pos-exact-empty-cart {
+  padding: 60px 20px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.pos-exact-empty-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.pos-exact-empty-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #475569;
+}
+
+.pos-exact-empty-sub {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ── Sidebar (Right Column) ── */
+.pos-exact-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pos-exact-user-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pos-exact-user-avatar {
+  width: 44px;
+  height: 44px;
+  background: #e0f2fe;
+  color: #0284c7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.pos-exact-user-name {
+  font-weight: 800;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.pos-exact-user-shift {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #16a34a;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.pos-exact-shift-dot {
+  width: 7px;
+  height: 7px;
+  background: #16a34a;
+  border-radius: 50%;
+}
+
+.pos-exact-sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pos-exact-sidebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pos-exact-sidebar-btn--hold {
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.pos-exact-sidebar-btn--hold:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.pos-exact-sidebar-btn--void {
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  background: #ffffff;
+}
+
+.pos-exact-sidebar-btn--void:hover {
+  background: #fef2f2;
+}
+
+.pos-exact-sidebar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sidebar Totals Box */
+.pos-exact-totals-box {
+  margin-top: auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.pos-exact-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pos-exact-summary-val {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pos-exact-grand-total {
+  border-top: 2px dashed #e2e8f0;
+  padding-top: 14px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pos-exact-gt-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.pos-exact-gt-val {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0369a1;
+}
+
+.pos-exact-pay-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  margin-top: 6px;
+}
+
+.pos-exact-pay-btn:hover:not(:disabled) {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.pos-exact-pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Modals & Drawers Styles */
+.pos-exact-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+.pos-exact-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.pos-exact-modal-header {
+  padding: 20px 24px;
+  color: #ffffff;
+}
+
+.pos-exact-modal-header--green {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+.pos-exact-modal-header--red {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.pos-exact-modal-header div {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.pos-exact-modal-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.pos-exact-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pos-exact-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pos-exact-btn-primary {
+  flex: 2;
+  padding: 11px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pos-exact-btn-danger {
+  flex: 2;
+  padding: 11px;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pos-exact-btn-subtle {
+  flex: 1;
+  padding: 11px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pos-exact-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 9998;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pos-exact-drawer {
+  width: 100%;
+  max-width: 380px;
+  background: #ffffff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
+}
+
+.pos-exact-drawer-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pos-exact-drawer-header h3 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.pos-exact-drawer-header button {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.pos-exact-drawer-body {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pos-exact-held-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.pos-exact-held-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.pos-exact-held-total {
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.pos-exact-held-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 1024px) {
+  .pos-exact-container {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  
+  .pos-exact-cards-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Topbar Buttons (Shift & Held Bills) ── */
+.pos-exact-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.pos-exact-shift-btn--active {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.pos-exact-shift-btn--active:hover {
+  background: #bbf7d0;
+}
+
+.pos-exact-shift-btn--inactive {
+  background: #fef9c3;
+  color: #a16207;
+  border: 1px solid #fde047;
+}
+
+.pos-exact-shift-btn--inactive:hover {
+  background: #fef08a;
+}
+
+.pos-exact-held-btn {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.pos-exact-held-btn:hover {
+  background: #dbeafe;
+}
+
+.pos-exact-held-badge {
+  background: #ef4444;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+/* ── Loyalty Points Display ── */
+.pos-exact-loyalty-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 4px;
+}
+
+.pos-exact-loyalty-icon {
+  font-size: 18px;
+  background: #f59e0b;
+  color: #ffffff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-exact-loyalty-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.pos-exact-loyalty-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.pos-exact-loyalty-points {
+  font-size: 14px;
+  font-weight: 800;
+  color: #78350f;
+}
+
+/* ==========================================================================
+   TOPBAR BUTTONS: SHIFT & HOLD BILL
+   ========================================================================== */
+
+.pos-exact-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.pos-exact-topbar-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pos-exact-topbar-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Shift Button */
+.pos-exact-topbar-btn--shift {
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.pos-exact-topbar-btn--shift.active {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-color: #34d399;
+  color: #065f46;
+}
+
+.pos-exact-topbar-btn--shift.active:hover {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-color: #10b981;
+}
+
+/* Green active dot for shift */
+.pos-exact-topbar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.pos-exact-topbar-dot--green {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  animation: pos-dot-pulse 2s infinite;
+}
+
+@keyframes pos-dot-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.7); }
+}
+
+/* Hold Bill Button */
+.pos-exact-topbar-btn--hold {
+  border-color: #fbbf24;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  color: #92400e;
+}
+
+.pos-exact-topbar-btn--hold:hover {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: #f59e0b;
+}
+
+/* Held carts count badge */
+.pos-exact-topbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  padding: 0 5px;
+  line-height: 1;
+  margin-left: 2px;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.3);
+  animation: pos-badge-pop 0.3s ease;
+}
+
+@keyframes pos-badge-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================================================
+   LOYALTY POINTS ROW (Inside Customer Card)
+   ========================================================================== */
+
+.pos-exact-loyalty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 8px;
+  border: 1px solid #fde68a;
+}
+
+.pos-exact-loyalty-icon {
+  width: 16px;
+  height: 16px;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.pos-exact-loyalty-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  flex: 1;
+}
+
+.pos-exact-loyalty-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #78350f;
+  background: #ffffff;
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Topbar meta gap to fit new buttons */
+.pos-exact-topbar__meta {
+  gap: 10px;
+}

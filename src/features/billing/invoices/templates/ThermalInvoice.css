@@ -1,0 +1,440 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FILE: ThermalInvoice.css
+   DESCRIPTION: Styling for thermal printer receipts (58mm and 80mm)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════ BASE THERMAL STYLES ═══════════════════════ */
+.thermal-invoice {
+  font-family: 'Courier New', Courier, monospace;
+  background: white;
+  padding: 5px;
+  max-width: 400px;
+  /* margin: 20px auto; */
+}
+
+.thermal-controls {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.print-btn {
+  padding: 10px 30px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.print-btn:hover:not(:disabled) {
+  background: #1976D2;
+}
+
+.print-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════ RECEIPT CONTENT ═══════════════════════ */
+.thermal-receipt {
+  background: white;
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+.thermal-header {
+  border-bottom: 2px dashed #000;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.header-company {
+  margin-bottom: 5px;
+}
+
+.company-name {
+  font-weight: bold;
+  font-size: 14px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.receipt-header {
+  font-size: 11px;
+  margin: 5px 0 0 0;
+  text-align: center;
+  color: #555;
+}
+
+/* ═══════════════════════ INVOICE INFO ═══════════════════════ */
+.thermal-invoice-info {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.info-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+.info-line span:first-child {
+  font-weight: bold;
+}
+
+.info-line span:last-child {
+  text-align: right;
+  flex: 1;
+}
+
+/* ═══════════════════════ CUSTOMER INFO ═══════════════════════ */
+.thermal-customer {
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.thermal-customer .label {
+  font-weight: bold;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.thermal-customer .value {
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+/* ═══════════════════════ SEPARATOR ═══════════════════════ */
+.separator-line {
+  text-align: center;
+  font-size: 10px;
+  color: #999;
+  padding: 5px 0;
+  font-weight: bold;
+}
+
+/* ═══════════════════════ ITEMS TABLE ═══════════════════════ */
+
+.thermal-items {
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+/* Main table */
+.thermal-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10px;
+}
+
+/* Table header */
+.thermal-items-table thead {
+  border-bottom: 1px solid #000;
+}
+
+.thermal-items-table th {
+  font-weight: bold;
+  padding: 4px 2px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Table cells */
+.thermal-items-table td {
+  padding: 5px 2px;
+  vertical-align: top;
+  border-bottom: 1px dotted #ccc;
+}
+
+/* Column widths */
+.thermal-items-table .item-col-name {
+  width: 44%;
+  text-align: left;
+}
+
+.thermal-items-table .item-col-qty {
+  width: 14%;
+  text-align: center;
+}
+
+.thermal-items-table .item-col-rate {
+  width: 20%;
+  text-align: right;
+}
+
+.thermal-items-table .item-col-amount {
+  width: 22%;
+  text-align: right;
+}
+
+/* Item name */
+.thermal-items-table .item-name {
+  font-weight: bold;
+  font-size: 10px;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Item description */
+.thermal-items-table .item-desc {
+  font-size: 8px;
+  color: #666;
+  margin-top: 2px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* Keep numeric values aligned */
+.thermal-items-table .item-col-qty,
+.thermal-items-table .item-col-rate,
+.thermal-items-table .item-col-amount {
+  white-space: nowrap;
+}
+
+/* ═══════════════════════ TOTALS ═══════════════════════ */
+.thermal-totals {
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 3px 0;
+}
+
+.total-line.discount {
+  color: #d32f2f;
+}
+
+.total-line.tax {
+  color: #2ecc71;
+  border-top: 1px dotted #ddd;
+  padding-top: 5px;
+  margin-top: 5px;
+}
+
+.total-line.grand-total {
+  font-weight: bold;
+  font-size: 13px;
+  color: #1a1a1a;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed #000;
+}
+
+.total-line .label {
+  font-weight: bold;
+}
+
+.total-line .amount {
+  text-align: right;
+  font-weight: 600;
+  min-width: 60px;
+}
+
+/* ═══════════════════════ PAYMENT & FOOTER ═══════════════════════ */
+.thermal-payment {
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.thermal-payment .label {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.thermal-footer {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.footer-text {
+  font-size: 11px;
+  margin: 3px 0;
+  color: #333;
+}
+
+.footer-text.thank-you {
+  font-weight: bold;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* ═══════════════════════ QR CODE ═══════════════════════ */
+.thermal-qr {
+  text-align: center;
+  /* margin-top: 10px; */
+  padding: 10px 0px;
+  border-bottom: 1px dashed #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-image {
+  width: 80px;
+  height: 80px;
+  display: inline-block;
+}
+
+/* ═══════════════════════ 58MM THERMAL PRINTER ═══════════════════════ */
+
+.thermal-58mm {
+  width: 58mm;
+  max-width: 220px;
+}
+
+.thermal-58mm .thermal-receipt {
+  padding: 5px;
+  font-size: 11px;
+}
+
+.thermal-58mm .company-name {
+  font-size: 13px;
+}
+
+.thermal-58mm .thermal-items-table {
+  font-size: 9px;
+}
+
+.thermal-58mm .thermal-items-table th {
+  font-size: 9px;
+  padding: 3px 1px;
+}
+
+.thermal-58mm .thermal-items-table td {
+  padding: 4px 1px;
+}
+
+.thermal-58mm .thermal-items-table .item-col-name {
+  width: 42%;
+}
+
+.thermal-58mm .thermal-items-table .item-col-qty {
+  width: 14%;
+}
+
+.thermal-58mm .thermal-items-table .item-col-rate {
+  width: 21%;
+}
+
+.thermal-58mm .thermal-items-table .item-col-amount {
+  width: 23%;
+}
+
+.thermal-58mm .thermal-items-table .item-name {
+  font-size: 9px;
+}
+
+.thermal-58mm .thermal-items-table .item-desc {
+  font-size: 7px;
+}
+
+/* ═══════════════════════ 80MM THERMAL PRINTER ═══════════════════════ */
+
+.thermal-80mm {
+  width: 80mm;
+  max-width: 300px;
+}
+
+.thermal-80mm .thermal-receipt {
+  padding: 8px;
+  font-size: 12px;
+}
+
+.thermal-80mm .company-name {
+  font-size: 14px;
+}
+
+.thermal-80mm .thermal-items-table {
+  font-size: 10px;
+}
+
+.thermal-80mm .thermal-items-table th {
+  font-size: 10px;
+  padding: 4px 2px;
+}
+
+.thermal-80mm .thermal-items-table td {
+  padding: 5px 2px;
+}
+
+.thermal-80mm .thermal-items-table .item-name {
+  font-size: 11px;
+}
+
+.thermal-80mm .thermal-items-table .item-desc {
+  font-size: 8px;
+}
+
+/* ═══════════════════════ RESPONSIVE ═══════════════════════ */
+@media (max-width: 400px) {
+  .thermal-invoice {
+    max-width: 100%;
+    padding: 10px;
+  }
+}
+
+/* ═══════════════════════ PRINT STYLES ═══════════════════════ */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .thermal-invoice {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .thermal-controls {
+    display: none !important;
+  }
+
+  .thermal-receipt {
+    box-shadow: none;
+    margin: 0;
+  }
+
+  /* 58mm Paper Width */
+  @media print and (orientation: portrait) {
+    .thermal-58mm {
+      width: 58mm;
+      margin: 0;
+    }
+
+    .thermal-receipt {
+      padding: 2mm;
+    }
+  }
+
+  /* 80mm Paper Width */
+  @media print and (orientation: landscape) {
+    .thermal-80mm {
+      width: 80mm;
+      margin: 0;
+    }
+  }
+}

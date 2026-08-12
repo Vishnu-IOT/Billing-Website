@@ -7,13 +7,53 @@ import {
   fetchHoldCartsAPI,
   resumeHoldCartAPI,
   cancelHoldCartAPI,
+  fetchShiftDetailsAPI,
 } from '../api/pos';
+import { todayISO } from '../utils/date';
 
 const usePosStore = create((set, get) => ({
   activeShift: null,
   holdCarts: [],
   loadingShift: false,
   loadingHold: false,
+
+  // Shift Management (history/report)
+  shiftList: [],
+  shiftListCount: 0,
+  loadingShiftList: false,
+  shiftFilters: {
+    userId: '',
+    fromDate: todayISO(),
+    toDate: todayISO(),
+    status: '',
+  },
+
+  setShiftFilters: (filters) => {
+    set((state) => ({ shiftFilters: { ...state.shiftFilters, ...filters } }));
+  },
+
+  loadShiftDetails: async (overrideFilters) => {
+    const filters = { ...get().shiftFilters, ...(overrideFilters || {}) };
+    set({ loadingShiftList: true, shiftFilters: filters });
+    try {
+      const params = {};
+      if (filters.userId) params.userId = filters.userId;
+      if (filters.fromDate) params.fromDate = filters.fromDate;
+      if (filters.toDate) params.toDate = filters.toDate;
+      if (filters.status) params.status = filters.status;
+
+      const res = await fetchShiftDetailsAPI(params);
+      set({
+        shiftList: res?.data || [],
+        shiftListCount: res?.count || 0,
+        loadingShiftList: false,
+      });
+      return res;
+    } catch (err) {
+      set({ loadingShiftList: false, shiftList: [], shiftListCount: 0 });
+      throw err;
+    }
+  },
 
   // Shift Management
   checkCurrentShift: async (userId) => {

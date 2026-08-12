@@ -44,12 +44,33 @@ export default function PaymentOut() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+  });
+
+  const [applied, setApplied] = useState({
+    startDate: '',
+    endDate: '',
+  });
+
   const debouncedSearch = useDebounce(partySearch, 250);
 
   useEffect(() => {
-    if (typeof loadBills === 'function') loadBills();
-    loadPaymentsOut();
-  }, [loadBills, loadPaymentsOut]);
+    if (typeof loadBills === 'function') {
+      loadBills();
+    }
+
+    loadPaymentsOut(
+      applied.startDate,
+      applied.endDate
+    );
+  }, [
+    loadBills,
+    loadPaymentsOut,
+    applied.startDate,
+    applied.endDate,
+  ]);
 
   // Bills not yet paid, filtered by selected party
   const selectedPartyBills = useMemo(() => {
@@ -278,37 +299,127 @@ export default function PaymentOut() {
       </div>
 
       {/* Filters */}
+      {/* Filters */}
       <div className="filter-bar">
+
+        {/* Start Date */}
+        <div className="filter-group">
+          <label className="filter-label">Start Date</label>
+
+          <input
+            type="date"
+            className="form-input"
+            value={filters.startDate}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                startDate: e.target.value,
+              }))
+            }
+          />
+        </div>
+
+        {/* End Date */}
+        <div className="filter-group">
+          <label className="filter-label">End Date</label>
+
+          <input
+            type="date"
+            className="form-input"
+            min={filters.startDate || undefined}
+            value={filters.endDate}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                endDate: e.target.value,
+              }))
+            }
+          />
+        </div>
+
+        {/* Search */}
         <div className="filter-group">
           <label className="filter-label">Search</label>
+
           <div className="search-bar">
             <span className="search-bar__icon">🔍</span>
+
             <input
               placeholder="Search vendor or bill no…"
               value={partySearch}
-              onChange={(e) => { setPartySearch(e.target.value); goToPage(1); }}
+              onChange={(e) => {
+                setPartySearch(e.target.value);
+                goToPage(1);
+              }}
             />
           </div>
         </div>
+
+        {/* Status */}
         <div className="filter-group">
           <label className="filter-label">Status</label>
+
           <div className="toggle-group">
-            {[{ val: '', label: 'All' }, { val: 'paid', label: 'Paid' }].map((s) => (
+            {[
+              { val: '', label: 'All' },
+              { val: 'paid', label: 'Paid' },
+            ].map((s) => (
               <button
+                type="button"
                 key={s.val}
-                className={`toggle-btn ${statusFilter === s.val ? 'active' : ''}`}
-                onClick={() => { setStatusFilter(s.val); goToPage(1); }}
+                className={`toggle-btn ${statusFilter === s.val ? 'active' : ''
+                  }`}
+                onClick={() => {
+                  setStatusFilter(s.val);
+                  goToPage(1);
+                }}
               >
                 {s.label}
               </button>
             ))}
           </div>
         </div>
-        {(partySearch || statusFilter) && (
-          <div className="filter-actions">
-            <Button variant="secondary" size="sm" onClick={() => { setPartySearch(''); setStatusFilter(''); }}>Clear</Button>
-          </div>
-        )}
+
+        {/* Apply / Clear */}
+        <div className="filter-actions">
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setApplied({
+                startDate: filters.startDate,
+                endDate: filters.endDate,
+              });
+
+              goToPage(1);
+            }}
+          >
+            Apply
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const emptyDates = {
+                startDate: '',
+                endDate: '',
+              };
+
+              setFilters(emptyDates);
+              setApplied(emptyDates);
+              setPartySearch('');
+              setStatusFilter('');
+
+              goToPage(1);
+            }}
+          >
+            Clear
+          </Button>
+
+        </div>
+
       </div>
 
       {/* Payments Table */}

@@ -13,6 +13,20 @@ export async function fetchCurrentShiftAPI(userId) {
   }
 }
 
+// Fetch shift history/details with optional filters (userId, fromDate, toDate, status)
+export async function fetchShiftDetailsAPI(params = {}) {
+  try {
+    const response = await axios.get(`${BASE_URL}/pos/shifts/all-shifts`, {
+      params,
+      ...getAuthHeaders(),
+    });
+    return response.data;
+  } catch (err) {
+    console.error('fetchShiftDetailsAPI error:', err);
+    throw err.response?.data?.message || err.message;
+  }
+}
+
 export async function startShiftAPI(payload) {
   try {
     const response = await axios.post(

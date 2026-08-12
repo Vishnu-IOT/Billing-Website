@@ -50,8 +50,9 @@ const useSalesStore = create((set, get) => ({
   },
 
   addBill: async (payload) => {
-    await addSaleBillAPI(payload);
+    const created = await addSaleBillAPI(payload);   // ← capture the response
     await get().loadBills();
+    return created;                                   // ← return it
   },
 
   updateBill: async (id, payload) => {

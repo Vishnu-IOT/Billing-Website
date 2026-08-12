@@ -113,7 +113,19 @@ export default function SaleBills({ searchParams }) {
       <SaleBillForm
         billingType={billingType}
         onBack={() => setView('list')}
-        onSaved={() => {
+        onSaved={(createdRecord) => {
+          console.log(createdRecord)
+          if (billingType === 'B2B' && createdRecord?.id) {
+            const fullBill = useSalesStore
+              .getState()
+              .saleBills.find((b) => String(b.id) === String(createdRecord.id));
+
+            if (fullBill) {
+              setPreviewBill(fullBill);
+              setView('preview');
+              return;
+            }
+          }
           setView('list');
           loadBills();
         }}
@@ -270,7 +282,7 @@ export default function SaleBills({ searchParams }) {
                     </td>
                     <td>{formatDate(bill.saleDate)}</td>
                     <td style={{ fontWeight: 500 }}>
-                      {bill.Party?.name || bill.Customer?.name || '-'}
+                      {bill.Party?.name ? bill.Party?.name : bill.Customer?.name || '-'}
                     </td>
                     <td>
                       <span className="badge badge--sale">
@@ -295,6 +307,7 @@ export default function SaleBills({ searchParams }) {
                             label: 'Preview',
                             icon: '👁',
                             onClick: () => {
+                              console.log(bill);
                               setPreviewBill(bill);
                               setView('preview');
                             },
