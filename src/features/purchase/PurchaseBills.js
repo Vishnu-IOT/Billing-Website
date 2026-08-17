@@ -223,14 +223,14 @@ export default function PurchaseBills() {
                           </Button>
                         }
                         items={[
-                          {
-                            label: 'Preview',
-                            icon: '👁',
-                            onClick: () => {
-                              setPreviewBill(bill);
-                              setView('preview');
-                            },
-                          },
+                          // {
+                          //   label: 'Preview',
+                          //   icon: '👁',
+                          //   onClick: () => {
+                          //     setPreviewBill(bill);
+                          //     setView('preview');
+                          //   },
+                          // },
                           {
                             label: 'Edit',
                             icon: '✏️',
@@ -238,14 +238,14 @@ export default function PurchaseBills() {
                               window.location.hash = `purchase/edit/${bill.id || bill._id}`;
                             },
                           },
-                          {
-                            label: 'Print',
-                            icon: '🖨️',
-                            onClick: () => {
-                              setPreviewBill(bill);
-                              setView('preview');
-                            },
-                          },
+                          // {
+                          //   label: 'Print',
+                          //   icon: '🖨️',
+                          //   onClick: () => {
+                          //     setPreviewBill(bill);
+                          //     setView('preview');
+                          //   },
+                          // },
                           {
                             label: 'Delete',
                             icon: '🗑',

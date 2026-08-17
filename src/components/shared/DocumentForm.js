@@ -297,7 +297,12 @@ export default function DocumentForm({
           toast.success(`${config.label} saved ✓`);
         }
       }
-      onSaved?.(createdRecord.data);
+      if (documentType === 'SALE_INVOICE') {
+        onSaved?.(createdRecord.data);
+      }
+      else {
+        onSaved?.();
+      }
     } catch (err) {
       console.error(err);
       toast.error(`Failed to save ${config.label.toLowerCase()}`);
@@ -485,6 +490,7 @@ export default function DocumentForm({
                       <input
                         type="date"
                         className="form-input"
+                        min={new Date().toISOString().split("T")[0]}
                         value={customerForm.validUntil}
                         onChange={(e) =>
                           setCustomerForm((p) => ({ ...p, validUntil: e.target.value }))

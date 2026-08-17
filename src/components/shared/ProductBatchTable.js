@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import { Button, Badge, Modal, ConfirmModal } from '../ui';
 import { useToast } from '../../hooks/useToast';
+import { formatDateInput } from '../../utils/date';
 
 function getExpiryStatus(expiryDate) {
   if (!expiryDate) return null;
@@ -58,13 +59,23 @@ export default function ProductBatchTable({ productId, productName }) {
     if (!form.quantity || Number(form.quantity) <= 0) {
       errors.quantity = 'Quantity must be greater than 0';
     }
-    if (!form.expiryDate) {
-      errors.expiryDate = 'Expiry date is required';
-    } else if (form.expiryDate < new Date().toISOString().split('T')[0]) {
-      errors.expiryDate = 'Expiry date cannot be in the past';
-    }
+
+    const today = new Date().toISOString().split("T")[0];
+
     if (!form.mfgDate) {
-      errors.mfgDate = 'Manufacture date is required';
+      errors.mfgDate = "Mfg Date is required";
+    } else if (form.mfgDate > today) {
+      errors.mfgDate = "Mfg Date cannot be a future date";
+    }
+
+    if (!form.expiryDate) {
+      errors.expiryDate = "Expiry Date is required";
+    } else if (form.expiryDate < today) {
+      errors.expiryDate = "Expiry Date cannot be a past date";
+    }
+
+    if (form.mfgDate && form.expiryDate && form.expiryDate < form.mfgDate) {
+      errors.expiryDate = "Expiry Date must be after Mfg Date";
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -135,6 +146,7 @@ export default function ProductBatchTable({ productId, productName }) {
             <label className="form-label">Batch No *</label>
             <input
               className="form-input"
+              placeholder='Batch Number'
               value={form.batchNumber}
               onChange={(e) => setForm((f) => ({ ...f, batchNumber: e.target.value }))}
             />
@@ -143,9 +155,10 @@ export default function ProductBatchTable({ productId, productName }) {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Quantity</label>
+            <label className="form-label">Quantity *</label>
             <input
               type="number"
+              placeholder='Enter Qty'
               className="form-input"
               value={form.quantity}
               onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
@@ -155,10 +168,11 @@ export default function ProductBatchTable({ productId, productName }) {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Mfg Date</label>
+            <label className="form-label">Mfg Date *</label>
             <input
               type="date"
               className="form-input"
+              max={new Date().toISOString().split("T")[0]}
               value={form.mfgDate}
               onChange={(e) => setForm((f) => ({ ...f, mfgDate: e.target.value }))}
             />
@@ -167,9 +181,10 @@ export default function ProductBatchTable({ productId, productName }) {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Expiry Date</label>
+            <label className="form-label">Expiry Date *</label>
             <input
               type="date"
+              min={new Date().toISOString().split("T")[0]}
               className="form-input"
               value={form.expiryDate}
               onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))}
@@ -217,8 +232,8 @@ export default function ProductBatchTable({ productId, productName }) {
           No batch records. Add batches to track expiry.
         </div>
       ) : (
-        <div className="table-wrapper">
-          <table>
+        <div className="table-wrapper batch-table-wrapper">
+          <table className="batch-table">
             <thead>
               <tr>
                 <th>Batch No</th>
@@ -236,8 +251,8 @@ export default function ProductBatchTable({ productId, productName }) {
                   <tr key={b.id || b._id}>
                     <td style={{ fontWeight: 600 }}>{b.batchNo || b.batchNumber}</td>
                     <td>{b.quantity ?? '—'}</td>
-                    <td>{b.mfgDate || '—'}</td>
-                    <td>{b.expiryDate || '—'}</td>
+                    <td>{formatDateInput(b.mfgDate) || '—'}</td>
+                    <td>{formatDateInput(b.expiryDate) || '—'}</td>
                     <td>
                       {expiryStatus ? (
                         <Badge variant={expiryStatus.variant}>{expiryStatus.label}</Badge>

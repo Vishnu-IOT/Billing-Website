@@ -289,7 +289,7 @@ export default function Parties() {
           </div>
           <div className="form-grid-2">
             <div className="form-group">
-              <label className="form-label">Phone</label>
+              <label className="form-label">Phone *</label>
               <input
                 className="form-input"
                 type="tel"
@@ -303,7 +303,7 @@ export default function Parties() {
               )}
             </div>
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label">Email *</label>
               <input
                 className="form-input"
                 type="email"
@@ -317,7 +317,7 @@ export default function Parties() {
               )}
             </div>
             <div className="form-group">
-              <label className="form-label">GSTIN</label>
+              <label className="form-label">GSTIN *</label>
               <input
                 className="form-input"
                 value={form.GST}
@@ -331,7 +331,7 @@ export default function Parties() {
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Address</label>
+            <label className="form-label">Address *</label>
             <textarea
               className="form-textarea"
               value={form.address}

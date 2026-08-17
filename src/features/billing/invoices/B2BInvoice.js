@@ -238,10 +238,11 @@ export default function B2BInvoice({ bill, companies, party, items, invoiceLabel
         <tbody>
           {items.map((item, idx) => {
             console.log(item);
+            console.log(item.discountPercentage);
             const qty = item.quantity || 1;
             const price = parseFloat(item.price) || 0;
-            const disc = item.discountPercentage || 0;
-            const discAmt = item.discountAmount || 0;
+            const disc = parseFloat(item.discountPercentage) || 0;
+            const discAmt = parseFloat(item.discountAmount) || 0;
             const taxRate = item.taxPercentage || 0;
             const taxAmt = item.taxAmount || 0;
             const amount = parseFloat(item.netRate ?? item.afterDiscount ?? (price * qty - (price * qty * disc) / 100)) || 0;
@@ -257,7 +258,7 @@ export default function B2BInvoice({ bill, companies, party, items, invoiceLabel
                 <td style={{ ...td, textAlign: 'right' }}>{qty.toFixed(2)}</td>
                 <td style={{ ...td, textAlign: 'center' }}>{item.unit || 'Pcs'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{price.toFixed(2)}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{disc > 0 ? `${disc.toFixed(2)} (%)` : '0.00'}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{disc > 0 ? `${disc.toFixed(2)} %` : '0.00'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{discAmt > 0 ? `${discAmt.toFixed(2)}` : '0.00'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{isComposition ? '0.00' : `${taxRate}%`}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{isComposition ? '0.00' : taxAmt}</td>

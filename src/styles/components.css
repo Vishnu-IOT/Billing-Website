@@ -991,6 +991,102 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 300px;
 }
 
+/* ═══════════════════════════════════════════
+   PRODUCT BATCH TABLE — scoped styling
+   Only affects ProductBatchTable.js
+   ═══════════════════════════════════════════ */
+
+.batch-table-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.batch-table thead {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.batch-table th {
+  padding: 11px var(--sp-4);
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.batch-table td {
+  padding: 13px var(--sp-4);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.batch-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.batch-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.batch-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* Batch Number column — make it stand out since it's the primary identifier */
+.batch-table td:first-child {
+  font-weight: var(--fw-bold);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+}
+
+/* Quantity column — right-align numbers for readability */
+.batch-table td:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date columns */
+.batch-table td:nth-child(3),
+.batch-table td:nth-child(4) {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+/* Status badge column */
+.batch-table td:nth-child(5) {
+  text-align: left;
+}
+
+/* Action column (Delete button) */
+.batch-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Responsive: stack on very small screens */
+@media (max-width: 640px) {
+
+  .batch-table th,
+  .batch-table td {
+    padding: 8px var(--sp-3);
+    font-size: var(--fs-xs);
+  }
+}
+
 /* ── Responsive ── */
 @media (max-width: 767px) {
   .table-desktop-only {

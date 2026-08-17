@@ -124,9 +124,14 @@ export default function Products() {
       errors.name = 'Product name is required';
     }
     // HSN Code
+    const hsnLength = form.HSNCode.length;
     if (!form.HSNCode) {
       errors.HSNCode = 'HSN Code is required';
     }
+    else if (hsnLength !== 2 && hsnLength !== 4 && hsnLength !== 6 && hsnLength !== 8) {
+      errors.HSNCode = 'HSN Code must contain 2, 4, 6, or 8 digits';
+    }
+
     if (!form.barcode) {
       errors.barcode = 'Barcode is required';
     }
@@ -442,11 +447,22 @@ export default function Products() {
             <label className="form-label">HSN Code *</label>
             <input
               className="form-input"
+              type="text"
+              inputMode="numeric"
+              maxLength={8}
               placeholder="Enter HSN Code"
               value={form.HSNCode}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, HSNCode: e.target.value }))
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                // Allow only numbers and max 8 digits
+                if (/^\d{0,8}$/.test(value)) {
+                  setForm((f) => ({
+                    ...f,
+                    HSNCode: value,
+                  }));
+                }
+              }}
             />
             {formErrors.HSNCode && (
               <span className="um-error-text">{formErrors.HSNCode}</span>
@@ -639,6 +655,7 @@ export default function Products() {
             <input
               type="date"
               className="form-input"
+              min={new Date().toISOString().split("T")[0]}
               value={form.expiryDate}
               onChange={(e) =>
                 setForm((f) => ({ ...f, expiryDate: e.target.value }))

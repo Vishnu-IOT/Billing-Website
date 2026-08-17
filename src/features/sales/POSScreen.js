@@ -956,7 +956,7 @@ export default function POSScreen({
               </div>
               <div className="pos-exact-card__body">
                 <div className="pos-exact-form-group">
-                  <label>Phone Number</label>
+                  <label>Phone Number *</label>
                   <div className="pos-exact-input-icon-wrap">
                     <span className="pos-exact-input-icon">📞</span>
                     <input
@@ -970,7 +970,7 @@ export default function POSScreen({
                   </div>
                 </div>
                 <div className="pos-exact-form-group">
-                  <label>Customer Name (Optional)</label>
+                  <label>Customer Name *</label>
                   <input
                     type="text"
                     className="pos-exact-input"
