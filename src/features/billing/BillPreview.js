@@ -25,7 +25,7 @@ import B2BInvoiceTemplate from './invoices/templates/B2BInvoiceTemplate';
 import { adaptBillToInvoice, fetchCompanyForInvoice } from './invoices/templates/adaptBillData';
 import './invoices/templates/CustomizableInvoice.css';
 import './invoices/templates/B2BInvoiceTemplate.css';
-import ThermalInvoice from './invoices/templates/ThermalInvoice';
+import ThermalInvoice from './invoices/ThermalInvoice';
 
 export default function BillPreview({ bill, billType = 'SALE', onBack }) {
   const companies = useAppStore((s) => s.companies);

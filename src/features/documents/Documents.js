@@ -19,6 +19,8 @@ import { formatDate } from '../../utils/date';
 import { DOCUMENT_TYPES, SALES_DOCUMENT_TYPES, PURCHASE_DOCUMENT_TYPES } from '../../utils/documents';
 import DocumentForm from '../../components/shared/DocumentForm';
 import '../../styles/bills.css';
+import useAppStore from '../../store/appStore';
+import DocumentPreview from '../../components/shared/DocumentPreview';
 
 const TAB_TYPES = [...SALES_DOCUMENT_TYPES, ...PURCHASE_DOCUMENT_TYPES];
 
@@ -26,6 +28,7 @@ export default function Documents({ searchParams }) {
   const { loadDocuments, getDocuments, deleteDocument, convertToInvoice } = useDocumentStore();
   const toast = useToast();
   const setHideSidebar = useUIStore((s) => s.setHideSidebar);
+  const companies = useAppStore((s) => s.companies);
 
   const initialType = searchParams?.get('type') || 'QUOTATION';
   const [activeType, setActiveType] = useState(
@@ -35,6 +38,8 @@ export default function Documents({ searchParams }) {
   const [editId, setEditId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [search, setSearch] = useState('');
+
+  const [activeDoc, setActiveDoc] = useState(null);
 
   const config = DOCUMENT_TYPES[activeType];
   const documents = getDocuments(activeType);
@@ -109,6 +114,20 @@ export default function Documents({ searchParams }) {
         }}
         onConvert={() => {
           window.location.hash = 'sales';
+        }}
+      />
+    );
+  }
+
+  if (view === 'preview' && activeDoc) {
+    return (
+      <DocumentPreview
+        doc={activeDoc}
+        documentType={activeType}
+        companies={companies}
+        onBack={() => {
+          setView('list');
+          setActiveDoc(null);
         }}
       />
     );
@@ -220,22 +239,30 @@ export default function Documents({ searchParams }) {
                                 setView('edit');
                               },
                             },
+                            {
+                              label: 'Preview / Print',
+                              icon: '🖨️',
+                              onClick: () => {
+                                setActiveDoc(doc);
+                                setView('preview');
+                              },
+                            },
                             ...(config.convertible && doc.status !== 'converted'
                               ? [
-                                  {
-                                    label: 'Convert to Invoice',
-                                    icon: '📄',
-                                    onClick: async () => {
-                                      try {
-                                        await convertToInvoice(doc.id || doc._id, activeType);
-                                        toast.success('Converted to Sale Invoice');
-                                        loadDocuments(activeType);
-                                      } catch (err) {
-                                        toast.error('Conversion failed');
-                                      }
-                                    },
+                                {
+                                  label: 'Convert to Invoice',
+                                  icon: '📄',
+                                  onClick: async () => {
+                                    try {
+                                      await convertToInvoice(doc.id || doc._id, activeType);
+                                      toast.success('Converted to Sale Invoice');
+                                      loadDocuments(activeType);
+                                    } catch (err) {
+                                      toast.error('Conversion failed');
+                                    }
                                   },
-                                ]
+                                },
+                              ]
                               : []),
                             {
                               label: 'Delete',
