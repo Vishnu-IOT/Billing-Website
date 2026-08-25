@@ -70,10 +70,28 @@ export default function PurchaseBills() {
   async function applyFilter() {
     await loadBills(filter, dateRange);
   }
+  function getCurrentMonthRange() {
+    const today = new Date();
+
+    const format = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      startDate: format(new Date(today.getFullYear(), today.getMonth(), 1)),
+      endDate: format(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+    };
+  }
+
   async function clearFilter() {
+    const range = getCurrentMonthRange();
     setFilter('thisMonth');
-    setDateRange({ startDate: '', endDate: '' });
-    await loadBills('thisMonth', { startDate: '', endDate: '' });
+    setDateRange(range);
+    await loadBills('thisMonth', range);
   }
 
   async function handleDelete() {

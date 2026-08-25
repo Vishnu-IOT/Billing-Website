@@ -396,7 +396,7 @@ export default function DocumentForm({
             </h1>
           </div>
         </div>
-        {documentType === 'SALE_INVOICE' && (
+        {/* {documentType === 'SALE_INVOICE' && (
           <div className="page-header__actions">
             <div className="bill-type-toggle">
               <button className={`bill-type-btn ${billingType === 'B2B' ? 'active' : ''}`} type="button">
@@ -407,7 +407,7 @@ export default function DocumentForm({
               </button>
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       <div className="invoice-layout">

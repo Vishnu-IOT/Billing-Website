@@ -9,10 +9,28 @@ import {
   updatePurchaseBillAPI,
 } from '../api';
 
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getCurrentMonthRange = () => {
+  const today = new Date();
+
+  return {
+    startDate: formatDate(new Date(today.getFullYear(), today.getMonth(), 1)),
+    endDate: formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+  };
+};
+
 const usePurchaseStore = create((set, get) => ({
   purchaseBills: [],
   filter: 'thisMonth',
-  dateRange: { startDate: '', endDate: '' },
+  // dateRange: { startDate: '', endDate: '' },
+  dateRange: getCurrentMonthRange(),
   loading: false,
   error: null,
 

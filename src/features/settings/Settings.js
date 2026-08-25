@@ -151,7 +151,7 @@ export default function Settings() {
           </button>
           <button
             type="button"
-            onClick={() => (window.location.hash = 'users')}
+            onClick={() => (window.location.hash = 'user-management')}
             style={{
               display: 'flex',
               alignItems: 'center',
