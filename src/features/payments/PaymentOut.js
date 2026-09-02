@@ -171,7 +171,7 @@ export default function PaymentOut() {
           <div className="form-grid-2">
             {/* Party */}
             <div className="form-group">
-              <label className="form-label">Vendor / Party *</label>
+              <label className="form-label">Vendor / Party <span style={{ color: "red" }}>*</span></label>
               <select
                 className="form-input"
                 value={form.partyId}
@@ -186,7 +186,7 @@ export default function PaymentOut() {
 
             {/* Bill */}
             <div className="form-group">
-              <label className="form-label">Bill Number *</label>
+              <label className="form-label">Bill Number <span style={{ color: "red" }}>*</span></label>
               <select
                 className="form-input"
                 value={form.billId}
@@ -203,7 +203,7 @@ export default function PaymentOut() {
 
             {/* Payment Number */}
             <div className="form-group">
-              <label className="form-label">Payment Number *</label>
+              <label className="form-label">Payment Number <span style={{ color: "red" }}>*</span></label>
               <input
                 className="form-input"
                 value={form.paymentNumber}
@@ -214,7 +214,7 @@ export default function PaymentOut() {
 
             {/* Payment Type */}
             <div className="form-group">
-              <label className="form-label">Payment Type *</label>
+              <label className="form-label">Payment Type <span style={{ color: "red" }}>*</span></label>
               <select
                 className="form-input"
                 value={form.paymentType}
@@ -246,7 +246,7 @@ export default function PaymentOut() {
             {/* Amount */}
             <div className="form-group">
               <label className="form-label">
-                Payment Amount (₹) *
+                Payment Amount (₹) <span style={{ color: "red" }}>*</span>
                 {form.paymentMode === 'partial' && (
                   <span style={{ marginLeft: 6, fontSize: 'var(--fs-xs)', color: 'var(--warning)', fontWeight: 600 }}>
                     (Partial)

@@ -1,15 +1,15 @@
 /* ===== PRODUCT TABLE (Adjust Items) ===== */
-import React, { useState, useMemo } from 'react';
-import useAppStore from '../../store/appStore';
-import useInventoryStore from '../../store/inventoryStore';
-import { Button, ToastContainer, Pagination, Modal } from '../../components/ui';
-import { useToast } from '../../hooks/useToast';
-import { useDebounce } from '../../hooks/useDebounce';
-import { usePagination } from '../../hooks/usePagination';
-import ProductBatchTable from '../../components/shared/ProductBatchTable';
-import BarcodeLabelPrint from '../../components/shared/BarcodeLabelPrint';
-import { FiPrinter, FiLayers } from 'react-icons/fi';
-import { updateProductsBulkAPI } from '../../api';
+import React, { useState, useMemo } from "react";
+import useAppStore from "../../store/appStore";
+import useInventoryStore from "../../store/inventoryStore";
+import { Button, ToastContainer, Pagination, Modal } from "../../components/ui";
+import { useToast } from "../../hooks/useToast";
+import { useDebounce } from "../../hooks/useDebounce";
+import { usePagination } from "../../hooks/usePagination";
+import ProductBatchTable from "../../components/shared/ProductBatchTable";
+import BarcodeLabelPrint from "../../components/shared/BarcodeLabelPrint";
+import { FiPrinter, FiLayers } from "react-icons/fi";
+import { updateProductsBulkAPI } from "../../api";
 
 export default function ProductTable() {
   const { products, refreshProducts } = useAppStore();
@@ -18,7 +18,7 @@ export default function ProductTable() {
 
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState({}); // { id: { field: value } }
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [batchProduct, setBatchProduct] = useState(null);
   const [barcodeProduct, setBarcodeProduct] = useState(null);
 
@@ -29,16 +29,14 @@ export default function ProductTable() {
     return (products || []).filter(
       (p) =>
         !q ||
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.HSNCode || '').toLowerCase().includes(q) ||
-        (p.barcode || p.SKU || '').toLowerCase().includes(q)
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.HSNCode || "").toLowerCase().includes(q) ||
+        (p.barcode || p.SKU || "").toLowerCase().includes(q),
     );
   }, [products, debouncedSearch]);
 
-  const { page, totalPages, paginated, from, to, total, goToPage } = usePagination(
-    filteredProducts,
-    10
-  );
+  const { page, totalPages, paginated, from, to, total, goToPage } =
+    usePagination(filteredProducts, 10);
 
   function handleEdit(id, field, value) {
     setEdits((prev) => ({
@@ -50,7 +48,7 @@ export default function ProductTable() {
   async function handleSave() {
     const keys = Object.keys(edits);
     if (keys.length === 0) {
-      toast.warning('No changes to save');
+      toast.warning("No changes to save");
       return;
     }
 
@@ -58,18 +56,20 @@ export default function ProductTable() {
     try {
       const payload = keys.map((id) => ({ id, ...edits[id] }));
       await updateProductsBulkAPI(payload);
-      toast.success('Inventory updated successfully');
+      toast.success("Inventory updated successfully");
       setEdits({});
       await refreshProducts();
     } catch {
-      toast.error('Failed to update inventory');
+      toast.error("Failed to update inventory");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}
+    >
       <ToastContainer toasts={toast.toasts} />
 
       {/* Batch & Expiry Modal */}
@@ -104,9 +104,14 @@ export default function ProductTable() {
       <div className="page-header">
         <div className="page-header__left">
           <h1>Adjust Items & Batches</h1>
-          <p className="page-header__sub">Bulk edit pricing, stock levels, batches, and barcode labels</p>
+          <p className="page-header__sub">
+            Bulk edit pricing, stock levels, batches, and barcode labels
+          </p>
         </div>
-        <div className="page-header__actions" style={{ display: 'flex', gap: 8 }}>
+        <div
+          className="page-header__actions"
+          style={{ display: "flex", gap: 8 }}
+        >
           <Button variant="secondary" onClick={() => setEdits({})}>
             Discard Changes
           </Button>
@@ -145,84 +150,132 @@ export default function ProductTable() {
               </tr>
             </thead>
             <tbody>
-              {paginated.map((p, i) => {
-                const id = String(p.id || p._id);
-                const e = edits[id] || {};
-                const hasEdits = Object.keys(e).length > 0;
+              {paginated.length > 0 ? (
+                paginated.map((p, i) => {
+                  const id = String(p.id || p._id);
+                  const e = edits[id] || {};
+                  const hasEdits = Object.keys(e).length > 0;
 
-                return (
-                  <tr
-                    key={id}
+                  return (
+                    <tr
+                      key={id}
+                      style={{
+                        background: hasEdits
+                          ? "var(--warning-light)"
+                          : undefined,
+                      }}
+                    >
+                      <td
+                        style={{
+                          color: "var(--text-muted)",
+                          fontSize: "var(--fs-xs)",
+                        }}
+                      >
+                        {from + i}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td>
+                        <input
+                          className="form-input"
+                          style={{ height: 32, minWidth: 100 }}
+                          value={e.HSNCode ?? p.HSNCode ?? ""}
+                          onChange={(ev) =>
+                            handleEdit(id, "HSNCode", ev.target.value)
+                          }
+                          readOnly
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="form-input"
+                          style={{
+                            height: 32,
+                            minWidth: 90,
+                            textAlign: "right",
+                          }}
+                          type="number"
+                          value={e.MRP ?? p.MRP ?? ""}
+                          onChange={(ev) =>
+                            handleEdit(id, "MRP", ev.target.value)
+                          }
+                          readOnly
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="form-input"
+                          style={{
+                            height: 32,
+                            minWidth: 90,
+                            textAlign: "right",
+                          }}
+                          type="number"
+                          value={e.salesPrice ?? p.salesPrice ?? ""}
+                          onChange={(ev) =>
+                            handleEdit(id, "salesPrice", ev.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="form-input"
+                          style={{
+                            height: 32,
+                            minWidth: 80,
+                            textAlign: "right",
+                          }}
+                          type="number"
+                          value={e.stockQuantity ?? p.stockQuantity ?? ""}
+                          onChange={(ev) =>
+                            handleEdit(id, "stockQuantity", ev.target.value)
+                          }
+                        />
+                      </td>
+                      <td className="text-center">
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={<FiLayers />}
+                            onClick={() => setBatchProduct(p)}
+                            title="Batches & Expiry"
+                          >
+                            Batches
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={<FiPrinter />}
+                            onClick={() => setBarcodeProduct(p)}
+                            title="Print Barcode Labels"
+                          >
+                            Barcode
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td
+                    colSpan="7"
                     style={{
-                      background: hasEdits ? 'var(--warning-light)' : undefined,
+                      textAlign: "center",
+                      padding: "40px 20px",
+                      color: "var(--text-muted)",
                     }}
                   >
-                    <td style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
-                      {from + i}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{p.name}</td>
-                    <td>
-                      <input
-                        className="form-input"
-                        style={{ height: 32, minWidth: 100 }}
-                        value={e.HSNCode ?? p.HSNCode ?? ''}
-                        onChange={(ev) => handleEdit(id, 'HSNCode', ev.target.value)}
-                        readOnly
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        style={{ height: 32, minWidth: 90, textAlign: 'right' }}
-                        type="number"
-                        value={e.MRP ?? p.MRP ?? ''}
-                        onChange={(ev) => handleEdit(id, 'MRP', ev.target.value)}
-                        readOnly
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        style={{ height: 32, minWidth: 90, textAlign: 'right' }}
-                        type="number"
-                        value={e.salesPrice ?? p.salesPrice ?? ''}
-                        onChange={(ev) => handleEdit(id, 'salesPrice', ev.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        style={{ height: 32, minWidth: 80, textAlign: 'right' }}
-                        type="number"
-                        value={e.stockQuantity ?? p.stockQuantity ?? ''}
-                        onChange={(ev) => handleEdit(id, 'stockQuantity', ev.target.value)}
-                      />
-                    </td>
-                    <td className="text-center">
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon={<FiLayers />}
-                          onClick={() => setBatchProduct(p)}
-                          title="Batches & Expiry"
-                        >
-                          Batches
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon={<FiPrinter />}
-                          onClick={() => setBarcodeProduct(p)}
-                          title="Print Barcode Labels"
-                        >
-                          Barcode
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                    No products found for your search
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -230,7 +283,7 @@ export default function ProductTable() {
         {/* Mobile Cards */}
         <div
           className="bill-cards-list"
-          style={{ padding: 'var(--sp-4)', display: 'none' }}
+          style={{ padding: "var(--sp-4)", display: "none" }}
           id="mobile-bills"
         >
           {paginated.map((p) => {
@@ -242,31 +295,49 @@ export default function ProductTable() {
               <div
                 key={id}
                 className="bill-card-mobile"
-                style={{ background: hasEdits ? 'var(--warning-light)' : undefined }}
+                style={{
+                  background: hasEdits ? "var(--warning-light)" : undefined,
+                }}
               >
                 <div className="bill-card-mobile__row">
                   <span style={{ fontWeight: 700 }}>{p.name}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-                    HSN: {p.HSNCode || '—'}
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: "var(--fs-xs)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    HSN: {p.HSNCode || "—"}
                   </span>
                 </div>
                 <div className="bill-card-mobile__row">
                   <span className="bill-card-mobile__label">
-                    MRP: ₹{e.MRP ?? p.MRP ?? '—'}
+                    MRP: ₹{e.MRP ?? p.MRP ?? "—"}
                   </span>
                   <span style={{ fontWeight: 700 }}>
-                    Sale: ₹{e.salesPrice ?? p.salesPrice ?? '—'}
+                    Sale: ₹{e.salesPrice ?? p.salesPrice ?? "—"}
                   </span>
                 </div>
                 <div className="bill-card-mobile__row">
                   <span className="bill-card-mobile__label">
                     Stock: {e.stockQuantity ?? p.stockQuantity ?? 0}
                   </span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <Button variant="secondary" size="sm" icon={<FiLayers />} onClick={() => setBatchProduct(p)}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<FiLayers />}
+                      onClick={() => setBatchProduct(p)}
+                    >
                       Batches
                     </Button>
-                    <Button variant="secondary" size="sm" icon={<FiPrinter />} onClick={() => setBarcodeProduct(p)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<FiPrinter />}
+                      onClick={() => setBarcodeProduct(p)}
+                    >
                       Barcode
                     </Button>
                   </div>

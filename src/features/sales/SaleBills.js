@@ -325,22 +325,21 @@ export default function SaleBills({ searchParams }) {
                         }
                         items={[
                           {
-                            label: 'Preview',
+                            label: 'Preview & Print',
                             icon: '👁',
                             onClick: () => {
-                              console.log(bill);
                               setPreviewBill(bill);
                               setView('preview');
                             },
                           },
-                          {
-                            label: 'Print',
-                            icon: '🖨️',
-                            onClick: () => {
-                              setPreviewBill(bill);
-                              setView('preview');
-                            },
-                          },
+                          // {
+                          //   label: 'Print',
+                          //   icon: '🖨️',
+                          //   onClick: () => {
+                          //     setPreviewBill(bill);
+                          //     setView('preview');
+                          //   },
+                          // },
                           {
                             label: 'Edit',
                             icon: '✏️',

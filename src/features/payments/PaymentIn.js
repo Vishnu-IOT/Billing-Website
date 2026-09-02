@@ -1,8 +1,8 @@
 /* ===== PAYMENTS IN ===== */
-import React, { useState, useMemo, useEffect } from 'react';
-import useSalesStore from '../../store/salesStore';
-import useAppStore from '../../store/appStore';
-import usePaymentStore from '../../store/paymentStore';
+import React, { useState, useMemo, useEffect } from "react";
+import useSalesStore from "../../store/salesStore";
+import useAppStore from "../../store/appStore";
+import usePaymentStore from "../../store/paymentStore";
 import {
   Button,
   StatCard,
@@ -11,47 +11,59 @@ import {
   ToastContainer,
   Modal,
   Badge,
-} from '../../components/ui';
-import { usePagination } from '../../hooks/usePagination';
-import { useDebounce } from '../../hooks/useDebounce';
-import { useToast } from '../../hooks/useToast';
-import { formatCurrency } from '../../utils/currency';
-import { formatDate } from '../../utils/date';
-import { FiPlus } from 'react-icons/fi';
-import '../../styles/payments.css';
+} from "../../components/ui";
+import { usePagination } from "../../hooks/usePagination";
+import { useDebounce } from "../../hooks/useDebounce";
+import { useToast } from "../../hooks/useToast";
+import { formatCurrency } from "../../utils/currency";
+import { formatDate } from "../../utils/date";
+import { FiPlus } from "react-icons/fi";
+import "../../styles/payments.css";
 
-const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'NEFT/RTGS', 'Credit Card', 'Debit Card'];
+const PAYMENT_TYPES = [
+  "Cash",
+  "UPI",
+  "Bank Transfer",
+  "Cheque",
+  "NEFT/RTGS",
+  "Credit Card",
+  "Debit Card",
+];
 
 const EMPTY_FORM = {
-  partyId: '',
-  billId: '',
-  paymentNumber: '',
-  paymentType: 'Cash',
-  paymentMode: 'full',   // 'full' | 'partial'
-  paymentAmount: '',
-  referenceNo: '',
+  partyId: "",
+  billId: "",
+  paymentNumber: "",
+  paymentType: "Cash",
+  paymentMode: "full", // 'full' | 'partial'
+  paymentAmount: "",
+  referenceNo: "",
 };
 
 export default function PaymentIn() {
   const { saleBills, loadBills } = useSalesStore();
   const parties = useAppStore((s) => s.parties);
-  const { paymentsIn: payments, loadPaymentsIn, addPaymentIn } = usePaymentStore();
+  const {
+    paymentsIn: payments,
+    loadPaymentsIn,
+    addPaymentIn,
+  } = usePaymentStore();
   const toast = useToast();
 
-  const [statusFilter, setStatusFilter] = useState('');
-  const [partySearch, setPartySearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState("");
+  const [partySearch, setPartySearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: "",
+    endDate: "",
   });
 
   const [applied, setApplied] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: "",
+    endDate: "",
   });
 
   const debouncedSearch = useDebounce(partySearch, 250);
@@ -63,11 +75,12 @@ export default function PaymentIn() {
 
   // ── Bills filtered by selected party for bill dropdown ──
   const selectedPartyBills = useMemo(() => {
-    if (!form.partyId) return saleBills.filter((b) => b.paymentStatus?.toLowerCase() !== 'paid');
+    if (!form.partyId)
+      return saleBills.filter((b) => b.paymentStatus?.toLowerCase() !== "paid");
     return saleBills.filter(
       (b) =>
         String(b.Party?.id || b.partyId) === String(form.partyId) &&
-        b.paymentStatus?.toLowerCase() !== 'paid'
+        b.paymentStatus?.toLowerCase() !== "paid",
     );
   }, [saleBills, form.partyId]);
 
@@ -75,19 +88,32 @@ export default function PaymentIn() {
   const filtered = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
     return payments.filter((p) => {
-      const partyName = p.Party?.name || p.partyName || '';
-      const billNo = p.Sale?.invoiceNumber || p.billNumber || '';
-      const matchParty = !q || partyName.toLowerCase().includes(q) || billNo.toLowerCase().includes(q);
-      const matchStatus = !statusFilter || (p.status || 'Paid').toLowerCase() === statusFilter;
+      const partyName = p.Party?.name || p.partyName || "";
+      const billNo = p.Sale?.invoiceNumber || p.billNumber || "";
+      const matchParty =
+        !q ||
+        partyName.toLowerCase().includes(q) ||
+        billNo.toLowerCase().includes(q);
+      const matchStatus =
+        !statusFilter || (p.status || "Paid").toLowerCase() === statusFilter;
       return matchParty && matchStatus;
     });
   }, [payments, debouncedSearch, statusFilter]);
 
-  const { page, totalPages, paginated, from, to, total, goToPage } = usePagination(filtered, 10);
+  const { page, totalPages, paginated, from, to, total, goToPage } =
+    usePagination(filtered, 10);
 
-  const totalReceived = payments.reduce((s, p) => s + Number(p.amount || p.paymentAmount || 0), 0);
-  const pendingBills = saleBills.filter((b) => b.paymentStatus?.toLowerCase() === 'unpaid');
-  const totalPending = pendingBills.reduce((s, b) => s + parseInt(b.totalAmount || 0), 0);
+  const totalReceived = payments.reduce(
+    (s, p) => s + Number(p.amount || p.paymentAmount || 0),
+    0,
+  );
+  const pendingBills = saleBills.filter(
+    (b) => b.paymentStatus?.toLowerCase() === "unpaid",
+  );
+  const totalPending = pendingBills.reduce(
+    (s, b) => s + parseInt(b.totalAmount || 0),
+    0,
+  );
 
   function openModal() {
     setForm({
@@ -104,19 +130,27 @@ export default function PaymentIn() {
 
   // Auto-fill amount when bill selected
   function handleBillChange(billId) {
-    const bill = saleBills.find((b) => String(b.id || b._id) === String(billId));
+    const bill = saleBills.find(
+      (b) => String(b.id || b._id) === String(billId),
+    );
     setForm((f) => ({
       ...f,
       billId,
-      paymentAmount: bill ? String(bill.totalAmount || '') : '',
+      paymentAmount: bill ? String(bill.totalAmount || "") : "",
     }));
   }
 
   // When mode switches to full, restore full bill amount
   function handleModeChange(mode) {
-    if (mode === 'full' && form.billId) {
-      const bill = saleBills.find((b) => String(b.id || b._id) === String(form.billId));
-      setForm((f) => ({ ...f, paymentMode: mode, paymentAmount: bill ? String(bill.totalAmount || '') : f.paymentAmount }));
+    if (mode === "full" && form.billId) {
+      const bill = saleBills.find(
+        (b) => String(b.id || b._id) === String(form.billId),
+      );
+      setForm((f) => ({
+        ...f,
+        paymentMode: mode,
+        paymentAmount: bill ? String(bill.totalAmount || "") : f.paymentAmount,
+      }));
     } else {
       setForm((f) => ({ ...f, paymentMode: mode }));
     }
@@ -124,8 +158,14 @@ export default function PaymentIn() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.billId) { toast.error('Please select a bill'); return; }
-    if (!form.paymentAmount || Number(form.paymentAmount) <= 0) { toast.error('Enter a valid payment amount'); return; }
+    if (!form.billId) {
+      toast.error("Please select a bill");
+      return;
+    }
+    if (!form.paymentAmount || Number(form.paymentAmount) <= 0) {
+      toast.error("Enter a valid payment amount");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -141,17 +181,19 @@ export default function PaymentIn() {
       // Reload bills so we see updated payment status
       loadBills();
 
-      toast.success('Payment In recorded ✓');
+      toast.success("Payment In recorded ✓");
       closeModal();
     } catch {
-      toast.error('Failed to record payment');
+      toast.error("Failed to record payment");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "var(--sp-5)" }}
+    >
       <ToastContainer toasts={toast.toasts} />
 
       {/* Create Payment Modal */}
@@ -161,33 +203,53 @@ export default function PaymentIn() {
         title="Record Payment In"
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="secondary" onClick={closeModal}>
+              Cancel
+            </Button>
             <Button variant="primary" loading={saving} onClick={handleSubmit}>
               Confirm Payment
             </Button>
           </>
         }
       >
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--sp-4)",
+          }}
+        >
           <div className="form-grid-2">
             {/* Party */}
             <div className="form-group">
-              <label className="form-label">Party *</label>
+              <label className="form-label">
+                Party <span style={{ color: "red" }}>*</span>
+              </label>
               <select
                 className="form-input"
                 value={form.partyId}
-                onChange={(e) => setForm({ ...form, partyId: e.target.value, billId: '', paymentAmount: '' })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    partyId: e.target.value,
+                    billId: "",
+                    paymentAmount: "",
+                  })
+                }
               >
                 <option value="">— Select Party —</option>
                 {parties.map((p) => (
-                  <option key={p.id || p._id} value={p.id || p._id}>{p.name}</option>
+                  <option key={p.id || p._id} value={p.id || p._id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
 
             {/* Bill */}
             <div className="form-group">
-              <label className="form-label">Bill Number *</label>
+              <label className="form-label">Bill Number <span style={{ color: "red" }}>*</span></label>
               <select
                 className="form-input"
                 value={form.billId}
@@ -197,7 +259,8 @@ export default function PaymentIn() {
                 <option value="">— Select Bill —</option>
                 {selectedPartyBills.map((b) => (
                   <option key={b.id || b._id} value={b.id || b._id}>
-                    {b.invoiceNumber || b.invoiceNo} — {formatCurrency(b.totalAmount)}
+                    {b.invoiceNumber || b.invoiceNo} —{" "}
+                    {formatCurrency(b.totalAmount)}
                   </option>
                 ))}
               </select>
@@ -205,24 +268,32 @@ export default function PaymentIn() {
 
             {/* Payment Number */}
             <div className="form-group">
-              <label className="form-label">Payment Number *</label>
+              <label className="form-label">Payment Number <span style={{ color: "red" }}>*</span></label>
               <input
                 className="form-input"
                 value={form.paymentNumber}
-                onChange={(e) => setForm({ ...form, paymentNumber: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, paymentNumber: e.target.value })
+                }
                 required
               />
             </div>
 
             {/* Payment Type */}
             <div className="form-group">
-              <label className="form-label">Payment Type *</label>
+              <label className="form-label">Payment Type <span style={{ color: "red" }}>*</span></label>
               <select
                 className="form-input"
                 value={form.paymentType}
-                onChange={(e) => setForm({ ...form, paymentType: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, paymentType: e.target.value })
+                }
               >
-                {PAYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                {PAYMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -231,14 +302,14 @@ export default function PaymentIn() {
           <div className="form-group">
             <label className="form-label">Payment Mode</label>
             <div className="toggle-group">
-              {['full', 'partial'].map((m) => (
+              {["full", "partial"].map((m) => (
                 <button
                   type="button"
                   key={m}
-                  className={`toggle-btn ${form.paymentMode === m ? 'active' : ''}`}
+                  className={`toggle-btn ${form.paymentMode === m ? "active" : ""}`}
                   onClick={() => handleModeChange(m)}
                 >
-                  {m === 'full' ? '✅ Full Payment' : '⚡ Partial Payment'}
+                  {m === "full" ? "✅ Full Payment" : "⚡ Partial Payment"}
                 </button>
               ))}
             </div>
@@ -248,9 +319,16 @@ export default function PaymentIn() {
             {/* Amount */}
             <div className="form-group">
               <label className="form-label">
-                Payment Amount (₹) *
-                {form.paymentMode === 'partial' && (
-                  <span style={{ marginLeft: 6, fontSize: 'var(--fs-xs)', color: 'var(--warning)', fontWeight: 600 }}>
+                Payment Amount (₹) <span style={{ color: "red" }}>*</span>
+                {form.paymentMode === "partial" && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontSize: "var(--fs-xs)",
+                      color: "var(--warning)",
+                      fontWeight: 600,
+                    }}
+                  >
                     (Partial)
                   </span>
                 )}
@@ -262,9 +340,15 @@ export default function PaymentIn() {
                 step="0.01"
                 placeholder="Enter amount"
                 value={form.paymentAmount}
-                onChange={(e) => setForm({ ...form, paymentAmount: e.target.value })}
-                readOnly={form.paymentMode === 'full'}
-                style={form.paymentMode === 'full' ? { background: 'var(--bg-hover)', cursor: 'not-allowed' } : {}}
+                onChange={(e) =>
+                  setForm({ ...form, paymentAmount: e.target.value })
+                }
+                readOnly={form.paymentMode === "full"}
+                style={
+                  form.paymentMode === "full"
+                    ? { background: "var(--bg-hover)", cursor: "not-allowed" }
+                    : {}
+                }
                 required
               />
             </div>
@@ -276,7 +360,9 @@ export default function PaymentIn() {
                 className="form-input"
                 placeholder="UTR / Cheque No / Transaction ID"
                 value={form.referenceNo}
-                onChange={(e) => setForm({ ...form, referenceNo: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, referenceNo: e.target.value })
+                }
               />
             </div>
           </div>
@@ -287,7 +373,9 @@ export default function PaymentIn() {
       <div className="page-header">
         <div className="page-header__left">
           <h1>Payments In</h1>
-          <p className="page-header__sub">Track incoming payments received from customers</p>
+          <p className="page-header__sub">
+            Track incoming payments received from customers
+          </p>
         </div>
         <Button variant="primary" icon={<FiPlus />} onClick={openModal}>
           Create Payment In
@@ -296,19 +384,28 @@ export default function PaymentIn() {
 
       {/* Stat Cards */}
       <div className="stat-grid">
-        <StatCard label="Total Received" value={formatCurrency(totalReceived)} icon="✅" color="green" sub={`${payments.length} payments`} />
-        <StatCard label="Pending Receivables" value={formatCurrency(totalPending)} icon="⏳" color="amber" sub={`${pendingBills.length} invoices`} />
+        <StatCard
+          label="Total Received"
+          value={formatCurrency(totalReceived)}
+          icon="✅"
+          color="green"
+          sub={`${payments.length} payments`}
+        />
+        <StatCard
+          label="Pending Receivables"
+          value={formatCurrency(totalPending)}
+          icon="⏳"
+          color="amber"
+          sub={`${pendingBills.length} invoices`}
+        />
       </div>
 
       {/* Filters */}
       {/* Filters */}
       <div className="filter-bar">
-
         {/* Start Date */}
         <div className="filter-group">
-          <label className="filter-label">
-            Start Date
-          </label>
+          <label className="filter-label">Start Date</label>
 
           <input
             type="date"
@@ -325,9 +422,7 @@ export default function PaymentIn() {
 
         {/* End Date */}
         <div className="filter-group">
-          <label className="filter-label">
-            End Date
-          </label>
+          <label className="filter-label">End Date</label>
 
           <input
             type="date"
@@ -345,9 +440,7 @@ export default function PaymentIn() {
 
         {/* Search */}
         <div className="filter-group">
-          <label className="filter-label">
-            Search
-          </label>
+          <label className="filter-label">Search</label>
 
           <div className="search-bar">
             <span className="search-bar__icon">🔍</span>
@@ -365,19 +458,18 @@ export default function PaymentIn() {
 
         {/* Status */}
         <div className="filter-group">
-          <label className="filter-label">
-            Status
-          </label>
+          <label className="filter-label">Status</label>
 
           <div className="toggle-group">
             {[
-              { val: '', label: 'All' },
-              { val: 'paid', label: 'Paid' },
+              { val: "", label: "All" },
+              { val: "paid", label: "Paid" },
             ].map((s) => (
               <button
                 key={s.val}
-                className={`toggle-btn ${statusFilter === s.val ? 'active' : ''
-                  }`}
+                className={`toggle-btn ${
+                  statusFilter === s.val ? "active" : ""
+                }`}
                 onClick={() => {
                   setStatusFilter(s.val);
                   goToPage(1);
@@ -391,7 +483,6 @@ export default function PaymentIn() {
 
         {/* Apply / Clear */}
         <div className="filter-actions">
-
           <Button
             variant="primary"
             size="sm"
@@ -411,14 +502,14 @@ export default function PaymentIn() {
             size="sm"
             onClick={() => {
               const emptyDates = {
-                startDate: '',
-                endDate: '',
+                startDate: "",
+                endDate: "",
               };
 
               setFilters(emptyDates);
               setApplied(emptyDates);
-              setPartySearch('');
-              setStatusFilter('');
+              setPartySearch("");
+              setStatusFilter("");
 
               goToPage(1);
             }}
@@ -447,36 +538,77 @@ export default function PaymentIn() {
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                  No payments recorded yet. Click "Create Payment In" to record one.
+                <td
+                  colSpan={9}
+                  style={{
+                    textAlign: "center",
+                    padding: 40,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  No payments recorded yet. Click "Create Payment In" to record
+                  one.
                 </td>
               </tr>
             ) : (
               paginated.map((p) => (
                 <tr key={p.id}>
                   <td>{formatDate(p.paymentDate || p.date)}</td>
-                  <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary)', fontSize: 'var(--fs-xs)' }}>
-                    RCPT-{p.id || 'NEW'}
+                  <td
+                    style={{
+                      fontFamily: "monospace",
+                      fontWeight: 600,
+                      color: "var(--primary)",
+                      fontSize: "var(--fs-xs)",
+                    }}
+                  >
+                    RCPT-{p.id || "NEW"}
                   </td>
-                  <td style={{ fontWeight: 600 }}>{p.Party?.name || p.partyName}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)' }}>{p.Sale?.invoiceNumber || p.billNumber}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    {p.Party?.name || p.partyName}
+                  </td>
+                  <td
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: "var(--fs-xs)",
+                    }}
+                  >
+                    {p.Sale?.invoiceNumber || p.billNumber}
+                  </td>
                   <td>{p.paymentMode}</td>
                   <td>
-                    <Badge variant="success">
-                      Paid
-                    </Badge>
+                    <Badge variant="success">Paid</Badge>
                   </td>
-                  <td style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{p.referenceNo}</td>
-                  <td className="text-right" style={{ fontWeight: 700, color: 'var(--success)' }}>
+                  <td
+                    style={{
+                      fontSize: "var(--fs-xs)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {p.referenceNo}
+                  </td>
+                  <td
+                    className="text-right"
+                    style={{ fontWeight: 700, color: "var(--success)" }}
+                  >
                     {formatCurrency(p.amount || p.paymentAmount)}
                   </td>
-                  <td><PaymentBadge status="Paid" /></td>
+                  <td>
+                    <PaymentBadge status="Paid" />
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        <Pagination page={page} totalPages={totalPages} from={from} to={to} total={total} onPageChange={goToPage} />
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          from={from}
+          to={to}
+          total={total}
+          onPageChange={goToPage}
+        />
       </div>
     </div>
   );

@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   fetchCompanyUsersAPI,
   addCompanyUserAPI,
   updateCompanyUserAPI,
   deleteCompanyUserAPI,
-} from '../../api';
+} from "../../api";
 import {
   Button,
   Modal,
   ConfirmModal,
   SearchBar,
   ToastContainer,
-} from '../../components/ui';
-import { useToast } from '../../hooks/useToast';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import '../../styles/UserManagement.css';
+} from "../../components/ui";
+import { useToast } from "../../hooks/useToast";
+import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
+import "../../styles/UserManagement.css";
 
 export default function UserManagement() {
   const toast = useToast();
@@ -22,18 +22,18 @@ export default function UserManagement() {
   // ── States ──
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Add/Edit Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // null = Add, object = Edit
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    role: 'Owner',
-    status: '1',
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: "Owner",
+    status: "1",
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +50,7 @@ export default function UserManagement() {
       const data = await fetchCompanyUsersAPI(1); // Default company ID = 1
       setUsers(data.data || []);
     } catch (err) {
-      toast.error('Failed to load user listing.');
+      toast.error("Failed to load user listing.");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function UserManagement() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: '' }));
+      setFormErrors((prev) => ({ ...prev, [name]: "" }));
     }
   }
 
@@ -73,28 +73,28 @@ export default function UserManagement() {
   function validateForm() {
     const errors = {};
     if (!form.name.trim()) {
-      errors.name = 'Full name is required';
+      errors.name = "Full name is required";
     }
     if (!form.email.trim()) {
-      errors.email = 'Email address is required';
+      errors.email = "Email address is required";
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      errors.email = 'Invalid email address';
+      errors.email = "Invalid email address";
     }
     if (!form.phone.trim()) {
-      errors.phone = 'Phone number is required';
+      errors.phone = "Phone number is required";
     } else if (!/^\d{10}$/.test(form.phone)) {
-      errors.phone = 'Phone number must be exactly 10 digits';
+      errors.phone = "Phone number must be exactly 10 digits or only Numbers";
     }
     if (!editingUser) {
       if (!form.password.trim()) {
-        errors.password = 'Password is required';
+        errors.password = "Password is required";
       } else if (
         !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
-          form.password
+          form.password,
         )
       ) {
         errors.password =
-          'Password must contain uppercase, lowercase, number, special character and minimum 8 characters';
+          "Password must contain uppercase, lowercase, number, special character and minimum 8 characters";
       }
     }
     setFormErrors(errors);
@@ -105,12 +105,12 @@ export default function UserManagement() {
   function handleAddClick() {
     setEditingUser(null);
     setForm({
-      name: '',
-      email: '',
-      phone: '',
-      password: '',
-      role: 'Owner',
-      status: '1',
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
+      role: "Owner",
+      status: "1",
     });
     setFormErrors({});
     setModalOpen(true);
@@ -120,12 +120,12 @@ export default function UserManagement() {
   function handleEditClick(user) {
     setEditingUser(user);
     setForm({
-      name: user.name || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      password: '',
-      role: user.role || 'Owner',
-      status: user.status || '1',
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      password: "",
+      role: user.role || "Owner",
+      status: user.status || "1",
     });
     setFormErrors({});
     setModalOpen(true);
@@ -150,25 +150,25 @@ export default function UserManagement() {
         const id = editingUser.id || editingUser._id;
         const result = await updateCompanyUserAPI(id, form);
         if (result) {
-          toast.success('User updated successfully.');
+          toast.success("User updated successfully.");
           setModalOpen(false);
           loadUsers();
         } else {
-          toast.error('Failed to update user.');
+          toast.error("Failed to update user.");
         }
       } else {
         // Add Mode
         const result = await addCompanyUserAPI(1, form);
         if (result) {
-          toast.success('User registered successfully.');
+          toast.success("User registered successfully.");
           setModalOpen(false);
           loadUsers();
         } else {
-          toast.error('Failed to add user.');
+          toast.error("Failed to add user.");
         }
       }
     } catch (err) {
-      toast.error('An error occurred while saving user.');
+      toast.error("An error occurred while saving user.");
     } finally {
       setSubmitting(false);
     }
@@ -182,14 +182,14 @@ export default function UserManagement() {
       const id = deletingUser.id || deletingUser._id;
       const result = await deleteCompanyUserAPI(id, toast);
       if (result.success) {
-        toast.success('User removed successfully.');
+        toast.success("User removed successfully.");
         setDeleteOpen(false);
         loadUsers();
       } else {
-        toast.error('Failed to delete user.');
+        toast.error("Failed to delete user.");
       }
     } catch (err) {
-      toast.error('An error occurred during deletion.');
+      toast.error("An error occurred during deletion.");
     } finally {
       setDeleting(false);
       setDeletingUser(null);
@@ -200,9 +200,9 @@ export default function UserManagement() {
   const filteredUsers = users.filter((u) => {
     const q = searchTerm.toLowerCase();
     return (
-      (u.name || '').toLowerCase().includes(q) ||
-      (u.email || '').toLowerCase().includes(q) ||
-      (u.phone || '').toLowerCase().includes(q)
+      (u.name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.phone || "").toLowerCase().includes(q)
     );
   });
 
@@ -234,8 +234,8 @@ export default function UserManagement() {
         </div>
         <div
           style={{
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text-secondary)',
+            fontSize: "var(--fs-xs)",
+            color: "var(--text-secondary)",
             fontWeight: 500,
           }}
         >
@@ -247,12 +247,12 @@ export default function UserManagement() {
         {loading ? (
           <div
             style={{
-              display: 'flex',
-              padding: '60px 0',
-              justifyContent: 'center',
+              display: "flex",
+              padding: "60px 0",
+              justifyContent: "center",
             }}
           >
-            <p style={{ color: 'var(--text-muted)' }}>Loading users list...</p>
+            <p style={{ color: "var(--text-muted)" }}>Loading users list...</p>
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="um-empty-state">
@@ -260,8 +260,8 @@ export default function UserManagement() {
             <h3 className="um-empty-title">No Users Found</h3>
             <p className="um-empty-desc">
               {searchTerm
-                ? 'No users match your search query.'
-                : 'Get started by onboarding staff.'}
+                ? "No users match your search query."
+                : "Get started by onboarding staff."}
             </p>
           </div>
         ) : (
@@ -273,7 +273,7 @@ export default function UserManagement() {
                   <th>Contact</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>
+                  <th style={{ width: "80px", textAlign: "center" }}>
                     Actions
                   </th>
                 </tr>
@@ -281,8 +281,8 @@ export default function UserManagement() {
               <tbody>
                 {filteredUsers.map((user) => {
                   const id = user.id || user._id;
-                  const roleCls = `um-badge um-badge--${user.role || 'Owner'}`;
-                  const statusCls = `um-badge um-badge--${user.is_active ? 'Active' : 'Inactive' || '1'}`;
+                  const roleCls = `um-badge um-badge--${user.role || "Owner"}`;
+                  const statusCls = `um-badge um-badge--${user.is_active ? "Active" : "Inactive" || "1"}`;
 
                   return (
                     <tr key={id}>
@@ -293,16 +293,16 @@ export default function UserManagement() {
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontSize: 'var(--fs-sm)' }}>
-                          {user.phone || 'N/A'}
+                        <div style={{ fontSize: "var(--fs-sm)" }}>
+                          {user.phone || "N/A"}
                         </div>
                       </td>
                       <td>
-                        <span className={roleCls}>{user.role || 'Owner'}</span>
+                        <span className={roleCls}>{user.role || "Owner"}</span>
                       </td>
                       <td>
                         <span className={statusCls}>
-                          {user.is_active ? 'Active' : 'Inactive' || '1'}
+                          {user.is_active ? "Active" : "Inactive" || "1"}
                         </span>
                       </td>
                       <td>
@@ -336,7 +336,7 @@ export default function UserManagement() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingUser ? 'Update Staff Member' : 'Register New Staff'}
+        title={editingUser ? "Update Staff Member" : "Register New Staff"}
       >
         <form onSubmit={handleSubmit} className="um-modal-form">
           <div className="um-form-group">
@@ -346,7 +346,7 @@ export default function UserManagement() {
             <input
               type="text"
               name="name"
-              className={`um-form-input ${formErrors.name ? 'um-form-input--error' : ''}`}
+              className={`um-form-input ${formErrors.name ? "um-form-input--error" : ""}`}
               value={form.name}
               onChange={handleInputChange}
               placeholder="e.g. Rahul Sharma"
@@ -363,7 +363,7 @@ export default function UserManagement() {
             <input
               type="email"
               name="email"
-              className={`um-form-input ${formErrors.email ? 'um-form-input--error' : ''}`}
+              className={`um-form-input ${formErrors.email ? "um-form-input--error" : ""}`}
               value={form.email}
               onChange={handleInputChange}
               placeholder="e.g. rahul@company.com"
@@ -378,9 +378,10 @@ export default function UserManagement() {
               Phone Number
             </label>
             <input
-              type="text"
+              type="tel"
               name="phone"
-              className={`um-form-input ${formErrors.phone ? 'um-form-input--error' : ''}`}
+              className={`um-form-input ${formErrors.phone ? "um-form-input--error" : ""}`}
+              inputMode="numeric"
               value={form.phone}
               onChange={handleInputChange}
               placeholder="10 digit mobile number"
@@ -405,7 +406,7 @@ export default function UserManagement() {
                   • One lowercase letter
                   • One number
                   • One special character`}
-                className={`um-form-input ${formErrors.password ? 'um-form-input--error' : ''}`}
+                className={`um-form-input ${formErrors.password ? "um-form-input--error" : ""}`}
                 value={form.password}
                 onChange={handleInputChange}
                 placeholder="Enter password"
@@ -447,9 +448,9 @@ export default function UserManagement() {
 
           <div
             style={{
-              display: 'flex',
+              display: "flex",
               gap: 10,
-              justifyContent: 'flex-end',
+              justifyContent: "flex-end",
               marginTop: 12,
             }}
           >
@@ -461,7 +462,7 @@ export default function UserManagement() {
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={submitting}>
-              {editingUser ? 'Save Changes' : 'Onboard User'}
+              {editingUser ? "Save Changes" : "Create Staff/Rep"}
             </Button>
           </div>
         </form>
@@ -473,7 +474,7 @@ export default function UserManagement() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Revoke Staff Access?"
-        message={`Are you sure you want to delete ${deletingUser?.name || 'this staff member'}? This will remove all their access permissions.`}
+        message={`Are you sure you want to delete ${deletingUser?.name || "this staff member"}? This will remove all their access permissions.`}
         loading={deleting}
       />
     </div>
