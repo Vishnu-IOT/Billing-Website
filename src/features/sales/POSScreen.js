@@ -1,5 +1,5 @@
 /* ===== POS SCREEN — Main B2C POS Layout ===== */
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   FiUser,
   FiShoppingCart,
@@ -14,27 +14,27 @@ import {
   FiPrinter,
   FiClock,
   FiLayers,
-  FiStar
-} from 'react-icons/fi';
-import useAppStore from '../../store/appStore';
-import useSalesStore from '../../store/salesStore';
-import usePOSStore from '../../hooks/usePOSStore';
-import useSettingsStore from '../../store/settingsStore-DB';
-import usePosStore from '../../store/posStore';
-import { formatCurrency } from '../../utils/currency';
-import { todayISO } from '../../utils/date';
-import { getNextInvoiceNo, buildSaleBillPayload } from '../../utils/invoice';
-import { useToast } from '../../hooks/useToast';
-import { ToastContainer } from '../../components/ui';
-import BarcodeInput from '../../components/pos/BarcodeInput';
-import CameraScanner from '../../components/pos/CameraScanner';
-import POSCartItem from '../../components/pos/POSCartItem';
-import POSPaymentModal from '../../components/pos/POSPaymentModal';
-import ThermalBill from '../../components/pos/ThermalBill';
-import '../../styles/pos-b2c.css';
+  FiStar,
+} from "react-icons/fi";
+import useAppStore from "../../store/appStore";
+import useSalesStore from "../../store/salesStore";
+import usePOSStore from "../../hooks/usePOSStore";
+import useSettingsStore from "../../store/settingsStore-DB";
+import usePosStore from "../../store/posStore";
+import { formatCurrency } from "../../utils/currency";
+import { todayISO } from "../../utils/date";
+import { getNextInvoiceNo, buildSaleBillPayload } from "../../utils/invoice";
+import { useToast } from "../../hooks/useToast";
+import { ToastContainer } from "../../components/ui";
+import BarcodeInput from "../../components/pos/BarcodeInput";
+import CameraScanner from "../../components/pos/CameraScanner";
+import POSCartItem from "../../components/pos/POSCartItem";
+import POSPaymentModal from "../../components/pos/POSPaymentModal";
+import ThermalBill from "../../components/pos/ThermalBill";
+import "../../styles/pos-b2c.css";
 // import '../../styles/thermal.css';
-import { fetchCompanyUsersAPI, fetchFinancialDetailsAPI } from '../../api';
-import ThermalInvoice from '../billing/invoices/ThermalInvoice';
+import { fetchCompanyUsersAPI, fetchFinancialDetailsAPI } from "../../api";
+import ThermalInvoice from "../billing/invoices/ThermalInvoice";
 
 export default function POSScreen({
   editMode = false,
@@ -66,7 +66,9 @@ export default function POSScreen({
   const getComputedTotals = usePOSStore((s) => s.getComputedTotals);
   const addToCart = usePOSStore((s) => s.addToCart);
   const addCartItemDirect = usePOSStore((s) => s.addCartItemDirect);
-  const addMultipleCartItemsDirect = usePOSStore((s) => s.addMultipleCartItemsDirect);
+  const addMultipleCartItemsDirect = usePOSStore(
+    (s) => s.addMultipleCartItemsDirect,
+  );
   const updateCartItem = usePOSStore((s) => s.updateCartItem);
   const removeFromCart = usePOSStore((s) => s.removeFromCart);
   const clearCart = usePOSStore((s) => s.clearCart);
@@ -94,22 +96,22 @@ export default function POSScreen({
   const [lastPrintedBill, setLastPrintedBill] = useState(null);
   const [users, setUsers] = useState([]);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
-  const [shiftFloat, setShiftFloat] = useState('');
+  const [shiftFloat, setShiftFloat] = useState("");
   const [shiftCloseModal, setShiftCloseModal] = useState(false);
-  const [closingCash, setClosingCash] = useState('');
+  const [closingCash, setClosingCash] = useState("");
   const [holdDrawerOpen, setHoldDrawerOpen] = useState(false);
-  const [holdNote, setHoldNote] = useState('');
+  const [holdNote, setHoldNote] = useState("");
   const [printReady, setPrintReady] = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
   const printRef = useRef(null);
 
   /* ── Add Item Form State ── */
-  const [addItemSearch, setAddItemSearch] = useState('');
+  const [addItemSearch, setAddItemSearch] = useState("");
   const [addItemProduct, setAddItemProduct] = useState(null);
   const [addItemQty, setAddItemQty] = useState(1);
-  const [addItemRate, setAddItemRate] = useState('');
-  const [addItemDisc, setAddItemDisc] = useState('');
+  const [addItemRate, setAddItemRate] = useState("");
+  const [addItemDisc, setAddItemDisc] = useState("");
   const [addItemSuggestions, setAddItemSuggestions] = useState([]);
   const [addItemDropdownOpen, setAddItemDropdownOpen] = useState(false);
   const formDropdownRef = useRef(null);
@@ -126,39 +128,40 @@ export default function POSScreen({
         const financials = res?.data?.data || res?.data || {};
         if (!cancelled) setCompanyFinancials(financials);
       } catch (err) {
-        console.error('Could not load company financial details for receipt:', err);
+        console.error(
+          "Could not load company financial details for receipt:",
+          err,
+        );
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [companyRecord?.id]);
 
   const companyForReceipt = { ...companyRecord, financials: companyFinancials };
-  console.log(companyForReceipt);
+  // console.log(companyForReceipt);
 
   /* ── Init & Edit Mode ── */
   useEffect(() => {
     if (editMode && billId) {
       const existingBill = saleBills.find(
-        (b) => String(b.id) === String(billId)
+        (b) => String(b.id) === String(billId),
       );
 
       if (!existingBill) return;
 
-      console.log('Initializing POS with existing bill:', existingBill);
+      // console.log("Initializing POS with existing bill:", existingBill);
 
       clearCart();
 
       // Invoice details
-      setInvoiceNo(
-        existingBill.invoiceNumber ||
-        existingBill.invoiceNo ||
-        ''
-      );
+      setInvoiceNo(existingBill.invoiceNumber || existingBill.invoiceNo || "");
 
       setSaleDate(
         existingBill.saleDate
-          ? existingBill.saleDate.split('T')[0]
-          : todayISO()
+          ? existingBill.saleDate.split("T")[0]
+          : todayISO(),
       );
 
       // Customer details
@@ -166,13 +169,13 @@ export default function POSScreen({
         existingBill.Customer?.name ||
         existingBill.customerName ||
         existingBill.name ||
-        '';
+        "";
 
       const customerPhone =
         existingBill.Customer?.phone ||
         existingBill.customerPhone ||
         existingBill.phone ||
-        '';
+        "";
 
       const customerUserId =
         existingBill.User?.id ||
@@ -189,15 +192,13 @@ export default function POSScreen({
       // Loyalty points
       setLoyaltyPoints(
         existingBill.Customer?.loyalty_points ||
-        existingBill.customerLoyaltyPoints ||
-        0
+          existingBill.customerLoyaltyPoints ||
+          0,
       );
 
       // Discount
       setGlobalDiscount(
-        existingBill.global_discount_amount ||
-        existingBill.globalDiscount ||
-        0
+        existingBill.global_discount_amount || existingBill.globalDiscount || 0,
       );
 
       // Items
@@ -209,73 +210,47 @@ export default function POSScreen({
 
       if (Array.isArray(items) && items.length > 0) {
         const mappedItems = items.map((item) => ({
-          productId: String(
-            item.productId ||
-            item.product_id ||
-            item.id ||
-            ''
-          ),
+          productId: String(item.productId || item.product_id || item.id || ""),
 
-          productName:
-            item.productName ||
-            item.product_name ||
-            item.name ||
-            '',
+          productName: item.productName || item.product_name || item.name || "",
 
-          price: parseFloat(
-            item.price ||
-            item.rate ||
-            item.unitPrice ||
-            0
-          ),
+          price: parseFloat(item.price || item.rate || item.unitPrice || 0),
 
           quantity: parseFloat(item.quantity || 1),
 
           taxRate: parseFloat(
             item.taxRate ||
-            item.tax_rate ||
-            item.gstPercentage ||
-            item.taxPercentage ||
-            0
+              item.tax_rate ||
+              item.gstPercentage ||
+              item.taxPercentage ||
+              0,
           ),
 
           discountPercent: parseFloat(
             item.discountPercent ||
-            item.discount_percent ||
-            item.discount ||
-            item.discountPercentage ||
-            0
+              item.discount_percent ||
+              item.discount ||
+              item.discountPercentage ||
+              0,
           ),
 
-          unit: item.unit || 'pcs',
+          unit: item.unit || "pcs",
 
-          hsnCode:
-            item.hsnCode ||
-            item.hsn_code ||
-            '',
+          hsnCode: item.hsnCode || item.hsn_code || "",
 
-          barcode: item.barcode || '',
+          barcode: item.barcode || "",
 
-          sku: item.sku || '',
+          sku: item.sku || "",
 
           mrp: parseFloat(item.mrp || 0),
 
-          batchNumber:
-            item.batchNumber ||
-            item.batch_number ||
-            '',
+          batchNumber: item.batchNumber || item.batch_number || "",
 
-          expiryDate:
-            item.expiryDate ||
-            item.expiry_date ||
-            '',
+          expiryDate: item.expiryDate || item.expiry_date || "",
 
-          serialNumber:
-            item.serialNumber ||
-            item.serial_number ||
-            '',
+          serialNumber: item.serialNumber || item.serial_number || "",
 
-          notes: item.notes || '',
+          notes: item.notes || "",
         }));
 
         addMultipleCartItemsDirect(mappedItems);
@@ -301,12 +276,12 @@ export default function POSScreen({
       const data = await fetchCompanyUsersAPI(1);
       setUsers(data.data || []);
     } catch (err) {
-      toast.error('Failed to load user listing.');
+      toast.error("Failed to load user listing.");
     }
   }
 
   useEffect(() => {
-    const storedAuth = localStorage.getItem('thrive-auth-storage');
+    const storedAuth = localStorage.getItem("thrive-auth-storage");
 
     if (storedAuth) {
       try {
@@ -320,7 +295,7 @@ export default function POSScreen({
           }));
         }
       } catch (error) {
-        console.error('Failed to read user from localStorage:', error);
+        console.error("Failed to read user from localStorage:", error);
       }
     }
 
@@ -332,12 +307,15 @@ export default function POSScreen({
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e) {
-      if (formDropdownRef.current && !formDropdownRef.current.contains(e.target)) {
+      if (
+        formDropdownRef.current &&
+        !formDropdownRef.current.contains(e.target)
+      ) {
         setAddItemDropdownOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const totals = getComputedTotals();
@@ -355,14 +333,16 @@ export default function POSScreen({
     }
 
     const query = val.toLowerCase().trim();
-    const matches = (products || []).filter((p) => {
-      return (
-        (p.name && p.name.toLowerCase().includes(query)) ||
-        (p.barcode && p.barcode.toLowerCase().includes(query)) ||
-        (p.sku && p.sku.toLowerCase().includes(query)) ||
-        (p.HSNCode && p.HSNCode.toLowerCase().includes(query))
-      );
-    }).slice(0, 15);
+    const matches = (products || [])
+      .filter((p) => {
+        return (
+          (p.name && p.name.toLowerCase().includes(query)) ||
+          (p.barcode && p.barcode.toLowerCase().includes(query)) ||
+          (p.sku && p.sku.toLowerCase().includes(query)) ||
+          (p.HSNCode && p.HSNCode.toLowerCase().includes(query))
+        );
+      })
+      .slice(0, 15);
 
     setAddItemSuggestions(matches);
     setAddItemDropdownOpen(matches.length > 0);
@@ -379,21 +359,27 @@ export default function POSScreen({
   const handleAddItemSubmit = (e) => {
     if (e) e.preventDefault();
     if (!addItemProduct && !addItemSearch.trim()) {
-      toast.error('Please select or enter a product name/barcode');
+      toast.error("Please select or enter a product name/barcode");
       return;
     }
 
-    const prodToUse = addItemProduct || products.find(p => p.name.toLowerCase() === addItemSearch.toLowerCase()) || {
-      id: 'custom-' + Date.now(),
-      name: addItemSearch.trim(),
-      salesPrice: parseFloat(addItemRate) || 0,
-      price: parseFloat(addItemRate) || 0,
-      discount: parseFloat(addItemDisc) || 0,
-      taxRate: 0,
-      unit: 'pcs',
-    };
+    const prodToUse = addItemProduct ||
+      products.find(
+        (p) => p.name.toLowerCase() === addItemSearch.toLowerCase(),
+      ) || {
+        id: "custom-" + Date.now(),
+        name: addItemSearch.trim(),
+        salesPrice: parseFloat(addItemRate) || 0,
+        price: parseFloat(addItemRate) || 0,
+        discount: parseFloat(addItemDisc) || 0,
+        taxRate: 0,
+        unit: "pcs",
+      };
 
-    const rate = addItemRate !== '' ? parseFloat(addItemRate) : (prodToUse.salesPrice || prodToUse.price || 0);
+    const rate =
+      addItemRate !== ""
+        ? parseFloat(addItemRate)
+        : prodToUse.salesPrice || prodToUse.price || 0;
     const disc = parseFloat(addItemDisc) || 0;
     const qty = Math.max(1, parseFloat(addItemQty) || 1);
 
@@ -411,11 +397,11 @@ export default function POSScreen({
     toast.success(`Added ${productPayload.name}`);
 
     // Reset Form
-    setAddItemSearch('');
+    setAddItemSearch("");
     setAddItemProduct(null);
     setAddItemQty(1);
-    setAddItemRate('');
-    setAddItemDisc('');
+    setAddItemRate("");
+    setAddItemDisc("");
     setAddItemSuggestions([]);
     setAddItemDropdownOpen(false);
   };
@@ -426,13 +412,13 @@ export default function POSScreen({
       await startShift({
         userId: customerInfo.userId || 1,
         openingFloat: parseFloat(shiftFloat) || 0,
-        terminalId: 'POS-TERMINAL-1',
+        terminalId: "POS-TERMINAL-1",
       });
-      toast.success('Shift started ✓');
+      toast.success("Shift started ✓");
       setShiftModalOpen(false);
-      setShiftFloat('');
+      setShiftFloat("");
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to start shift');
+      toast.error(typeof err === "string" ? err : "Failed to start shift");
     }
   }
 
@@ -443,35 +429,37 @@ export default function POSScreen({
         shiftId: activeShift.id,
         closingCashActual: parseFloat(closingCash) || 0,
       });
-      toast.success(`Shift closed. Difference: ${formatCurrency(res?.data?.difference || 0)}`);
+      toast.success(
+        `Shift closed. Difference: ${formatCurrency(res?.data?.difference || 0)}`,
+      );
       setShiftCloseModal(false);
-      setClosingCash('');
+      setClosingCash("");
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to close shift');
+      toast.error(typeof err === "string" ? err : "Failed to close shift");
     }
   }
 
   /* ── Hold cart handler ── */
   async function handleHoldCart() {
     if (cart.length === 0) {
-      toast.error('Cart is empty – nothing to hold');
+      toast.error("Cart is empty – nothing to hold");
       return;
     }
     try {
       await holdCartAction({
         userId: customerInfo.userId || null,
-        customerName: customerInfo.name || 'Walk-in Customer',
-        customerPhone: customerInfo.phone || '',
+        customerName: customerInfo.name || "Walk-in Customer",
+        customerPhone: customerInfo.phone || "",
         cartData: cart,
         totalAmount: totals.grandTotal,
-        note: holdNote || '',
+        note: holdNote || "",
       });
-      toast.success('Cart held successfully ✓');
+      toast.success("Cart held successfully ✓");
       clearCart();
-      setHoldNote('');
+      setHoldNote("");
       setInvoiceNo(getNextInvoiceNo(saleBills, settings));
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to hold cart');
+      toast.error(typeof err === "string" ? err : "Failed to hold cart");
     }
   }
 
@@ -479,35 +467,48 @@ export default function POSScreen({
   async function handleResumeCart(id) {
     try {
       const res = await resumeHoldCart(id);
-      const data = res;
+      const data = res?.data || res;
+
+      console.log("RESUME DATA:", data);
+
+      // Clear cart first
       clearCart();
-      const items = Array.isArray(data.cartData) ? data.cartData : JSON.parse(data.cartData || '[]');
+
+      const items = Array.isArray(data.cartData)
+        ? data.cartData
+        : JSON.parse(data.cartData || "[]");
 
       if (items.length > 0) {
         addMultipleCartItemsDirect(items);
       }
 
-      if (data.customerName) {
-        setCustomerInfo((prev) => ({
-          ...prev,
-          name: data.customerName,
-          phone: data.customerPhone || '',
-        }));
-      }
-      toast.success('Held cart restored ✓');
+      // Restore customer AFTER clearCart()
+      setCustomerInfo({
+        name: data.customerName || "",
+        phone: data.customerPhone || "",
+        userId: data.userId || "",
+      });
+
+      console.log("Customer restored:", {
+        name: data.customerName,
+        phone: data.customerPhone,
+        userId: data.userId,
+      });
+
+      toast.success("Held cart restored ✓");
       setHoldDrawerOpen(false);
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to resume cart');
+      console.error("Resume cart error:", err);
+      toast.error("Failed to resume cart");
     }
   }
-
   /* ── Add to cart handler (from scanner) ── */
   const handleAddProduct = useCallback(
     (product) => {
       addToCart(product);
       toast.success(`Added: ${product.name}`);
     },
-    [addToCart, toast]
+    [addToCart, toast],
   );
 
   /* ── Barcode not found ── */
@@ -515,7 +516,7 @@ export default function POSScreen({
     (val) => {
       toast.error(`No product found for: "${val}"`);
     },
-    [toast]
+    [toast],
   );
 
   /* ── Camera scan result ── */
@@ -536,7 +537,7 @@ export default function POSScreen({
       }
       return product;
     },
-    [products, handleAddProduct, toast]
+    [products, handleAddProduct, toast],
   );
 
   /* Phone lookup for B2C */
@@ -545,13 +546,13 @@ export default function POSScreen({
     let existing = null;
     if (phone.length >= 10) {
       existing = customers.find(
-        (p) => String(p.phone).trim() === String(phone).trim()
+        (p) => String(p.phone).trim() === String(phone).trim(),
       );
     }
     setCustomerInfo({
       ...customerInfo,
       phone,
-      name: existing ? existing.name : customerInfo.name
+      name: existing ? existing.name : customerInfo.name,
     });
 
     setLoyaltyPoints(existing?.loyalty_points || 0);
@@ -560,7 +561,7 @@ export default function POSScreen({
   /* ── Save bill ── */
   async function handleSave(paymentDetails) {
     if (cart.length === 0) {
-      toast.error('Cart is empty');
+      toast.error("Cart is empty");
       return;
     }
 
@@ -568,32 +569,32 @@ export default function POSScreen({
     let loggedInCompanyId = null;
 
     try {
-      const storedAuth = localStorage.getItem('thrive-auth-storage');
-      const companyDetails = localStorage.getItem('erp-settings');
+      const storedAuth = localStorage.getItem("thrive-auth-storage");
+      const companyDetails = localStorage.getItem("erp-settings");
       if (storedAuth) {
         const authData = JSON.parse(storedAuth);
         loggedInUserId = authData?.state?.user?.id || loggedInUserId;
       }
-      console.log('Logged in user ID:', companyDetails);
+      // console.log("Logged in user ID:", companyDetails);
       if (companyDetails) {
         const companyData = JSON.parse(companyDetails);
         loggedInCompanyId = companyData?.state?.companyId || null;
       }
     } catch (error) {
-      console.error('Failed to read user from localStorage:', error);
+      console.error("Failed to read user from localStorage:", error);
     }
 
     if (!customerInfo.name || !customerInfo.phone) {
-      toast.error('Customer Details is Required!!');
+      toast.error("Customer Details is Required!!");
       return;
     }
 
     if (!loggedInUserId) {
-      toast.error('User Details is Required!!');
+      toast.error("User Details is Required!!");
       return;
     }
     if (!loggedInCompanyId) {
-      toast.error('Company Details is Required!!');
+      toast.error("Company Details is Required!!");
       return;
     }
 
@@ -617,13 +618,12 @@ export default function POSScreen({
       });
 
       const extraFields = {
-        bill_type: 'B2C',
-        paymentStatus: 'Paid',
+        bill_type: "B2C",
+        paymentStatus: "Paid",
         paymentMethod,
         shiftId: activeShift?.id || null,
         paymentDetails: paymentDetails || null,
         companyId: loggedInCompanyId || null,
-
       };
 
       if (editMode && billId) {
@@ -632,14 +632,14 @@ export default function POSScreen({
           ...extraFields,
         });
 
-        toast.success('Invoice updated ✓');
+        toast.success("Invoice updated ✓");
 
         // Clear edited bill data from POS store
         clearCart();
 
         setCustomerInfo({
-          name: '',
-          phone: '',
+          name: "",
+          phone: "",
           userId: loggedInUserId,
         });
 
@@ -660,7 +660,7 @@ export default function POSScreen({
           ...extraFields,
         });
 
-        toast.success('Invoice saved ✓');
+        toast.success("Invoice saved ✓");
 
         const billForPrint = {
           invoiceNumber: invoiceNo,
@@ -672,10 +672,7 @@ export default function POSScreen({
             ...item,
 
             productName:
-              item.productName ||
-              item.name ||
-              item.Product?.name ||
-              'Item',
+              item.productName || item.name || item.Product?.name || "Item",
 
             quantity: Number(item.quantity) || 1,
 
@@ -687,36 +684,28 @@ export default function POSScreen({
               (Number(item.quantity) || 1) * (Number(item.price) || 0),
           })),
 
-          customerName:
-            finalCustomerInfo.name || 'Walk-in Customer',
+          customerName: finalCustomerInfo.name || "Walk-in Customer",
 
-          customerPhone:
-            finalCustomerInfo.phone || '',
+          customerPhone: finalCustomerInfo.phone || "",
 
           paymentMethod,
 
-          discountAmount:
-            Number(globalDiscount) || 0,
+          discountAmount: Number(globalDiscount) || 0,
 
-          baseRate:
-            Number(totals.subtotal) || 0,
+          baseRate: Number(totals.subtotal) || 0,
 
-          tax:
-            Number(totals.totalTax) || 0,
+          tax: Number(totals.totalTax) || 0,
 
-          totalAmount:
-            Number(totals.grandTotal) || 0,
+          totalAmount: Number(totals.grandTotal) || 0,
 
           User: {
-            name:
-              activeShift?.user?.name ||
-              'Store Manager',
+            name: activeShift?.user?.name || "Store Manager",
           },
 
           ...extraFields,
         };
 
-        console.log('PRINT BILL:', billForPrint);
+        // console.log("PRINT BILL:", billForPrint);
 
         setLastPrintedBill(billForPrint);
         setPaymentOpen(false);
@@ -724,21 +713,21 @@ export default function POSScreen({
 
         clearCart();
 
-        let newBillUserId = '';
-        const storedAuthAfterSave = localStorage.getItem('thrive-auth-storage');
+        let newBillUserId = "";
+        const storedAuthAfterSave = localStorage.getItem("thrive-auth-storage");
 
         if (storedAuthAfterSave) {
           try {
             const authData = JSON.parse(storedAuthAfterSave);
-            newBillUserId = String(authData?.state?.user?.id || '');
+            newBillUserId = String(authData?.state?.user?.id || "");
           } catch (error) {
-            console.error('Failed to read user:', error);
+            console.error("Failed to read user:", error);
           }
         }
 
         setCustomerInfo({
-          name: '',
-          phone: '',
+          name: "",
+          phone: "",
           userId: newBillUserId,
         });
 
@@ -750,7 +739,9 @@ export default function POSScreen({
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save invoice: ' + (err.message || 'Unknown error'));
+      toast.error(
+        "Failed to save invoice: " + (err.message || "Unknown error"),
+      );
     } finally {
       setSaving(false);
     }
@@ -758,23 +749,23 @@ export default function POSScreen({
 
   /* ── New bill / Void bill ── */
   function handleNewBill() {
-    const storedAuth = localStorage.getItem('thrive-auth-storage');
-    let loggedInUserId = '';
+    const storedAuth = localStorage.getItem("thrive-auth-storage");
+    let loggedInUserId = "";
 
     if (storedAuth) {
       try {
         const authData = JSON.parse(storedAuth);
-        loggedInUserId = String(authData?.state?.user?.id || '');
+        loggedInUserId = String(authData?.state?.user?.id || "");
       } catch (error) {
-        console.error('Failed to read user:', error);
+        console.error("Failed to read user:", error);
       }
     }
 
     clearCart();
 
     setCustomerInfo({
-      name: '',
-      phone: '',
+      name: "",
+      phone: "",
       userId: loggedInUserId,
     });
 
@@ -788,136 +779,127 @@ export default function POSScreen({
   /* ── Keyboard shortcuts ── */
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'F2') {
+      if (e.key === "F2") {
         e.preventDefault();
-        const barcodeInput = document.querySelector('.barcode-input-wrap input');
+        const barcodeInput = document.querySelector(
+          ".barcode-input-wrap input",
+        );
         if (barcodeInput) barcodeInput.focus();
       }
-      if (e.key === 'F4') {
+      if (e.key === "F4") {
         e.preventDefault();
-        const custInput = document.querySelector('.pos-cust-phone-input');
+        const custInput = document.querySelector(".pos-cust-phone-input");
         if (custInput) custInput.focus();
       }
-      if (e.key === 'F8') {
+      if (e.key === "F8") {
         e.preventDefault();
         if (cart.length > 0) setPaymentOpen(true);
       }
-      if (e.key === 'F9') {
+      if (e.key === "F9") {
         e.preventDefault();
         handleNewBill();
       }
-      if (e.key === 'F10') {
+      if (e.key === "F10") {
         e.preventDefault();
         handleHoldCart();
       }
-      if (e.key === 'Escape') {
-        if (holdDrawerOpen) { setHoldDrawerOpen(false); return; }
-        if (shiftModalOpen) { setShiftModalOpen(false); return; }
-        if (shiftCloseModal) { setShiftCloseModal(false); return; }
-        if (!paymentOpen && !cameraOpen) { onBack?.(); }
+      if (e.key === "Escape") {
+        if (holdDrawerOpen) {
+          setHoldDrawerOpen(false);
+          return;
+        }
+        if (shiftModalOpen) {
+          setShiftModalOpen(false);
+          return;
+        }
+        if (shiftCloseModal) {
+          setShiftCloseModal(false);
+          return;
+        }
+        if (!paymentOpen && !cameraOpen) {
+          onBack?.();
+        }
       }
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [cart, paymentOpen, cameraOpen, holdDrawerOpen, shiftModalOpen, shiftCloseModal]); // eslint-disable-line react-hooks/exhaustive-deps
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    cart,
+    paymentOpen,
+    cameraOpen,
+    holdDrawerOpen,
+    shiftModalOpen,
+    shiftCloseModal,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!printReady || !lastPrintedBill) return;
 
     const timer = setTimeout(() => {
+      // console.log("Printing bill:", lastPrintedBill);
 
-      console.log(
-        'Printing bill:',
-        lastPrintedBill
-      );
+      const thermal = document.getElementById("thermal-bill-print");
 
-      const thermal =
-        document.getElementById(
-          'thermal-bill-print'
-        );
-
-      console.log(
-        'Thermal element:',
-        thermal
-      );
+      // console.log("Thermal element:", thermal);
 
       if (!thermal) {
-        console.error(
-          'Thermal invoice element not found'
-        );
+        console.error("Thermal invoice element not found");
         return;
       }
 
-      document.body.classList.add(
-        'printing-thermal-receipt'
-      );
+      document.body.classList.add("printing-thermal-receipt");
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           window.print();
         });
       });
-
     }, 500);
 
     const afterPrint = () => {
-      document.body.classList.remove(
-        'printing-thermal-receipt'
-      );
+      document.body.classList.remove("printing-thermal-receipt");
 
       setPrintReady(false);
       setLastPrintedBill(null);
     };
 
-    window.addEventListener(
-      'afterprint',
-      afterPrint
-    );
+    window.addEventListener("afterprint", afterPrint);
 
     return () => {
       clearTimeout(timer);
 
-      window.removeEventListener(
-        'afterprint',
-        afterPrint
-      );
+      window.removeEventListener("afterprint", afterPrint);
 
-      document.body.classList.remove(
-        'printing-thermal-receipt'
-      );
+      document.body.classList.remove("printing-thermal-receipt");
     };
-
   }, [printReady, lastPrintedBill]);
 
-  const formattedDateTimeStr = new Date().toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+  const formattedDateTimeStr = new Date().toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     hour12: true,
   });
 
   return (
-
     <>
       {/* ── Thermal Bill (print-only) ── */}
-      {
-        lastPrintedBill && (
-          <ThermalInvoice
-            bill={lastPrintedBill}
-            companies={companyForReceipt}
-            party={{
-              name: lastPrintedBill.customerName || 'Walk-in Customer',
-              phone: lastPrintedBill.customerPhone || '',
-            }}
-            items={lastPrintedBill.items || []}
-            invoiceLabel="INVOICE"
-            partyLabel="Customer"
-            printRef={printRef}
-          />
-        )
-      }
+      {lastPrintedBill && (
+        <ThermalInvoice
+          bill={lastPrintedBill}
+          companies={companyForReceipt}
+          party={{
+            name: lastPrintedBill.customerName || "Walk-in Customer",
+            phone: lastPrintedBill.customerPhone || "",
+          }}
+          items={lastPrintedBill.items || []}
+          invoiceLabel="INVOICE"
+          partyLabel="Customer"
+          printRef={printRef}
+        />
+      )}
 
       <div className="pos-b2c-root pos-exact-layout">
         <ToastContainer toasts={toast.toasts} />
@@ -948,17 +930,20 @@ export default function POSScreen({
         <div className="pos-exact-topbar">
           <div className="pos-exact-topbar__search">
             {onBack && (
-              <button className="pos-exact-back-btn" onClick={() => {
-                onBack();
-                setCustomerInfo({
-                  name: '',
-                  phone: '',
-                  userId: '',
-                });
-                setLoyaltyPoints(0);
-                clearCart();
-              }}
-                title="Back (Esc)">
+              <button
+                className="pos-exact-back-btn"
+                onClick={() => {
+                  onBack();
+                  setCustomerInfo({
+                    name: "",
+                    phone: "",
+                    userId: "",
+                  });
+                  setLoyaltyPoints(0);
+                  clearCart();
+                }}
+                title="Back (Esc)"
+              >
                 ‹ Back
               </button>
             )}
@@ -971,7 +956,8 @@ export default function POSScreen({
                 value={addItemSearch}
                 onChange={handleAddItemSearchChange}
                 onFocus={() => {
-                  if (addItemSuggestions.length > 0) setAddItemDropdownOpen(true);
+                  if (addItemSuggestions.length > 0)
+                    setAddItemDropdownOpen(true);
                 }}
               />
               {addItemDropdownOpen && addItemSuggestions.length > 0 && (
@@ -982,8 +968,12 @@ export default function POSScreen({
                       className="pos-exact-dropdown-item"
                       onClick={() => handleSelectFormProduct(item)}
                     >
-                      <span className="pos-exact-dropdown-name">{item.name}</span>
-                      <span className="pos-exact-dropdown-price">{formatCurrency(item.salesPrice || item.price || 0)}</span>
+                      <span className="pos-exact-dropdown-name">
+                        {item.name}
+                      </span>
+                      <span className="pos-exact-dropdown-price">
+                        {formatCurrency(item.salesPrice || item.price || 0)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1002,7 +992,7 @@ export default function POSScreen({
 
           <div className="pos-exact-topbar__meta">
             <span className="pos-exact-inv-badge">
-              {invoiceNo || 'INV-2024-001'}
+              {invoiceNo || "INV-2024-001"}
             </span>
             <div className="pos-exact-date-pill">
               📅 {saleDate || formattedDateTimeStr}
@@ -1010,13 +1000,23 @@ export default function POSScreen({
 
             {/* ── Shift Button ── */}
             <button
-              className={`pos-exact-topbar-btn pos-exact-topbar-btn--shift ${activeShift ? 'active' : ''}`}
-              onClick={() => activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)}
-              title={activeShift ? `Shift #${activeShift.id} Active — Click to Close` : 'Start New Shift'}
+              className={`pos-exact-topbar-btn pos-exact-topbar-btn--shift ${activeShift ? "active" : ""}`}
+              onClick={() =>
+                activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)
+              }
+              title={
+                activeShift
+                  ? `Shift #${activeShift.id} Active — Click to Close`
+                  : "Start New Shift"
+              }
             >
               <FiClock />
-              <span>{activeShift ? `Shift #${activeShift.id}` : 'Start Shift'}</span>
-              {activeShift && <span className="pos-exact-topbar-dot pos-exact-topbar-dot--green" />}
+              <span>
+                {activeShift ? `Shift #${activeShift.id}` : "Start Shift"}
+              </span>
+              {activeShift && (
+                <span className="pos-exact-topbar-dot pos-exact-topbar-dot--green" />
+              )}
             </button>
 
             {/* ── Hold Bill Button ── */}
@@ -1029,12 +1029,16 @@ export default function POSScreen({
                   setHoldDrawerOpen(true);
                 }
               }}
-              title={cart.length > 0 ? 'Hold Current Bill (F10)' : 'View Held Bills'}
+              title={
+                cart.length > 0 ? "Hold Current Bill (F10)" : "View Held Bills"
+              }
             >
               <FiLayers />
-              <span>{cart.length > 0 ? 'Hold Bill' : 'Held Bills'}</span>
+              <span>{cart.length > 0 ? "Hold Bill" : "Held Bills"}</span>
               {holdCarts.length > 0 && (
-                <span className="pos-exact-topbar-badge">{holdCarts.length}</span>
+                <span className="pos-exact-topbar-badge">
+                  {holdCarts.length}
+                </span>
               )}
             </button>
           </div>
@@ -1054,30 +1058,47 @@ export default function POSScreen({
                 </div>
                 <div className="pos-exact-card__body">
                   <div className="pos-exact-form-group">
-                    <label>Phone Number *</label>
+                    <label>
+                      Phone Number <span style={{ color: "red" }}>*</span>
+                    </label>
                     <div className="pos-exact-input-icon-wrap">
                       <span className="pos-exact-input-icon">📞</span>
                       <input
                         type="tel"
                         className="pos-exact-input pos-cust-phone-input"
                         placeholder="Enter phone..."
-                        value={customerInfo.phone || ''}
+                        value={customerInfo.phone || ""}
                         onChange={handlePhoneChange}
                         maxLength={10}
+                      />
+                      <input
+                        type="number"
+                        className="pos-exact-input pos-cust-phone-input"
+                        name="phone"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        onWheel={(e) => e.target.blur()}
+                        min="0"
+                        maxLength={10}
+                        value={customerInfo.phone || ""}
+                        onChange={handlePhoneChange}
+                        placeholder="Enter phone number"
                       />
                     </div>
                   </div>
                   <div className="pos-exact-form-group">
-                    <label>Customer Name *</label>
+                    <label>
+                      Customer Name <span style={{ color: "red" }}>*</span>
+                    </label>
                     <input
                       type="text"
                       className="pos-exact-input"
                       placeholder="Walk-in Customer"
-                      value={customerInfo.name || ''}
+                      value={customerInfo.name || ""}
                       onChange={(e) =>
                         setCustomerInfo({
                           ...customerInfo,
-                          name: e.target.value || '',
+                          name: e.target.value || "",
                         })
                       }
                     />
@@ -1085,8 +1106,12 @@ export default function POSScreen({
                   {/* ── Loyalty Points ── */}
                   <div className="pos-exact-loyalty-row">
                     <FiStar className="pos-exact-loyalty-icon" />
-                    <span className="pos-exact-loyalty-label">Loyalty Points</span>
-                    <span className="pos-exact-loyalty-value">{loyaltyPoints || 0}</span>
+                    <span className="pos-exact-loyalty-label">
+                      Loyalty Points
+                    </span>
+                    <span className="pos-exact-loyalty-value">
+                      {loyaltyPoints || 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1097,11 +1122,17 @@ export default function POSScreen({
                   <FiShoppingCart className="pos-exact-card__icon" />
                   <span>Add Item to Cart</span>
                 </div>
-                <form className="pos-exact-card__body" onSubmit={handleAddItemSubmit}>
+                <form
+                  className="pos-exact-card__body"
+                  onSubmit={handleAddItemSubmit}
+                >
                   <div className="pos-exact-add-grid">
                     <div className="pos-exact-form-group pos-exact-form-group--product">
                       <label>Product Name / Barcode</label>
-                      <div className="pos-exact-input-icon-wrap" style={{ position: 'relative' }}>
+                      <div
+                        className="pos-exact-input-icon-wrap"
+                        style={{ position: "relative" }}
+                      >
                         <span className="pos-exact-input-icon">📊</span>
                         <input
                           type="text"
@@ -1177,13 +1208,15 @@ export default function POSScreen({
                 <table className="pos-exact-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                      <th style={{ width: 40, textAlign: "center" }}>#</th>
                       <th>Item Name</th>
-                      <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
-                      <th style={{ width: 100, textAlign: 'right' }}>Rate</th>
-                      <th style={{ width: 100, textAlign: 'right' }}>Discount</th>
-                      <th style={{ width: 110, textAlign: 'right' }}>Total</th>
-                      <th style={{ width: 60, textAlign: 'center' }}>Act</th>
+                      <th style={{ width: 80, textAlign: "center" }}>Qty</th>
+                      <th style={{ width: 100, textAlign: "right" }}>Rate</th>
+                      <th style={{ width: 100, textAlign: "right" }}>
+                        Discount
+                      </th>
+                      <th style={{ width: 110, textAlign: "right" }}>Total</th>
+                      <th style={{ width: 60, textAlign: "center" }}>Act</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1192,9 +1225,12 @@ export default function POSScreen({
                         <td colSpan="7">
                           <div className="pos-exact-empty-cart">
                             <div className="pos-exact-empty-icon">🛒</div>
-                            <div className="pos-exact-empty-title">No Items in Order</div>
+                            <div className="pos-exact-empty-title">
+                              No Items in Order
+                            </div>
                             <div className="pos-exact-empty-sub">
-                              Use the top search bar or form above to add products to this sale
+                              Use the top search bar or form above to add
+                              products to this sale
                             </div>
                           </div>
                         </td>
@@ -1203,45 +1239,96 @@ export default function POSScreen({
                       cart.map((item, idx) => {
                         const rate = item.price || 0;
                         const discAmount = item.discountAmount || 0;
-                        const discDisplay = item.discountPercent > 0 ? `-${formatCurrency(discAmount)}` : '-';
+                        const discDisplay =
+                          item.discountPercent > 0
+                            ? `-${formatCurrency(discAmount)}`
+                            : "-";
                         const itemTotal = item.total || 0;
 
                         return (
                           <tr key={item.productId || idx}>
-                            <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                            <td
+                              style={{
+                                textAlign: "center",
+                                color: "#64748b",
+                                fontWeight: 600,
+                              }}
+                            >
                               {idx + 1}
                             </td>
                             <td>
-                              <div className="pos-exact-item-name">{item.productName}</div>
-                              {item.hsnCode && <div className="pos-exact-item-sub">HSN: {item.hsnCode}</div>}
+                              <div className="pos-exact-item-name">
+                                {item.productName}
+                              </div>
+                              {item.hsnCode && (
+                                <div className="pos-exact-item-sub">
+                                  HSN: {item.hsnCode}
+                                </div>
+                              )}
                             </td>
-                            <td style={{ textAlign: 'center' }}>
+                            <td style={{ textAlign: "center" }}>
                               <div className="pos-exact-qty-controls">
                                 <button
                                   className="pos-exact-qty-btn"
-                                  onClick={() => updateCartItem(item.productId, 'quantity', Math.max(1, item.quantity - 1))}
+                                  onClick={() =>
+                                    updateCartItem(
+                                      item.productId,
+                                      "quantity",
+                                      Math.max(1, item.quantity - 1),
+                                    )
+                                  }
                                 >
                                   −
                                 </button>
-                                <span className="pos-exact-qty-val">{item.quantity}</span>
+                                <span className="pos-exact-qty-val">
+                                  {item.quantity}
+                                </span>
                                 <button
                                   className="pos-exact-qty-btn"
-                                  onClick={() => updateCartItem(item.productId, 'quantity', item.quantity + 1)}
+                                  onClick={() =>
+                                    updateCartItem(
+                                      item.productId,
+                                      "quantity",
+                                      item.quantity + 1,
+                                    )
+                                  }
                                 >
                                   +
                                 </button>
                               </div>
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: 600, color: '#334155' }}>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontWeight: 600,
+                                color: "#334155",
+                              }}
+                            >
                               {formatCurrency(rate)}
                             </td>
-                            <td style={{ textAlign: 'right', color: item.discountPercent > 0 ? '#ef4444' : '#94a3b8', fontWeight: item.discountPercent > 0 ? 600 : 400 }}>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                color:
+                                  item.discountPercent > 0
+                                    ? "#ef4444"
+                                    : "#94a3b8",
+                                fontWeight:
+                                  item.discountPercent > 0 ? 600 : 400,
+                              }}
+                            >
                               {discDisplay}
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontWeight: 800,
+                                color: "#0f172a",
+                              }}
+                            >
                               {formatCurrency(itemTotal)}
                             </td>
-                            <td style={{ textAlign: 'center' }}>
+                            <td style={{ textAlign: "center" }}>
                               <button
                                 className="pos-exact-remove-btn"
                                 onClick={() => removeFromCart(item.productId)}
@@ -1269,15 +1356,23 @@ export default function POSScreen({
               </div>
               <div className="pos-exact-user-info">
                 <div className="pos-exact-user-name">
-                  {activeShift?.user?.name || 'Store Manager'}
+                  {activeShift?.user?.name || "Store Manager"}
                 </div>
                 <div
                   className="pos-exact-user-shift"
-                  onClick={() => activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)}
+                  onClick={() =>
+                    activeShift
+                      ? setShiftCloseModal(true)
+                      : setShiftModalOpen(true)
+                  }
                   title="Click to manage shift"
                 >
                   <span className="pos-exact-shift-dot"></span>
-                  <span>{activeShift ? `Active Shift (#${activeShift.id})` : 'Start Shift'}</span>
+                  <span>
+                    {activeShift
+                      ? `Active Shift (#${activeShift.id})`
+                      : "Start Shift"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1306,24 +1401,35 @@ export default function POSScreen({
             <div className="pos-exact-totals-box">
               <div className="pos-exact-summary-row">
                 <span>Subtotal</span>
-                <span className="pos-exact-summary-val">{formatCurrency(totals.subtotal)}</span>
+                <span className="pos-exact-summary-val">
+                  {formatCurrency(totals.subtotal)}
+                </span>
               </div>
 
               <div className="pos-exact-summary-row">
-                <span>Tax (8%)</span>
-                <span className="pos-exact-summary-val">{formatCurrency(totals.totalTax)}</span>
+                <span>Tax (%)</span>
+                <span className="pos-exact-summary-val">
+                  {formatCurrency(totals.totalTax)}
+                </span>
               </div>
 
               {globalDiscount > 0 && (
-                <div className="pos-exact-summary-row" style={{ color: '#ef4444' }}>
+                <div
+                  className="pos-exact-summary-row"
+                  style={{ color: "#ef4444" }}
+                >
                   <span>Global Discount</span>
-                  <span className="pos-exact-summary-val">−{formatCurrency(globalDiscount)}</span>
+                  <span className="pos-exact-summary-val">
+                    −{formatCurrency(globalDiscount)}
+                  </span>
                 </div>
               )}
 
               <div className="pos-exact-grand-total">
                 <span className="pos-exact-gt-label">GRAND TOTAL</span>
-                <span className="pos-exact-gt-val">{formatCurrency(totals.grandTotal)}</span>
+                <span className="pos-exact-gt-val">
+                  {formatCurrency(totals.grandTotal)}
+                </span>
               </div>
 
               <button
@@ -1339,20 +1445,127 @@ export default function POSScreen({
         </div>
 
         {shiftModalOpen && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }} onClick={(e) => { if (e.target === e.currentTarget) setShiftModalOpen(false); }}>
-            <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 400, boxShadow: '0 30px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-              <div style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)', padding: '20px 24px', color: '#fff' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.8 }}>POS Shift Management</div>
-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>Open New Shift</div>
-              </div>
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Opening Cash Float (₹)</label>
-                  <input type="number" value={shiftFloat} onChange={(e) => setShiftFloat(e.target.value)} placeholder="Enter opening cash amount" style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 15, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} autoFocus />
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.6)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(4px)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShiftModalOpen(false);
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 20,
+                width: "100%",
+                maxWidth: 400,
+                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #16a34a, #22c55e)",
+                  padding: "20px 24px",
+                  color: "#fff",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                    opacity: 0.8,
+                  }}
+                >
+                  POS Shift Management
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setShiftModalOpen(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleStartShift} style={{ flex: 2, padding: 12, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>🟢 Start Shift</button>
+                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
+                  Open New Shift
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: "20px 24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      marginBottom: 6,
+                      display: "block",
+                    }}
+                  >
+                    Opening Cash Float (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={shiftFloat}
+                    onChange={(e) => setShiftFloat(e.target.value)}
+                    placeholder="Enter opening cash amount"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      border: "1.5px solid #e2e8f0",
+                      borderRadius: 10,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setShiftModalOpen(false)}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1.5px solid #e2e8f0",
+                      background: "#f8fafc",
+                      color: "#374151",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleStartShift}
+                    style={{
+                      flex: 2,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "none",
+                      background: "linear-gradient(135deg, #16a34a, #15803d)",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(22,163,74,0.4)",
+                    }}
+                  >
+                    🟢 Start Shift
+                  </button>
                 </div>
               </div>
             </div>
@@ -1361,29 +1574,262 @@ export default function POSScreen({
 
         {/* ═══ SHIFT CLOSE MODAL ═══ */}
         {shiftCloseModal && activeShift && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }} onClick={(e) => { if (e.target === e.currentTarget) setShiftCloseModal(false); }}>
-            <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 440, boxShadow: '0 30px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-              <div style={{ background: 'linear-gradient(135deg, #dc2626, #ef4444)', padding: '20px 24px', color: '#fff' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.8 }}>Cash Drawer Reconciliation</div>
-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>Close Shift #{activeShift.id}</div>
-              </div>
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '12px 14px' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Opening Float</div><div style={{ fontSize: 18, fontWeight: 800, color: '#15803d', marginTop: 2 }}>{formatCurrency(activeShift.openingFloat || 0)}</div></div>
-                  <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 14px' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>Total Sales</div><div style={{ fontSize: 18, fontWeight: 800, color: '#2563eb', marginTop: 2 }}>{activeShift.totalSalesCount || 0} bills</div></div>
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.6)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(4px)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShiftCloseModal(false);
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 20,
+                width: "100%",
+                maxWidth: 440,
+                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #dc2626, #ef4444)",
+                  padding: "20px 24px",
+                  color: "#fff",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                    opacity: 0.8,
+                  }}
+                >
+                  Cash Drawer Reconciliation
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                  <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>CASH</div><div style={{ fontSize: 14, fontWeight: 700 }}>{formatCurrency(activeShift.cashSalesTotal || 0)}</div></div>
-                  <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>CARD</div><div style={{ fontSize: 14, fontWeight: 700 }}>{formatCurrency(activeShift.cardSalesTotal || 0)}</div></div>
-                  <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}><div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>UPI</div><div style={{ fontSize: 14, fontWeight: 700 }}>{formatCurrency(activeShift.upiSalesTotal || 0)}</div></div>
+                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
+                  Close Shift #{activeShift.id}
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: "20px 24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#f0fdf4",
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#15803d",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Opening Float
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: "#15803d",
+                        marginTop: 2,
+                      }}
+                    >
+                      {formatCurrency(activeShift.openingFloat || 0)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: "#eff6ff",
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#2563eb",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Total Sales
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: "#2563eb",
+                        marginTop: 2,
+                      }}
+                    >
+                      {activeShift.totalSalesCount || 0} bills
+                    </div>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#64748b",
+                      }}
+                    >
+                      CASH
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+                      {formatCurrency(activeShift.cashSalesTotal || 0)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#64748b",
+                      }}
+                    >
+                      CARD
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+                      {formatCurrency(activeShift.cardSalesTotal || 0)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#64748b",
+                      }}
+                    >
+                      UPI
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+                      {formatCurrency(activeShift.upiSalesTotal || 0)}
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>Actual Cash in Drawer (₹)</label>
-                  <input type="number" value={closingCash} onChange={(e) => setClosingCash(e.target.value)} placeholder="Count and enter actual cash" style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 15, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} autoFocus />
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      marginBottom: 6,
+                      display: "block",
+                    }}
+                  >
+                    Actual Cash in Drawer (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={closingCash}
+                    onChange={(e) => setClosingCash(e.target.value)}
+                    placeholder="Count and enter actual cash"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      border: "1.5px solid #e2e8f0",
+                      borderRadius: 10,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    autoFocus
+                  />
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setShiftCloseModal(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleEndShift} style={{ flex: 2, padding: 12, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.4)' }}>🔴 Close Shift</button>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setShiftCloseModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1.5px solid #e2e8f0",
+                      background: "#f8fafc",
+                      color: "#374151",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEndShift}
+                    style={{
+                      flex: 2,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "none",
+                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(220,38,38,0.4)",
+                    }}
+                  >
+                    🔴 Close Shift
+                  </button>
                 </div>
               </div>
             </div>
@@ -1392,7 +1838,12 @@ export default function POSScreen({
 
         {/* ═══ HELD CARTS DRAWER ═══ */}
         {holdDrawerOpen && (
-          <div className="pos-exact-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) setHoldDrawerOpen(false); }}>
+          <div
+            className="pos-exact-drawer-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setHoldDrawerOpen(false);
+            }}
+          >
             <div className="pos-exact-drawer">
               <div className="pos-exact-drawer-header">
                 <h3>📋 Held Carts ({holdCarts.length})</h3>
@@ -1400,7 +1851,9 @@ export default function POSScreen({
               </div>
               <div className="pos-exact-drawer-body">
                 {holdCarts.length === 0 ? (
-                  <div className="pos-exact-empty-drawer">No held sales found</div>
+                  <div className="pos-exact-empty-drawer">
+                    No held sales found
+                  </div>
                 ) : (
                   holdCarts.map((h) => {
                     const items = Array.isArray(h.cartData) ? h.cartData : [];
@@ -1408,14 +1861,33 @@ export default function POSScreen({
                       <div key={h.id} className="pos-exact-held-item">
                         <div className="pos-exact-held-top">
                           <div>
-                            <strong>{h.customerName || 'Walk-in Customer'}</strong>
-                            <div>{h.holdNumber} · {items.length} items</div>
+                            <strong>
+                              {h.customerName || "Walk-in Customer"}
+                            </strong>
+                            <div>
+                              {h.holdNumber} · {items.length} items
+                            </div>
                           </div>
-                          <div className="pos-exact-held-total">{formatCurrency(h.totalAmount || 0)}</div>
+                          <div className="pos-exact-held-total">
+                            {formatCurrency(h.totalAmount || 0)}
+                          </div>
                         </div>
                         <div className="pos-exact-held-actions">
-                          <button className="pos-exact-btn-primary" onClick={() => handleResumeCart(h.id)}>Resume</button>
-                          <button className="pos-exact-btn-subtle" onClick={() => { cancelHoldCart(h.id); toast.success('Held cart cancelled'); }}>Cancel</button>
+                          <button
+                            className="pos-exact-btn-primary"
+                            onClick={() => handleResumeCart(h.id)}
+                          >
+                            Resume
+                          </button>
+                          <button
+                            className="pos-exact-btn-subtle"
+                            onClick={() => {
+                              cancelHoldCart(h.id);
+                              toast.success("Held cart cancelled");
+                            }}
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
                     );

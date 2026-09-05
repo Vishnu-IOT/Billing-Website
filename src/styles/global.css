@@ -34,6 +34,7 @@ body {
     background-color var(--transition-slow),
     color var(--transition-slow);
   padding-bottom: env(safe-area-inset-bottom);
+  cursor: url('/public/mps.png'), auto;
 }
 
 /* Premium Background Ornaments */

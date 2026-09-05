@@ -1,7 +1,7 @@
 /* ===== SALE BILLS — List View ===== */
-import React, { useState, useMemo, useEffect } from 'react';
-import useSalesStore from '../../store/salesStore';
-import useUIStore from '../../store/uiStore';
+import React, { useState, useMemo, useEffect } from "react";
+import useSalesStore from "../../store/salesStore";
+import useUIStore from "../../store/uiStore";
 import {
   Button,
   EmptyState,
@@ -10,16 +10,16 @@ import {
   ConfirmModal,
   ActionMenu,
   StatCard,
-} from '../../components/ui';
-import { DateRangeFilter } from '../../components/shared/DateRangeFilter';
-import { usePagination } from '../../hooks/usePagination';
-import { useToast } from '../../hooks/useToast';
-import { formatCurrency } from '../../utils/currency';
-import { formatDate } from '../../utils/date';
-import { ToastContainer } from '../../components/ui';
-import SaleBillForm from './SaleBillForm';
-import BillPreview from '../billing/BillPreview';
-import '../../styles/bills.css';
+} from "../../components/ui";
+import { DateRangeFilter } from "../../components/shared/DateRangeFilter";
+import { usePagination } from "../../hooks/usePagination";
+import { useToast } from "../../hooks/useToast";
+import { formatCurrency } from "../../utils/currency";
+import { formatDate } from "../../utils/date";
+import { ToastContainer } from "../../components/ui";
+import SaleBillForm from "./SaleBillForm";
+import BillPreview from "../billing/BillPreview";
+import "../../styles/bills.css";
 
 export default function SaleBills({ searchParams }) {
   const {
@@ -33,17 +33,17 @@ export default function SaleBills({ searchParams }) {
   } = useSalesStore();
   const toast = useToast();
 
-  const [view, setView] = useState('list'); // list | create | preview | edit
+  const [view, setView] = useState("list"); // list | create | preview | edit
   const [previewBill, setPreviewBill] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [search, setSearch] = useState('');
-  const [billingType, setBillingType] = useState('B2C');
+  const [search, setSearch] = useState("");
+  const [billingType, setBillingType] = useState("B2C");
   const [billID, setBillID] = useState(null);
 
   const setHideSidebar = useUIStore((s) => s.setHideSidebar);
 
   useEffect(() => {
-    setHideSidebar(view !== 'list');
+    setHideSidebar(view !== "list");
 
     return () => setHideSidebar(false);
   }, [view]);
@@ -51,10 +51,10 @@ export default function SaleBills({ searchParams }) {
   /* Handle searchParams from Sidebar sub-menu */
   useEffect(() => {
     if (!searchParams) return;
-    const type = searchParams.get('type');
-    if (type === 'B2B' || type === 'B2C') {
+    const type = searchParams.get("type");
+    if (type === "B2B" || type === "B2C") {
       setBillingType(type);
-      setView('create');
+      setView("create");
     }
   }, [searchParams]);
 
@@ -64,19 +64,115 @@ export default function SaleBills({ searchParams }) {
       (b) =>
         !q ||
         b.Party?.name?.toLowerCase().includes(q) ||
-        b.invoiceNumber?.toLowerCase().includes(q)
+        b.invoiceNumber?.toLowerCase().includes(q),
     );
   }, [saleBills, search]);
 
   const { page, totalPages, paginated, from, to, total, goToPage } =
     usePagination(filtered, 10);
 
+  // const [displayedBills, setDisplayedBills] = useState([]);
+  // const [page, setPage] = useState(1);
+  // const [hasMore, setHasMore] = useState(true);
+  // const [loadingMore, setLoadingMore] = useState(false);
+
+  // const PAGE_SIZE = 10;
+
+  // const filtered = useMemo(() => {
+  //   const q = search.toLowerCase();
+
+  //   return displayedBills.filter(
+  //     (b) =>
+  //       !q ||
+  //       b.Party?.name?.toLowerCase().includes(q) ||
+  //       b.invoiceNumber?.toLowerCase().includes(q),
+  //   );
+  // }, [displayedBills, search]);
+
+  // useEffect(() => {
+  //   loadInitialBills();
+  // }, [filter, dateRange]);
+
+  // async function loadInitialBills() {
+  //   try {
+  //     setLoadingMore(true);
+
+  //     const result = await loadBills(filter, dateRange, {
+  //       page: 1,
+  //       limit: PAGE_SIZE,
+  //     });
+
+  //     console.log(result);
+
+  //     const bills = result?.data || result || [];
+
+  //     setDisplayedBills(bills);
+  //     setPage(1);
+  //     setHasMore(bills.length === PAGE_SIZE);
+  //   } catch (error) {
+  //     console.error("Failed to load invoices", error);
+  //   } finally {
+  //     setLoadingMore(false);
+  //   }
+  // }
+
+  // async function loadMoreBills() {
+  //   if (loadingMore || !hasMore) return;
+
+  //   try {
+  //     setLoadingMore(true);
+
+  //     const nextPage = page + 1;
+
+  //     const result = await loadBills(filter, dateRange, {
+  //       page: nextPage,
+  //       limit: PAGE_SIZE,
+  //     });
+
+  //     const newBills = result?.data || result || [];
+
+  //     if (newBills.length === 0) {
+  //       setHasMore(false);
+  //       return;
+  //     }
+
+  //     setDisplayedBills((prev) => [...prev, ...newBills]);
+  //     setPage(nextPage);
+
+  //     if (newBills.length < PAGE_SIZE) {
+  //       setHasMore(false);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to load more invoices", error);
+  //   } finally {
+  //     setLoadingMore(false);
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   function handleScroll() {
+  //     const scrollTop = window.scrollY;
+  //     const windowHeight = window.innerHeight;
+  //     const documentHeight = document.documentElement.scrollHeight;
+
+  //     if (scrollTop + windowHeight >= documentHeight - 300) {
+  //       loadMoreBills();
+  //     }
+  //   }
+
+  //   window.addEventListener("scroll", handleScroll);
+
+  //   return () => {
+  //     window.removeEventListener("scroll", handleScroll);
+  //   };
+  // }, [page, hasMore, loadingMore, filter, dateRange]);
+
   const totalSales = saleBills.reduce(
     (s, b) => s + (parseInt(b.totalAmount) || 0),
-    0
+    0,
   );
   const unpaidCount = saleBills.filter(
-    (b) => b.paymentStatus?.toLowerCase() === 'unpaid'
+    (b) => b.paymentStatus?.toLowerCase() === "unpaid",
   ).length;
 
   async function applyFilter() {
@@ -88,8 +184,8 @@ export default function SaleBills({ searchParams }) {
 
     const format = (date) => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
 
       return `${year}-${month}-${day}`;
     };
@@ -103,65 +199,65 @@ export default function SaleBills({ searchParams }) {
   async function clearFilter() {
     const range = getCurrentMonthRange();
 
-    setFilter('thisMonth');
+    setFilter("thisMonth");
     setDateRange(range);
 
-    await loadBills('thisMonth', range);
+    await loadBills("thisMonth", range);
   }
 
   async function handleDelete() {
     try {
       await deleteBill(deleteId);
-      toast.success('Invoice deleted');
+      toast.success("Invoice deleted");
     } catch {
-      toast.error('Failed to delete');
+      toast.error("Failed to delete");
     } finally {
       setDeleteId(null);
     }
   }
 
-  if (view === 'preview' && previewBill) {
+  if (view === "preview" && previewBill) {
     return (
       <BillPreview
         bill={previewBill}
         billType="SALE"
-        onBack={() => setView('list')}
+        onBack={() => setView("list")}
       />
     );
   }
-  if (view === 'create') {
+  if (view === "create") {
     return (
       <SaleBillForm
         billingType={billingType}
-        onBack={() => setView('list')}
+        onBack={() => setView("list")}
         onSaved={(createdRecord) => {
-          console.log(createdRecord)
-          if (billingType === 'B2B' && createdRecord?.id) {
+          console.log(createdRecord);
+          if (billingType === "B2B" && createdRecord?.id) {
             const fullBill = useSalesStore
               .getState()
               .saleBills.find((b) => String(b.id) === String(createdRecord.id));
 
             if (fullBill) {
               setPreviewBill(fullBill);
-              setView('preview');
+              setView("preview");
               return;
             }
           }
-          setView('list');
+          setView("list");
           loadBills();
         }}
       />
     );
   }
-  if (view === 'edit') {
+  if (view === "edit") {
     return (
       <SaleBillForm
         billingType={billingType}
         editMode={true}
         billId={billID}
-        onBack={() => setView('list')}
+        onBack={() => setView("list")}
         onSaved={() => {
-          setView('list');
+          setView("list");
           loadBills();
         }}
       />
@@ -170,7 +266,7 @@ export default function SaleBills({ searchParams }) {
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}
+      style={{ display: "flex", flexDirection: "column", gap: "var(--sp-5)" }}
     >
       <ToastContainer toasts={toast.toasts} />
       <ConfirmModal
@@ -191,8 +287,8 @@ export default function SaleBills({ searchParams }) {
           <Button
             variant="outline"
             onClick={() => {
-              setBillingType('B2B');
-              setView('create');
+              setBillingType("B2B");
+              setView("create");
             }}
           >
             + B2B Invoice
@@ -200,8 +296,8 @@ export default function SaleBills({ searchParams }) {
           <Button
             variant="primary"
             onClick={() => {
-              setBillingType('B2C');
-              setView('create');
+              setBillingType("B2C");
+              setView("create");
             }}
           >
             + B2C Invoice
@@ -239,7 +335,7 @@ export default function SaleBills({ searchParams }) {
 
       {/* Search */}
       <div
-        style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}
+        style={{ display: "flex", gap: "var(--sp-3)", alignItems: "center" }}
       >
         <div className="search-bar" style={{ flex: 1 }}>
           <span className="search-bar__icon">🔍</span>
@@ -258,7 +354,7 @@ export default function SaleBills({ searchParams }) {
           title="No invoices found"
           description="Try adjusting the date filter or create a new invoice."
           action={
-            <Button variant="primary" onClick={() => setView('create')}>
+            <Button variant="primary" onClick={() => setView("create")}>
               + New Invoice
             </Button>
           }
@@ -281,33 +377,37 @@ export default function SaleBills({ searchParams }) {
                 </tr>
               </thead>
               <tbody>
+                {/* {filtered.map((bill, i) => ( */}
                 {paginated.map((bill, i) => (
                   <tr key={bill.id || bill._id}>
                     <td
                       style={{
-                        color: 'var(--text-muted)',
-                        fontSize: 'var(--fs-xs)',
+                        color: "var(--text-muted)",
+                        fontSize: "var(--fs-xs)",
                       }}
                     >
-                      {from + i}
+                      {/* {from + i} */}
+                      {i + 1}
                     </td>
                     <td
                       style={{
                         fontWeight: 600,
-                        color: 'var(--primary)',
-                        fontFamily: 'monospace',
-                        fontSize: 'var(--fs-xs)',
+                        color: "var(--primary)",
+                        fontFamily: "monospace",
+                        fontSize: "var(--fs-xs)",
                       }}
                     >
                       {bill.invoiceNumber}
                     </td>
                     <td>{formatDate(bill.saleDate)}</td>
                     <td style={{ fontWeight: 500 }}>
-                      {bill.Party?.name ? bill.Party?.name : bill.Customer?.name || '-'}
+                      {bill.Party?.name
+                        ? bill.Party?.name
+                        : bill.Customer?.name || "-"}
                     </td>
                     <td>
                       <span className="badge badge--sale">
-                        {bill.bill_type || 'B2C'}
+                        {bill.bill_type || "B2C"}
                       </span>
                     </td>
                     <td className="text-right" style={{ fontWeight: 700 }}>
@@ -325,11 +425,11 @@ export default function SaleBills({ searchParams }) {
                         }
                         items={[
                           {
-                            label: 'Preview & Print',
-                            icon: '👁',
+                            label: "Preview & Print",
+                            icon: "👁",
                             onClick: () => {
                               setPreviewBill(bill);
-                              setView('preview');
+                              setView("preview");
                             },
                           },
                           // {
@@ -341,18 +441,18 @@ export default function SaleBills({ searchParams }) {
                           //   },
                           // },
                           {
-                            label: 'Edit',
-                            icon: '✏️',
+                            label: "Edit",
+                            icon: "✏️",
                             onClick: () => {
-                              setView('edit');
+                              setView("edit");
                               setBillID(bill.id || bill._id);
                               setBillingType(bill.bill_type);
                               // window.location.hash = `sales/edit/${bill.id || bill._id}?type=${bill.bill_type || 'B2C'}`;
                             },
                           },
                           {
-                            label: 'Delete',
-                            icon: '🗑',
+                            label: "Delete",
+                            icon: "🗑",
                             danger: true,
                             onClick: () => setDeleteId(bill.id || bill._id),
                           },
@@ -368,17 +468,18 @@ export default function SaleBills({ searchParams }) {
           {/* Mobile cards */}
           <div
             className="bill-cards-list"
-            style={{ padding: 'var(--sp-4)', display: 'none' }}
+            style={{ padding: "var(--sp-4)", display: "none" }}
             id="mobile-bills"
           >
+            {/* {filtered.map((bill, i) => ( */}
             {paginated.map((bill) => (
               <div key={bill.id} className="bill-card-mobile">
                 <div className="bill-card-mobile__row">
                   <span
                     style={{
                       fontWeight: 700,
-                      color: 'var(--primary)',
-                      fontFamily: 'monospace',
+                      color: "var(--primary)",
+                      fontFamily: "monospace",
                     }}
                   >
                     {bill.invoiceNumber}
@@ -397,13 +498,13 @@ export default function SaleBills({ searchParams }) {
                   <span className="bill-card-mobile__label">
                     {formatDate(bill.saleDate)}
                   </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => {
                         setPreviewBill(bill);
-                        setView('preview');
+                        setView("preview");
                       }}
                     >
                       View
@@ -412,7 +513,7 @@ export default function SaleBills({ searchParams }) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setView('edit');
+                        setView("edit");
                         setBillID(bill.id || bill._id);
                         setBillingType(bill.bill_type);
                         // window.location.hash = `sales/edit/${bill.id || bill._id}?type=${bill.bill_type || 'B2C'}`;
@@ -441,6 +542,30 @@ export default function SaleBills({ searchParams }) {
             total={total}
             onPageChange={goToPage}
           />
+          {/* {loadingMore && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px",
+                color: "var(--text-muted)",
+              }}
+            >
+              Loading more invoices...
+            </div>
+          )}
+
+          {!hasMore && filtered.length > 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px",
+                color: "var(--text-muted)",
+                fontSize: "var(--fs-sm)",
+              }}
+            >
+              No more invoices
+            </div>
+          )} */}
         </div>
       )}
 

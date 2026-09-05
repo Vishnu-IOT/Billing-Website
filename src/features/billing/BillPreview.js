@@ -10,24 +10,28 @@
       and the new ones without breaking anything
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-import React, { useRef, useState, useEffect } from 'react';
-import useAppStore from '../../store/appStore';
-import { Button } from '../../components/ui';
-import '../../styles/Billpreview.css';
-import { useToast } from '../../hooks/useToast';
-import B2CInvoice from './invoices/B2CInvoice';
-import B2BInvoice from './invoices/B2BInvoice';
-import { fetchFinancialDetailsAPI } from '../../api/company';
+import React, { useRef, useState, useEffect } from "react";
+import useAppStore from "../../store/appStore";
+import { Button } from "../../components/ui";
+import "../../styles/Billpreview.css";
+import { useToast } from "../../hooks/useToast";
+import B2CInvoice from "./invoices/B2CInvoice";
+import B2BInvoice from "./invoices/B2BInvoice";
+import { fetchFinancialDetailsAPI } from "../../api/company";
 
 // ── NEW IMPORTS ──
-import CustomizableInvoice from './invoices/templates/CustomizableInvoice';
-import B2BInvoiceTemplate from './invoices/templates/B2BInvoiceTemplate';
-import { adaptBillToInvoice, fetchCompanyForInvoice } from './invoices/templates/adaptBillData';
-import './invoices/templates/CustomizableInvoice.css';
-import './invoices/templates/B2BInvoiceTemplate.css';
-import ThermalInvoice from './invoices/ThermalInvoice';
+import CustomizableInvoice from "./invoices/templates/CustomizableInvoice";
+import B2BInvoiceTemplate from "./invoices/templates/B2BInvoiceTemplate";
+import {
+  adaptBillToInvoice,
+  fetchCompanyForInvoice,
+} from "./invoices/templates/adaptBillData";
+import "./invoices/templates/CustomizableInvoice.css";
+import "./invoices/templates/B2BInvoiceTemplate.css";
+import ThermalInvoice from "./invoices/ThermalInvoice";
+import html2pdf from "html2pdf.js";
 
-export default function BillPreview({ bill, billType = 'SALE', onBack }) {
+export default function BillPreview({ bill, billType = "SALE", onBack }) {
   const companies = useAppStore((s) => s.companies);
   const toast = useToast();
   const printRef = useRef(null);
@@ -38,9 +42,8 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
   const [loadingFinancials, setLoadingFinancials] = useState(false);
   const [companyFinancials, setCompanyFinancials] = useState({});
 
-
-  const isSale = billType === 'SALE';
-  const isB2B = bill.bill_type === 'B2B';
+  const isSale = billType === "SALE";
+  const isB2B = bill.bill_type === "B2B";
   const party = bill.Party || {};
   const items = bill.SalesItems || [];
   const companyBasic = companies?.[0] || companies || {};
@@ -75,43 +78,93 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
         const financials = res?.data?.data || res?.data || {};
         if (!cancelled) setCompanyFinancials(financials);
       } catch (err) {
-        console.error('Could not load company financial details:', err);
+        console.error("Could not load company financial details:", err);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [companyBasic?.id]);
 
-  const companiesForDisplay = { ...companyBasic, financials: companyFinancials };
+  const companiesForDisplay = {
+    ...companyBasic,
+    financials: companyFinancials,
+  };
 
   if (!bill) return null;
 
   function handlePrint() {
     const el = printRef.current;
     if (!el) {
-      toast.error('Error: Unable to prepare invoice for printing');
+      toast.error("Error: Unable to prepare invoice for printing");
       return;
     }
     try {
       window.print();
     } catch (error) {
-      console.error('Print error:', error);
-      toast.error('Failed to print invoice');
+      console.error("Print error:", error);
+      toast.error("Failed to print invoice");
     }
   }
 
-  const invoiceLabel = isB2B ? 'TAX INVOICE' : isSale ? 'INVOICE' : 'PURCHASE BILL';
-  const partyLabel = isSale ? 'Billed To' : 'Supplier';
+  function handleSavePDF() {
+    const element = printRef.current;
+
+    if (!element) {
+      toast.error("Error: Unable to prepare invoice");
+      return;
+    }
+
+    try {
+      const options = {
+        margin: 0,
+        filename: `${bill.invoiceNumber || "Invoice"}.pdf`,
+        image: {
+          type: "jpeg",
+          quality: 0.98,
+        },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+        },
+      };
+
+      html2pdf().set(options).from(element).save();
+    } catch (error) {
+      console.error("PDF save error:", error);
+      toast.error("Failed to save invoice as PDF");
+    }
+  }
+
+  const invoiceLabel = isB2B
+    ? "TAX INVOICE"
+    : isSale
+      ? "INVOICE"
+      : "PURCHASE BILL";
+  const partyLabel = isSale ? "Billed To" : "Supplier";
 
   const LegacyTemplate = isB2B ? B2BInvoice : ThermalInvoice;
   const NewTemplate = isB2B ? B2BInvoiceTemplate : CustomizableInvoice;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "var(--sp-5)" }}
+    >
       <div className="page-header">
         <div
           className="page-header__left"
-          style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 'var(--sp-3)' }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexDirection: "row",
+            gap: "var(--sp-3)",
+          }}
         >
           <Button variant="ghost" size="sm" onClick={onBack}>
             ← Back
@@ -119,11 +172,14 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
           <h1>Preview Invoice</h1>
         </div>
 
-        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+        <div style={{ display: "flex", gap: "var(--sp-2)" }}>
           {/* NEW: toggle button */}
           {/* <Button variant="ghost" size="sm" onClick={() => setUseNewTemplate((v) => !v)}>
             {useNewTemplate ? 'Classic Template' : 'New Template'}
           </Button> */}
+          <Button variant="secondary" onClick={handleSavePDF} icon="📄">
+            Save as PDF
+          </Button>
           <Button variant="primary" onClick={handlePrint} icon="🖨️">
             Print Invoice
           </Button>
@@ -132,22 +188,25 @@ export default function BillPreview({ bill, billType = 'SALE', onBack }) {
 
       <div
         style={{
-          background: 'var(--bg-card)',
-          padding: 'var(--sp-8)',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: 'var(--shadow-lg)',
+          background: "var(--bg-card)",
+          // padding: "var(--sp-8)",
+          borderRadius: "var(--radius-xl)",
+          boxShadow: "var(--shadow-lg)",
           maxWidth: 880,
-          margin: '0 auto',
+          margin: "0 auto",
           // width: '100%',
         }}
       >
         {useNewTemplate ? (
           loadingFinancials || !invoiceData ? (
-            <div style={{ textAlign: 'center', padding: 'var(--sp-8)' }}>
+            <div style={{ textAlign: "center", padding: "var(--sp-8)" }}>
               Loading company financial details...
             </div>
           ) : (
-            <NewTemplate invoice={invoiceData.invoice} company={invoiceData.company} />
+            <NewTemplate
+              invoice={invoiceData.invoice}
+              company={invoiceData.company}
+            />
           )
         ) : (
           <LegacyTemplate

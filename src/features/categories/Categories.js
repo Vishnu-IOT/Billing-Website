@@ -100,7 +100,7 @@ export default function Categories() {
         }
       >
         <div className="form-group">
-          <label className="form-label">Category Name *</label>
+          <label className="form-label">Category Name <span style={{ color: "red" }}>*</span></label>
           <input
             className="form-input"
             placeholder="e.g. Electronics"

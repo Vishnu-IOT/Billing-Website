@@ -125,7 +125,7 @@ export default function UserManagement() {
       phone: user.phone || "",
       password: "",
       role: user.role || "Owner",
-      status: user.status || "1",
+      status: user.is_active === true ? "1" : "0" || "1",
     });
     setFormErrors({});
     setModalOpen(true);
