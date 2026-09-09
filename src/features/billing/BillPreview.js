@@ -30,6 +30,7 @@ import "./invoices/templates/CustomizableInvoice.css";
 import "./invoices/templates/B2BInvoiceTemplate.css";
 import ThermalInvoice from "./invoices/ThermalInvoice";
 import html2pdf from "html2pdf.js";
+import useBillTemplateStore from "../../store/billTemplateStore";
 
 export default function BillPreview({ bill, billType = "SALE", onBack }) {
   const companies = useAppStore((s) => s.companies);
@@ -37,7 +38,6 @@ export default function BillPreview({ bill, billType = "SALE", onBack }) {
   const printRef = useRef(null);
 
   // ── NEW STATE ──
-  const [useNewTemplate, setUseNewTemplate] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null); // { invoice, company }
   const [loadingFinancials, setLoadingFinancials] = useState(false);
   const [companyFinancials, setCompanyFinancials] = useState({});
@@ -48,25 +48,35 @@ export default function BillPreview({ bill, billType = "SALE", onBack }) {
   const items = bill.SalesItems || [];
   const companyBasic = companies?.[0] || companies || {};
 
-  // ── NEW: fetch real GST/bank data from the Financial API when the
-  //         new-template view is opened (not on every render) ──
-  // useEffect(() => {
-  //   if (!useNewTemplate || !companyBasic?.id) return;
+  // Only B2B invoices get the "Modern" template option, and only when the
+  // person has explicitly picked it in Settings → Bill Templates. Every
+  // other case (B2C, or B2B with the default "classic" choice) renders
+  // through the exact same path as before this feature existed.
+  const savedBillTemplate = useBillTemplateStore((s) => s.billTemplate);
+  const useNewTemplate = isB2B && savedBillTemplate === "modern";
 
-  //   let cancelled = false;
-  //   setLoadingFinancials(true);
+  // ── Fetch real GST/bank data from the Financial API when the modern
+  //    template is active (not on every render) ──
+  useEffect(() => {
+    if (!useNewTemplate || !companyBasic?.id) return;
 
-  //   (async () => {
-  //     const company = await fetchCompanyForInvoice(companyBasic.id, companyBasic);
-  //     const adapted = adaptBillToInvoice(bill, party, items, company);
-  //     if (!cancelled) {
-  //       setInvoiceData(adapted);
-  //       setLoadingFinancials(false);
-  //     }
-  //   })();
+    let cancelled = false;
+    setLoadingFinancials(true);
 
-  //   return () => { cancelled = true; };
-  // }, [useNewTemplate, bill.id]); // re-fetch if the user opens a different bill
+    (async () => {
+      const company = await fetchCompanyForInvoice(companyBasic.id, companyBasic);
+      const adapted = adaptBillToInvoice(bill, party, items, company);
+      if (!cancelled) {
+        setInvoiceData(adapted);
+        setLoadingFinancials(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useNewTemplate, bill.id]); // re-fetch if the user opens a different bill
 
   useEffect(() => {
     if (!companyBasic?.id) return;
@@ -173,10 +183,6 @@ export default function BillPreview({ bill, billType = "SALE", onBack }) {
         </div>
 
         <div style={{ display: "flex", gap: "var(--sp-2)" }}>
-          {/* NEW: toggle button */}
-          {/* <Button variant="ghost" size="sm" onClick={() => setUseNewTemplate((v) => !v)}>
-            {useNewTemplate ? 'Classic Template' : 'New Template'}
-          </Button> */}
           <Button variant="secondary" onClick={handleSavePDF} icon="📄">
             Save as PDF
           </Button>
@@ -203,10 +209,12 @@ export default function BillPreview({ bill, billType = "SALE", onBack }) {
               Loading company financial details...
             </div>
           ) : (
-            <NewTemplate
-              invoice={invoiceData.invoice}
-              company={invoiceData.company}
-            />
+            <div ref={printRef} className="print-area invoice-modern">
+              <NewTemplate
+                invoice={invoiceData.invoice}
+                company={invoiceData.company}
+              />
+            </div>
           )
         ) : (
           <LegacyTemplate

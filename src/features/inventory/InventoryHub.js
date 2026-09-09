@@ -4,6 +4,7 @@ import useInventoryStore from "../../store/inventoryStore";
 import useAppStore from "../../store/appStore";
 import { formatCurrency } from "../../utils/currency";
 import { useToast } from "../../hooks/useToast";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import "../../styles/components.css";
 import { ToastContainer } from "../../components/ui";
 
@@ -13,6 +14,14 @@ export default function InventoryHub() {
 
   const warehouses = useInventoryStore((s) => s.warehouses);
   const stockLedger = useInventoryStore((s) => s.stockLedger);
+  const {
+    visible: visibleLedger,
+    hasMore: hasMoreLedger,
+    sentinelRef: ledgerSentinelRef,
+    containerRef: ledgerContainerRef,
+    total: ledgerTotal,
+    shown: ledgerShown,
+  } = useInfiniteScroll(stockLedger, 30);
   const reorderAlerts = useInventoryStore((s) => s.reorderAlerts);
   const transfers = useInventoryStore((s) => s.transfers);
   const loadingWarehouses = useInventoryStore((s) => s.loadingWarehouses);
@@ -697,11 +706,13 @@ export default function InventoryHub() {
           </div>
 
           <div
+            ref={ledgerContainerRef}
             style={{
               background: "#fff",
               border: "1px solid #e2e8f0",
               borderRadius: 16,
-              overflow: "hidden",
+              maxHeight: "45vh",
+              overflowY: "auto",
             }}
           >
             <table
@@ -723,12 +734,27 @@ export default function InventoryHub() {
                     letterSpacing: "0.5px",
                   }}
                 >
-                  <th style={{ padding: "12px 18px" }}>Date &amp; Time</th>
-                  <th style={{ padding: "12px 18px" }}>Warehouse</th>
-                  <th style={{ padding: "12px 18px" }}>Product</th>
-                  <th style={{ padding: "12px 18px" }}>Type</th>
-                  <th style={{ padding: "12px 18px" }}>Quantity</th>
-                  <th style={{ padding: "12px 18px" }}>Reference</th>
+                  {[
+                    "Date & Time",
+                    "Warehouse",
+                    "Product",
+                    "Type",
+                    "Quantity",
+                    "Reference",
+                  ].map((label) => (
+                    <th
+                      key={label}
+                      style={{
+                        padding: "12px 18px",
+                        position: "sticky",
+                        top: 0,
+                        background: "#f8fafc",
+                        zIndex: 1,
+                      }}
+                    >
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -746,7 +772,7 @@ export default function InventoryHub() {
                     </td>
                   </tr>
                 ) : (
-                  stockLedger.map((m) => (
+                  visibleLedger.map((m) => (
                     <tr
                       key={m.id}
                       style={{ borderBottom: "1px solid #f1f5f9" }}
@@ -805,6 +831,21 @@ export default function InventoryHub() {
                 )}
               </tbody>
             </table>
+            <div
+              ref={ledgerSentinelRef}
+              style={{
+                textAlign: "center",
+                padding: 16,
+                color: "#94a3b8",
+                fontSize: 13,
+              }}
+            >
+              {hasMoreLedger
+                ? `Showing ${ledgerShown} of ${ledgerTotal} — scroll for more…`
+                : ledgerTotal > 0
+                  ? `Showing all ${ledgerTotal} entries`
+                  : null}
+            </div>
           </div>
         </div>
       )}
@@ -850,7 +891,7 @@ export default function InventoryHub() {
                     marginBottom: 4,
                   }}
                 >
-                  Warehouse Name
+                  Warehouse Name <span style={{ color: "red" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -880,7 +921,7 @@ export default function InventoryHub() {
                     marginBottom: 4,
                   }}
                 >
-                  Warehouse Code
+                  Warehouse Code <span style={{ color: "red" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -910,7 +951,7 @@ export default function InventoryHub() {
                     marginBottom: 4,
                   }}
                 >
-                  Phone Number
+                  Phone Number <span style={{ color: "red" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -941,7 +982,7 @@ export default function InventoryHub() {
                     marginBottom: 4,
                   }}
                 >
-                  Address
+                  Address <span style={{ color: "red" }}>*</span>
                 </label>
                 <textarea
                   value={whForm.address}
@@ -1062,7 +1103,7 @@ export default function InventoryHub() {
                       marginBottom: 4,
                     }}
                   >
-                    From Warehouse
+                    From Warehouse <span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     value={trfForm.fromWarehouseId}
@@ -1099,7 +1140,7 @@ export default function InventoryHub() {
                       marginBottom: 4,
                     }}
                   >
-                    To Warehouse
+                    To Warehouse <span style={{ color: "red" }}>*</span>
                   </label>
                   <select
                     value={trfForm.toWarehouseId}
@@ -1135,7 +1176,7 @@ export default function InventoryHub() {
                     marginBottom: 6,
                   }}
                 >
-                  Products to Transfer
+                  Products to Transfer <span style={{ color: "red" }}>*</span>
                 </label>
                 {trfForm.items.map((item, idx) => (
                   <div
@@ -1162,6 +1203,7 @@ export default function InventoryHub() {
                         borderRadius: 8,
                         border: "1px solid #cbd5e1",
                         fontSize: 13,
+                        width: "50%",
                       }}
                       required
                     >

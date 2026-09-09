@@ -418,7 +418,7 @@ export default function Products() {
             />
           </div>
           <div className="form-col-full form-group">
-            <label className="form-label">Name *</label>
+            <label className="form-label">Name <span style={{ color: "red" }}>*</span></label>
             <input
               className="form-input"
               placeholder="Enter Product Name"
@@ -430,7 +430,7 @@ export default function Products() {
             )}
           </div>
           <div className="form-group form-col-fulls" >
-            <label className="form-label">Barcode *</label>
+            <label className="form-label">Barcode <span style={{ color: "red" }}>*</span></label>
             <input
               className="form-input"
               placeholder="Enter Barcode"
@@ -444,7 +444,7 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">HSN Code *</label>
+            <label className="form-label">HSN Code <span style={{ color: "red" }}>*</span></label>
             <input
               className="form-input"
               type="text"
@@ -481,7 +481,7 @@ export default function Products() {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Category *</label>
+            <label className="form-label">Category <span style={{ color: "red" }}>*</span></label>
             <select
               className="form-select"
               value={form.categoryId}
@@ -516,7 +516,7 @@ export default function Products() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">GST % *</label>
+            <label className="form-label">GST % <span style={{ color: "red" }}>*</span></label>
             <select
               className="form-select"
               value={form.taxRate}
@@ -536,7 +536,7 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">MRP (₹) *</label>
+            <label className="form-label">MRP (₹) <span style={{ color: "red" }}>*</span></label>
             <input
               type="number"
               className="form-input"
@@ -550,7 +550,7 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Sales Price (₹) *</label>
+            <label className="form-label">Sales Price (₹) <span style={{ color: "red" }}>*</span></label>
             <input
               type="number"
               className="form-input"
@@ -566,7 +566,7 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Purchase Price (₹) *</label>
+            <label className="form-label">Purchase Price (₹) <span style={{ color: "red" }}>*</span></label>
             <input
               type="number"
               className="form-input"
@@ -674,20 +674,20 @@ export default function Products() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button
+          {/* <Button
             variant="secondary"
             onClick={() => setBrandModalOpen(true)}
           >
             🏷️ Manage Brands
-          </Button>
-          {activeProduct && (
+          </Button> */}
+          {/* {activeProduct && (
             <Button
               variant="secondary"
               onClick={() => setVariantModalOpen(true)}
             >
               📦 Variants
             </Button>
-          )}
+          )} */}
           <Button variant="primary" onClick={openAdd}>
             + Add Product
           </Button>

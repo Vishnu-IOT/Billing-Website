@@ -31,7 +31,7 @@ function formatDateTime(dateStr) {
 
 function formatMoney(val) {
     const num = Number(val || 0);
-    return `$${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function getShiftStatusInfo(shift) {
@@ -290,7 +290,7 @@ export default function ShiftManagement() {
                                                         }
                                                     >
                                                         {diff > 0 ? '+' : ''}
-                                                        {formatMoney(diff).replace('$-', '-$')}
+                                                        {formatMoney(diff).replace('₹-', '-₹')}
                                                     </span>
                                                 )}
                                             </td>

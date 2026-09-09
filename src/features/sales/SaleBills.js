@@ -6,19 +6,19 @@ import {
   Button,
   EmptyState,
   PaymentBadge,
-  Pagination,
   ConfirmModal,
   ActionMenu,
   StatCard,
 } from "../../components/ui";
 import { DateRangeFilter } from "../../components/shared/DateRangeFilter";
-import { usePagination } from "../../hooks/usePagination";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { useToast } from "../../hooks/useToast";
 import { formatCurrency } from "../../utils/currency";
 import { formatDate } from "../../utils/date";
 import { ToastContainer } from "../../components/ui";
 import SaleBillForm from "./SaleBillForm";
 import BillPreview from "../billing/BillPreview";
+import ShareDocumentModal from "../../components/shared/ShareDocumentModal";
 import "../../styles/bills.css";
 
 export default function SaleBills({ searchParams }) {
@@ -39,6 +39,7 @@ export default function SaleBills({ searchParams }) {
   const [search, setSearch] = useState("");
   const [billingType, setBillingType] = useState("B2C");
   const [billID, setBillID] = useState(null);
+  const [shareBill, setShareBill] = useState(null);
 
   const setHideSidebar = useUIStore((s) => s.setHideSidebar);
 
@@ -68,13 +69,7 @@ export default function SaleBills({ searchParams }) {
     );
   }, [saleBills, search]);
 
-  const { page, totalPages, paginated, from, to, total, goToPage } =
-    usePagination(filtered, 10);
-
-  // const [displayedBills, setDisplayedBills] = useState([]);
-  // const [page, setPage] = useState(1);
-  // const [hasMore, setHasMore] = useState(true);
-  // const [loadingMore, setLoadingMore] = useState(false);
+  const { visible, hasMore, sentinelRef, containerRef, total, shown } = useInfiniteScroll(filtered, 20);
 
   // const PAGE_SIZE = 10;
 
@@ -276,6 +271,13 @@ export default function SaleBills({ searchParams }) {
         title="Delete Invoice?"
         message="This action cannot be undone."
       />
+      <ShareDocumentModal
+        open={!!shareBill}
+        onClose={() => setShareBill(null)}
+        bill={shareBill}
+        party={shareBill?.Party}
+        channel="whatsapp"
+      />
 
       {/* Header */}
       <div className="page-header">
@@ -360,7 +362,11 @@ export default function SaleBills({ searchParams }) {
           }
         />
       ) : (
-        <div className="table-wrapper">
+        <div
+          className="table-wrapper"
+          ref={containerRef}
+          style={{ maxHeight: "65vh", overflowY: "auto" }}
+        >
           {/* Desktop */}
           <div className="table-desktop-only">
             <table className="data-table">
@@ -377,8 +383,7 @@ export default function SaleBills({ searchParams }) {
                 </tr>
               </thead>
               <tbody>
-                {/* {filtered.map((bill, i) => ( */}
-                {paginated.map((bill, i) => (
+                {visible.map((bill, i) => (
                   <tr key={bill.id || bill._id}>
                     <td
                       style={{
@@ -386,7 +391,6 @@ export default function SaleBills({ searchParams }) {
                         fontSize: "var(--fs-xs)",
                       }}
                     >
-                      {/* {from + i} */}
                       {i + 1}
                     </td>
                     <td
@@ -441,6 +445,11 @@ export default function SaleBills({ searchParams }) {
                           //   },
                           // },
                           {
+                            label: "Share via WhatsApp",
+                            icon: "💬",
+                            onClick: () => setShareBill(bill),
+                          },
+                          {
                             label: "Edit",
                             icon: "✏️",
                             onClick: () => {
@@ -471,8 +480,7 @@ export default function SaleBills({ searchParams }) {
             style={{ padding: "var(--sp-4)", display: "none" }}
             id="mobile-bills"
           >
-            {/* {filtered.map((bill, i) => ( */}
-            {paginated.map((bill) => (
+            {visible.map((bill) => (
               <div key={bill.id} className="bill-card-mobile">
                 <div className="bill-card-mobile__row">
                   <span
@@ -512,6 +520,13 @@ export default function SaleBills({ searchParams }) {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => setShareBill(bill)}
+                    >
+                      💬 Share
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setView("edit");
                         setBillID(bill.id || bill._id);
@@ -534,38 +549,21 @@ export default function SaleBills({ searchParams }) {
             ))}
           </div>
 
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            from={from}
-            to={to}
-            total={total}
-            onPageChange={goToPage}
-          />
-          {/* {loadingMore && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "20px",
-                color: "var(--text-muted)",
-              }}
-            >
-              Loading more invoices...
-            </div>
-          )}
-
-          {!hasMore && filtered.length > 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "20px",
-                color: "var(--text-muted)",
-                fontSize: "var(--fs-sm)",
-              }}
-            >
-              No more invoices
-            </div>
-          )} */}
+          <div
+            ref={sentinelRef}
+            style={{
+              textAlign: "center",
+              padding: "20px",
+              color: "var(--text-muted)",
+              fontSize: "var(--fs-sm)",
+            }}
+          >
+            {hasMore
+              ? `Showing ${shown} of ${total} — scroll for more…`
+              : total > 0
+                ? `Showing all ${total} invoices`
+                : null}
+          </div>
         </div>
       )}
 

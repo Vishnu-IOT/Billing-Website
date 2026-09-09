@@ -81,3 +81,13 @@ export async function deleteSaleBillAPI(id) {
     alert(err);
   }
 }
+
+// Read-only — fetches what the next invoice number would be without reserving it,
+// so the Settings "Live Preview" always reflects the real running counter.
+export async function previewNextInvoiceNumberAPI(companyId) {
+  const response = await axios.get(`${BASE_URL}/sales/preview-next-number`, {
+    params: { companyId },
+    ...getAuthHeaders(),
+  });
+  return response.data;
+}

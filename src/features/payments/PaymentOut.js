@@ -22,6 +22,14 @@ import '../../styles/payments.css';
 
 const PAYMENT_TYPES = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'NEFT/RTGS', 'Credit Card', 'Debit Card'];
 
+// Balance still owed on a bill — never trust totalAmount alone once partial payments exist
+function balanceDue(bill) {
+  if (!bill) return 0;
+  const total = Number(bill.totalAmount || 0);
+  const paid = Number(bill.amountPaid || 0);
+  return Math.max(total - paid, 0);
+}
+
 const EMPTY_FORM = {
   partyId: '',
   billId: '',
@@ -107,15 +115,16 @@ export default function PaymentOut() {
     setForm(EMPTY_FORM);
   }
 
+  // Auto-fill amount with the remaining balance due (not the full bill total)
   function handleBillChange(billId) {
     const bill = purchaseBills.find((b) => String(b.id || b._id) === String(billId));
-    setForm((f) => ({ ...f, billId, paymentAmount: bill ? String(bill.totalAmount || '') : '' }));
+    setForm((f) => ({ ...f, billId, paymentAmount: bill ? String(balanceDue(bill)) : '' }));
   }
 
   function handleModeChange(mode) {
     if (mode === 'full' && form.billId) {
       const bill = purchaseBills.find((b) => String(b.id || b._id) === String(form.billId));
-      setForm((f) => ({ ...f, paymentMode: mode, paymentAmount: bill ? String(bill.totalAmount || '') : f.paymentAmount }));
+      setForm((f) => ({ ...f, paymentMode: mode, paymentAmount: bill ? String(balanceDue(bill)) : f.paymentAmount }));
     } else {
       setForm((f) => ({ ...f, paymentMode: mode }));
     }
@@ -128,7 +137,7 @@ export default function PaymentOut() {
 
     setSaving(true);
     try {
-      await addPaymentOut({
+      const result = await addPaymentOut({
         purchaseId: form.billId,
         partyId: form.partyId,
         paymentDate: new Date().toISOString(),
@@ -137,13 +146,21 @@ export default function PaymentOut() {
         referenceNo: form.referenceNo,
       });
 
-      // Reload bills to see updated status
+      // Reload bills to see updated status / amountPaid
       if (typeof loadBills === 'function') loadBills();
 
-      toast.success('Payment Out recorded ✓');
+      const status = result?.paymentStatus;
+      const remaining = result?.balanceDue;
+      if (status === 'Paid') {
+        toast.success('Payment recorded — bill fully paid ✓');
+      } else if (status === 'Partial') {
+        toast.success(`Partial payment recorded — ₹${Number(remaining || 0).toFixed(2)} still due`);
+      } else {
+        toast.success('Payment Out recorded ✓');
+      }
       closeModal();
-    } catch {
-      toast.error('Failed to record payment');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to record payment');
     } finally {
       setSaving(false);
     }
@@ -195,7 +212,8 @@ export default function PaymentOut() {
                 <option value="">— Select Bill —</option>
                 {selectedPartyBills.map((b) => (
                   <option key={b.id || b._id} value={b.id || b._id}>
-                    {b.invoiceNumber || b.invoiceNo} — {formatCurrency(b.totalAmount)}
+                    {b.invoiceNumber || b.invoiceNo} — Due {formatCurrency(balanceDue(b))}
+                    {b.paymentStatus?.toLowerCase() === 'partial' ? ' (Partial)' : ''}
                   </option>
                 ))}
               </select>
@@ -257,6 +275,11 @@ export default function PaymentOut() {
                 className="form-input"
                 type="number"
                 min="0"
+                max={
+                  form.billId
+                    ? balanceDue(purchaseBills.find((b) => String(b.id || b._id) === String(form.billId)))
+                    : undefined
+                }
                 step="0.01"
                 placeholder="Enter amount"
                 value={form.paymentAmount}
@@ -265,6 +288,11 @@ export default function PaymentOut() {
                 style={form.paymentMode === 'full' ? { background: 'var(--bg-hover)', cursor: 'not-allowed' } : {}}
                 required
               />
+              {form.billId && (
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                  Balance due: {formatCurrency(balanceDue(purchaseBills.find((b) => String(b.id || b._id) === String(form.billId))))}
+                </span>
+              )}
             </div>
 
             {/* Reference No */}

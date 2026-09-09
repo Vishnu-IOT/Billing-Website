@@ -25,10 +25,11 @@ import DocumentPreview from '../../components/shared/DocumentPreview';
 const TAB_TYPES = [...SALES_DOCUMENT_TYPES, ...PURCHASE_DOCUMENT_TYPES];
 
 export default function Documents({ searchParams }) {
-  const { loadDocuments, getDocuments, deleteDocument, convertToInvoice } = useDocumentStore();
+  const { loadDocuments, getDocuments, deleteDocument, convertToInvoice, getFilters } = useDocumentStore();
   const toast = useToast();
   const setHideSidebar = useUIStore((s) => s.setHideSidebar);
   const companies = useAppStore((s) => s.companies);
+  const parties = useAppStore((s) => s.parties);
 
   const initialType = searchParams?.get('type') || 'QUOTATION';
   const [activeType, setActiveType] = useState(
@@ -41,13 +42,26 @@ export default function Documents({ searchParams }) {
 
   const [activeDoc, setActiveDoc] = useState(null);
 
+  // Filter bar state — party + date range + status, applied server-side
+  const [filterPartyId, setFilterPartyId] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+
   const config = DOCUMENT_TYPES[activeType];
   const documents = getDocuments(activeType);
   const debouncedSearch = useDebounce(search, 250);
 
   useEffect(() => {
-    loadDocuments(activeType);
-  }, [activeType, loadDocuments]);
+    // switching tabs resets the filter bar to whatever was last applied for that tab (or empty)
+    const existing = getFilters(activeType);
+    setFilterPartyId(existing.partyId || '');
+    setFilterFromDate(existing.fromDate || '');
+    setFilterToDate(existing.toDate || '');
+    setFilterStatus(existing.status || '');
+    loadDocuments(activeType, existing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeType]);
 
   useEffect(() => {
     setHideSidebar(view !== 'list');
@@ -83,6 +97,29 @@ export default function Documents({ searchParams }) {
       setDeleteId(null);
     }
   }
+
+  function applyFilters() {
+    const filters = {};
+    if (filterPartyId) filters.partyId = filterPartyId;
+    if (filterStatus) filters.status = filterStatus;
+    if (filterFromDate && filterToDate) {
+      filters.fromDate = filterFromDate;
+      filters.toDate = filterToDate;
+    }
+    loadDocuments(activeType, filters);
+    goToPage(1);
+  }
+
+  function clearFilters() {
+    setFilterPartyId('');
+    setFilterFromDate('');
+    setFilterToDate('');
+    setFilterStatus('');
+    loadDocuments(activeType, {});
+    goToPage(1);
+  }
+
+  const hasActiveFilters = !!(filterPartyId || filterStatus || (filterFromDate && filterToDate));
 
   if (view === 'create') {
     return (
@@ -169,6 +206,92 @@ export default function Documents({ searchParams }) {
             {DOCUMENT_TYPES[type].label}
           </button>
         ))}
+      </div>
+
+      <div
+        className="bills-filters"
+        style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          marginBottom: 16,
+          padding: 'var(--sp-3)',
+          background: 'var(--bg-elevated)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border)',
+        }}
+      >
+        <div>
+          <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            Party
+          </label>
+          <select
+            className="form-input"
+            value={filterPartyId}
+            onChange={(e) => setFilterPartyId(e.target.value)}
+            style={{ minWidth: 160 }}
+          >
+            <option value="">All Parties</option>
+            {parties.map((p) => (
+              <option key={p.id || p._id} value={p.id || p._id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            From
+          </label>
+          <input
+            className="form-input"
+            type="date"
+            value={filterFromDate}
+            onChange={(e) => setFilterFromDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            To
+          </label>
+          <input
+            className="form-input"
+            type="date"
+            value={filterToDate}
+            onChange={(e) => setFilterToDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            Status
+          </label>
+          <select
+            className="form-input"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{ minWidth: 130 }}
+          >
+            <option value="">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="converted">Converted</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="primary" size="sm" onClick={applyFilters}>
+            Apply
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bills-toolbar">

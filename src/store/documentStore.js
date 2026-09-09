@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   fetchDocumentsAPI,
   fetchDocumentByIdAPI,
+  fetchDocumentsByPartyAPI,
   addDocumentAPI,
   updateDocumentAPI,
   deleteDocumentAPI,
@@ -11,24 +12,32 @@ import {
 
 const useDocumentStore = create((set, get) => ({
   documents: {},
+  filters: {}, // keyed by documentType — { partyId, fromDate, toDate }
   loading: false,
   error: null,
 
-  loadDocuments: async (documentType) => {
-    set({ loading: true });
+  loadDocuments: async (documentType, filters) => {
+    const appliedFilters = filters ?? get().filters[documentType] ?? {};
+    set({ loading: true, error: null });
     try {
-      const data = await fetchDocumentsAPI(documentType);
+      const data = await fetchDocumentsAPI(documentType, appliedFilters);
       const docs = Array.isArray(data) ? data : data?.data ?? [];
       set((s) => ({
         documents: { ...s.documents, [documentType]: docs },
+        filters: { ...s.filters, [documentType]: appliedFilters },
         loading: false,
       }));
     } catch (err) {
-      set({ loading: false, error: err.message });
+      set({ loading: false, error: err?.response?.data?.message || err.message });
     }
   },
 
+  setFilters: (documentType, filters) => {
+    set((s) => ({ filters: { ...s.filters, [documentType]: filters } }));
+  },
+
   getDocuments: (documentType) => get().documents[documentType] || [],
+  getFilters: (documentType) => get().filters[documentType] || {},
 
   addDocument: async (payload) => {
     const result = await addDocumentAPI(payload);
@@ -60,6 +69,7 @@ const useDocumentStore = create((set, get) => ({
   },
 
   fetchDocument: async (id) => fetchDocumentByIdAPI(id),
+  fetchDocumentsByParty: async (partyId, filters) => fetchDocumentsByPartyAPI(partyId, filters),
 }));
 
 export default useDocumentStore;

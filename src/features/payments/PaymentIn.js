@@ -30,6 +30,14 @@ const PAYMENT_TYPES = [
   "Debit Card",
 ];
 
+// Balance still owed on a bill — never trust totalAmount alone once partial payments exist
+function balanceDue(bill) {
+  if (!bill) return 0;
+  const total = Number(bill.totalAmount || 0);
+  const paid = Number(bill.amountPaid || 0);
+  return Math.max(total - paid, 0);
+}
+
 const EMPTY_FORM = {
   partyId: "",
   billId: "",
@@ -128,7 +136,8 @@ export default function PaymentIn() {
     setForm(EMPTY_FORM);
   }
 
-  // Auto-fill amount when bill selected
+  // Auto-fill amount with the remaining balance due (not the full invoice total —
+  // a bill that's already Partial only has totalAmount - amountPaid left to collect)
   function handleBillChange(billId) {
     const bill = saleBills.find(
       (b) => String(b.id || b._id) === String(billId),
@@ -136,11 +145,11 @@ export default function PaymentIn() {
     setForm((f) => ({
       ...f,
       billId,
-      paymentAmount: bill ? String(bill.totalAmount || "") : "",
+      paymentAmount: bill ? String(balanceDue(bill)) : "",
     }));
   }
 
-  // When mode switches to full, restore full bill amount
+  // When mode switches to full, restore the remaining balance due (not the original total)
   function handleModeChange(mode) {
     if (mode === "full" && form.billId) {
       const bill = saleBills.find(
@@ -149,7 +158,7 @@ export default function PaymentIn() {
       setForm((f) => ({
         ...f,
         paymentMode: mode,
-        paymentAmount: bill ? String(bill.totalAmount || "") : f.paymentAmount,
+        paymentAmount: bill ? String(balanceDue(bill)) : f.paymentAmount,
       }));
     } else {
       setForm((f) => ({ ...f, paymentMode: mode }));
@@ -169,7 +178,7 @@ export default function PaymentIn() {
 
     setSaving(true);
     try {
-      await addPaymentIn({
+      const result = await addPaymentIn({
         saleId: form.billId,
         partyId: form.partyId,
         paymentDate: new Date().toISOString(),
@@ -178,13 +187,23 @@ export default function PaymentIn() {
         referenceNo: form.referenceNo,
       });
 
-      // Reload bills so we see updated payment status
+      // Reload bills so we see updated payment status / amountPaid
       loadBills();
 
-      toast.success("Payment In recorded ✓");
+      const status = result?.paymentStatus;
+      const remaining = result?.balanceDue;
+      if (status === "Paid") {
+        toast.success("Payment recorded — invoice fully paid ✓");
+      } else if (status === "Partial") {
+        toast.success(
+          `Partial payment recorded — ₹${Number(remaining || 0).toFixed(2)} still due`,
+        );
+      } else {
+        toast.success("Payment In recorded ✓");
+      }
       closeModal();
-    } catch {
-      toast.error("Failed to record payment");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to record payment");
     } finally {
       setSaving(false);
     }
@@ -259,8 +278,11 @@ export default function PaymentIn() {
                 <option value="">— Select Bill —</option>
                 {selectedPartyBills.map((b) => (
                   <option key={b.id || b._id} value={b.id || b._id}>
-                    {b.invoiceNumber || b.invoiceNo} —{" "}
-                    {formatCurrency(b.totalAmount)}
+                    {b.invoiceNumber || b.invoiceNo} — Due{" "}
+                    {formatCurrency(balanceDue(b))}
+                    {b.paymentStatus?.toLowerCase() === "partial"
+                      ? " (Partial)"
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -337,6 +359,15 @@ export default function PaymentIn() {
                 className="form-input"
                 type="number"
                 min="0"
+                max={
+                  form.billId
+                    ? balanceDue(
+                        saleBills.find(
+                          (b) => String(b.id || b._id) === String(form.billId),
+                        ),
+                      )
+                    : undefined
+                }
                 step="0.01"
                 placeholder="Enter amount"
                 value={form.paymentAmount}
@@ -351,6 +382,25 @@ export default function PaymentIn() {
                 }
                 required
               />
+              {form.billId && (
+                <span
+                  style={{
+                    fontSize: "var(--fs-xs)",
+                    color: "var(--text-muted)",
+                    marginTop: 4,
+                    display: "block",
+                  }}
+                >
+                  Balance due:{" "}
+                  {formatCurrency(
+                    balanceDue(
+                      saleBills.find(
+                        (b) => String(b.id || b._id) === String(form.billId),
+                      ),
+                    ),
+                  )}
+                </span>
+              )}
             </div>
 
             {/* Reference No */}

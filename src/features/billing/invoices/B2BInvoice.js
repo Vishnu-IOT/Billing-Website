@@ -316,7 +316,7 @@ export default function B2BInvoice({
           {items.map((item, idx) => {
             console.log(item);
             console.log(item.discountPercentage);
-            const qty = item.quantity || 1;
+            const qty = parseFloat(item.quantity) || 1;
             const price = parseFloat(item.price) || 0;
             const disc = parseFloat(item.discountPercentage) || 0;
             const discAmt = parseFloat(item.discountAmount) || 0;

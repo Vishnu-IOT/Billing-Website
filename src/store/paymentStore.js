@@ -40,10 +40,10 @@ const usePaymentStore = create((set, get) => ({
 
   addPaymentIn: async (payment) => {
     const saved = await addPaymentInAPI(payment);
-    if (saved) {
-      set((s) => ({ paymentsIn: [...s.paymentsIn, saved?.data ?? saved] }));
+    if (saved?.data) {
+      set((s) => ({ paymentsIn: [...s.paymentsIn, saved.data] }));
     }
-    return saved?.data ?? saved;
+    return saved; // { success, data, paymentStatus, amountPaid, balanceDue }
   },
 
   deletePaymentIn: async (id) => {
@@ -82,10 +82,10 @@ const usePaymentStore = create((set, get) => ({
   
   addPaymentOut: async (payment) => {
     const saved = await addPaymentOutAPI(payment);
-    if (saved) {
-      set((s) => ({ paymentsOut: [...s.paymentsOut, saved?.data ?? saved] }));
+    if (saved?.data) {
+      set((s) => ({ paymentsOut: [...s.paymentsOut, saved.data] }));
     }
-    return saved?.data ?? saved;
+    return saved; // { success, data, paymentStatus, amountPaid, balanceDue }
   },
 
   deletePaymentOut: async (id) => {

@@ -16,6 +16,7 @@ import {
   FiChevronsLeft,
   FiChevronsRight,
   FiShield,
+  FiAward,
 } from 'react-icons/fi';
 import { TbReport, TbMoneybagMoveBack, TbMoneybagMove, TbMoneybag } from 'react-icons/tb';
 import { RiAlignItemBottomLine } from 'react-icons/ri';
@@ -48,6 +49,8 @@ const ownerSidebar = [
   { key: 'products', icon: <FiBox />, label: 'Products' },
   { key: 'inventory', icon: <FiBox />, label: 'Inventory & Warehouses' },
   { key: 'categories', icon: <FiTag />, label: 'Categories' },
+  { key: 'brands', icon: <FiAward />, label: 'Brands' },
+  { key: 'customers', icon: <FiUsers />, label: 'Customers' },
   {
     key: 'reports',
     icon: <TbReport />,
@@ -87,6 +90,8 @@ const staffSidebar = [
   { key: 'dashboard', icon: <IoHome />, label: 'Dashboard' },
   { key: 'products', icon: <FiBox />, label: 'Products' },
   { key: 'categories', icon: <FiTag />, label: 'Categories' },
+  { key: 'brands', icon: <FiAward />, label: 'Brands' },
+  { key: 'customers', icon: <FiUsers />, label: 'Customers' },
   { key: 'parties', icon: <FiUsers />, label: 'Parties' },
   { key: 'sales', icon: <FiFileText />, label: 'Sales' },
   {

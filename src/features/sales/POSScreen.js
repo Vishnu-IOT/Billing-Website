@@ -33,7 +33,11 @@ import POSPaymentModal from "../../components/pos/POSPaymentModal";
 import ThermalBill from "../../components/pos/ThermalBill";
 import "../../styles/pos-b2c.css";
 // import '../../styles/thermal.css';
-import { fetchCompanyUsersAPI, fetchFinancialDetailsAPI } from "../../api";
+import {
+  fetchCompanyUsersAPI,
+  fetchFinancialDetailsAPI,
+  previewNextInvoiceNumberAPI,
+} from "../../api";
 import ThermalInvoice from "../billing/invoices/ThermalInvoice";
 
 export default function POSScreen({
@@ -76,6 +80,29 @@ export default function POSScreen({
   const setPaymentMethod = usePOSStore((s) => s.setPaymentMethod);
   const setGlobalDiscount = usePOSStore((s) => s.setGlobalDiscount);
   const setInvoiceNo = usePOSStore((s) => s.setInvoiceNo);
+
+  // getNextInvoiceNo(saleBills, settings) only ever guesses from whatever is
+  // currently loaded in the local saleBills store — on a fresh page load, or
+  // after a filter/pagination narrows that list, it silently falls back to
+  // "1". The backend's running counter is the only source of truth, so fetch
+  // and use that instead (same fix already applied to the B2B create form).
+  const refreshInvoiceNo = useCallback(async () => {
+    try {
+      let companyId = 1;
+      const erpSettings = localStorage.getItem("erp-settings");
+      if (erpSettings) {
+        const companydata = JSON.parse(erpSettings);
+        companyId = companydata?.state?.companyId || 1;
+      }
+      const res = await previewNextInvoiceNumberAPI(companyId);
+      const realNext = res?.data?.nextInvoiceNumber;
+      setInvoiceNo(realNext || getNextInvoiceNo(saleBills, settings));
+    } catch {
+      // fall back to the local guess only if the backend call fails
+      setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saleBills, settings]);
   const setSaleDate = usePOSStore((s) => s.setSaleDate);
 
   /* ── Shift & Hold Store ── */
@@ -114,6 +141,7 @@ export default function POSScreen({
   const [addItemDisc, setAddItemDisc] = useState("");
   const [addItemSuggestions, setAddItemSuggestions] = useState([]);
   const [addItemDropdownOpen, setAddItemDropdownOpen] = useState(false);
+  const [addItemHighlightedIndex, setAddItemHighlightedIndex] = useState(-1);
   const formDropdownRef = useRef(null);
 
   const [companyFinancials, setCompanyFinancials] = useState({});
@@ -258,7 +286,7 @@ export default function POSScreen({
     } else if (!editMode) {
       // Only initialize a completely new bill here
       if (!invoiceNo) {
-        setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+        refreshInvoiceNo();
       }
 
       if (!saleDate) {
@@ -323,8 +351,10 @@ export default function POSScreen({
   /* ── Add Item Form Handlers ── */
   const handleAddItemSearchChange = (e) => {
     const val = e.target.value;
+
     setAddItemSearch(val);
     setAddItemProduct(null);
+    setAddItemHighlightedIndex(-1);
 
     if (!val.trim()) {
       setAddItemSuggestions([]);
@@ -333,19 +363,85 @@ export default function POSScreen({
     }
 
     const query = val.toLowerCase().trim();
+
     const matches = (products || [])
       .filter((p) => {
         return (
           (p.name && p.name.toLowerCase().includes(query)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(query)) ||
-          (p.sku && p.sku.toLowerCase().includes(query)) ||
-          (p.HSNCode && p.HSNCode.toLowerCase().includes(query))
+          (p.barcode && String(p.barcode).toLowerCase().includes(query)) ||
+          (p.sku && String(p.sku).toLowerCase().includes(query)) ||
+          (p.HSNCode && String(p.HSNCode).toLowerCase().includes(query))
         );
       })
       .slice(0, 15);
 
     setAddItemSuggestions(matches);
     setAddItemDropdownOpen(matches.length > 0);
+
+    // Automatically highlight first product
+    if (matches.length > 0) {
+      setAddItemHighlightedIndex(0);
+    }
+  };
+
+  const handleAddItemSearchKeyDown = (e) => {
+    if (!addItemDropdownOpen || addItemSuggestions.length === 0) {
+      return;
+    }
+
+    // Down Arrow
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+
+      setAddItemHighlightedIndex((prev) => {
+        if (prev < addItemSuggestions.length - 1) {
+          return prev + 1;
+        }
+
+        return 0;
+      });
+
+      return;
+    }
+
+    // Up Arrow
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+
+      setAddItemHighlightedIndex((prev) => {
+        if (prev > 0) {
+          return prev - 1;
+        }
+
+        return addItemSuggestions.length - 1;
+      });
+
+      return;
+    }
+
+    // Enter
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const selectedIndex =
+        addItemHighlightedIndex >= 0 ? addItemHighlightedIndex : 0;
+
+      const selectedProduct = addItemSuggestions[selectedIndex];
+
+      if (selectedProduct) {
+        handleSelectFormProduct(selectedProduct);
+      }
+
+      return;
+    }
+
+    // Escape
+    if (e.key === "Escape") {
+      e.preventDefault();
+
+      setAddItemDropdownOpen(false);
+      setAddItemHighlightedIndex(-1);
+    }
   };
 
   const handleSelectFormProduct = (prod) => {
@@ -358,45 +454,52 @@ export default function POSScreen({
 
   const handleAddItemSubmit = (e) => {
     if (e) e.preventDefault();
-    if (!addItemProduct && !addItemSearch.trim()) {
-      toast.error("Please select or enter a product name/barcode");
+
+    // Product must be selected from the product list
+    if (!addItemProduct) {
+      if (addItemSearch.trim()) {
+        toast.error(
+          "Product not found. Please select a product from the suggestions.",
+        );
+      } else {
+        toast.error("Please select a product.");
+      }
       return;
     }
 
-    const prodToUse = addItemProduct ||
-      products.find(
-        (p) => p.name.toLowerCase() === addItemSearch.toLowerCase(),
-      ) || {
-        id: "custom-" + Date.now(),
-        name: addItemSearch.trim(),
-        salesPrice: parseFloat(addItemRate) || 0,
-        price: parseFloat(addItemRate) || 0,
-        discount: parseFloat(addItemDisc) || 0,
-        taxRate: 0,
-        unit: "pcs",
-      };
-
+    // Get rate
     const rate =
       addItemRate !== ""
         ? parseFloat(addItemRate)
-        : prodToUse.salesPrice || prodToUse.price || 0;
+        : Number(
+            addItemProduct.salesPrice ||
+              addItemProduct.price ||
+              addItemProduct.MRP ||
+              0,
+          );
+
+    // Get discount
     const disc = parseFloat(addItemDisc) || 0;
+
+    // Get quantity
     const qty = Math.max(1, parseFloat(addItemQty) || 1);
 
+    // Use only the actual product from the product master
     const productPayload = {
-      ...prodToUse,
+      ...addItemProduct,
       salesPrice: rate,
       price: rate,
       discount: disc,
     };
 
+    // Add requested quantity
     for (let i = 0; i < qty; i++) {
       addToCart(productPayload);
     }
 
     toast.success(`Added ${productPayload.name}`);
 
-    // Reset Form
+    // Reset form
     setAddItemSearch("");
     setAddItemProduct(null);
     setAddItemQty(1);
@@ -457,7 +560,7 @@ export default function POSScreen({
       toast.success("Cart held successfully ✓");
       clearCart();
       setHoldNote("");
-      setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+      refreshInvoiceNo();
     } catch (err) {
       toast.error(typeof err === "string" ? err : "Failed to hold cart");
     }
@@ -542,21 +645,49 @@ export default function POSScreen({
 
   /* Phone lookup for B2C */
   function handlePhoneChange(e) {
-    const phone = e.target.value;
+    const value = e.target.value;
+
+    // BLOCK anything except digits
+    if (value !== "" && !/^[0-9]+$/.test(value)) {
+      return;
+    }
+
+    // BLOCK more than 10 digits
+    if (value.length > 10) {
+      return;
+    }
+
     let existing = null;
-    if (phone.length >= 10) {
+
+    // Find customer when exactly 10 digits are entered
+    if (value.length === 10) {
       existing = customers.find(
-        (p) => String(p.phone).trim() === String(phone).trim(),
+        (p) => String(p.phone || "").trim() === value.trim(),
       );
     }
+
     setCustomerInfo({
       ...customerInfo,
-      phone,
+      phone: value,
       name: existing ? existing.name : customerInfo.name,
     });
 
     setLoyaltyPoints(existing?.loyalty_points || 0);
   }
+
+  const handleCustomerNameChange = (e) => {
+    const value = e.target.value;
+
+    // Allow only alphabets and spaces
+    if (!/^[A-Za-z\s]*$/.test(value)) {
+      return;
+    }
+
+    setCustomerInfo({
+      ...customerInfo,
+      name: value,
+    });
+  };
 
   /* ── Save bill ── */
   async function handleSave(paymentDetails) {
@@ -734,7 +865,7 @@ export default function POSScreen({
         setLoyaltyPoints(0);
         setGlobalDiscount(0);
 
-        setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+        refreshInvoiceNo();
         setSaleDate(todayISO());
       }
     } catch (err) {
@@ -772,7 +903,7 @@ export default function POSScreen({
     setLoyaltyPoints(0);
     setGlobalDiscount(0);
 
-    setInvoiceNo(getNextInvoiceNo(saleBills, settings));
+    refreshInvoiceNo();
     setSaleDate(todayISO());
   }
 
@@ -955,22 +1086,34 @@ export default function POSScreen({
                 className="pos-exact-search-input"
                 value={addItemSearch}
                 onChange={handleAddItemSearchChange}
+                onKeyDown={handleAddItemSearchKeyDown}
                 onFocus={() => {
-                  if (addItemSuggestions.length > 0)
+                  if (addItemSuggestions.length > 0) {
                     setAddItemDropdownOpen(true);
+
+                    if (addItemHighlightedIndex === -1) {
+                      setAddItemHighlightedIndex(0);
+                    }
+                  }
                 }}
               />
               {addItemDropdownOpen && addItemSuggestions.length > 0 && (
                 <div className="pos-exact-dropdown" ref={formDropdownRef}>
-                  {addItemSuggestions.map((item) => (
+                  {addItemSuggestions.map((item, index) => (
                     <div
                       key={item.id || item._id}
-                      className="pos-exact-dropdown-item"
+                      className={`pos-exact-dropdown-item ${
+                        index === addItemHighlightedIndex
+                          ? "pos-exact-dropdown-item--highlighted"
+                          : ""
+                      }`}
+                      onMouseEnter={() => setAddItemHighlightedIndex(index)}
                       onClick={() => handleSelectFormProduct(item)}
                     >
                       <span className="pos-exact-dropdown-name">
                         {item.name}
                       </span>
+
                       <span className="pos-exact-dropdown-price">
                         {formatCurrency(item.salesPrice || item.price || 0)}
                       </span>
@@ -1063,26 +1206,24 @@ export default function POSScreen({
                     </label>
                     <div className="pos-exact-input-icon-wrap">
                       <span className="pos-exact-input-icon">📞</span>
-                      <input
+                      {/* <input
                         type="tel"
                         className="pos-exact-input pos-cust-phone-input"
                         placeholder="Enter phone..."
                         value={customerInfo.phone || ""}
                         onChange={handlePhoneChange}
                         maxLength={10}
-                      />
+                      /> */}
                       <input
-                        type="number"
-                        className="pos-exact-input pos-cust-phone-input"
+                        type="tel"
                         name="phone"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        onWheel={(e) => e.target.blur()}
-                        min="0"
-                        maxLength={10}
+                        className="pos-exact-input pos-cust-phone-input"
+                        placeholder="Enter phone number"
                         value={customerInfo.phone || ""}
                         onChange={handlePhoneChange}
-                        placeholder="Enter phone number"
+                        maxLength={10}
+                        inputMode="numeric"
+                        autoComplete="tel"
                       />
                     </div>
                   </div>
@@ -1092,15 +1233,10 @@ export default function POSScreen({
                     </label>
                     <input
                       type="text"
-                      className="pos-exact-input"
-                      placeholder="Walk-in Customer"
-                      value={customerInfo.name || ""}
-                      onChange={(e) =>
-                        setCustomerInfo({
-                          ...customerInfo,
-                          name: e.target.value || "",
-                        })
-                      }
+                      name="name"
+                      value={customerInfo.name}
+                      onChange={handleCustomerNameChange}
+                      placeholder="Enter customer name"
                     />
                   </div>
                   {/* ── Loyalty Points ── */}

@@ -23,6 +23,8 @@ const SaleBills = lazy(() => import('../features/sales/SaleBills'));
 const PurchaseBills = lazy(() => import('../features/purchase/PurchaseBills'));
 const Products = lazy(() => import('../features/products/Products'));
 const Categories = lazy(() => import('../features/categories/Categories'));
+const Brands = lazy(() => import('../features/brands/Brands'));
+const Customers = lazy(() => import('../features/customers/Customers'));
 const Parties = lazy(() => import('../features/parties/Parties'));
 const SalesReport = lazy(() => import('../features/reports/SalesReport'));
 const PurchaseReport = lazy(() => import('../features/reports/PurchaseReport'));
@@ -150,6 +152,22 @@ function renderPage(page, searchParams, isAuthenticated) {
         <ProtectedRoute>
           <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
             <Categories />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'brands':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <Brands />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'customers':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <Customers />
           </RoleGuard>
         </ProtectedRoute>
       );
@@ -315,6 +333,8 @@ function renderPage(page, searchParams, isAuthenticated) {
 /* More menu items for mobile with role restrictions */
 const ALL_MORE_ITEMS = [
   { key: 'categories', label: 'Categories', allowed: ['OWNER', 'STAFF'] },
+  { key: 'brands', label: 'Brands', allowed: ['OWNER', 'STAFF'] },
+  { key: 'customers', label: 'Customers', allowed: ['OWNER', 'STAFF'] },
   { key: 'parties', label: 'Parties', allowed: ['OWNER', 'STAFF', 'BILLER'] },
   { key: 'documents', label: 'Documents', allowed: ['OWNER', 'STAFF'] },
   { key: 'sale-report', label: 'Sales Report', allowed: ['OWNER', 'STAFF'] },

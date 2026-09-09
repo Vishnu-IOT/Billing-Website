@@ -258,7 +258,7 @@ export function ToastContainer({ toasts }) {
           key={t.id}
           className={`toast ${t.type !== 'default' ? `toast--${t.type}` : ''}`}
         >
-          {t.type === 'success' && '✓ '}
+          {t.type === 'success' && '✅️ '}
           {t.type === 'error' && '✕ '}
           {t.type === 'warning' && '⚠ '}
           {t.message}

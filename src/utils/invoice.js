@@ -81,27 +81,34 @@ export function calcBillTotals(items, globalDiscount = 0) {
 
 export function mapLineItemsFromBill(items = []) {
   if (!items.length) return Array.from({ length: 3 }, createEmptyItem);
-  return items.map((item) => ({
-    productId: item.productId || '',
-    productName: item.productName || item.Product?.name || '',
-    hsnCode: item.hsnCode || item.hsncode || '',
-    sku: item.sku || '',
-    batchNumber: item.batchNumber || item.batchNo || '',
-    expiryDate: item.expiryDate || '',
-    serialNumber: item.serialNumber || item.serialNo || '',
-    notes: item.notes || '',
-    price: item.price || 0,
-    quantity: item.quantity || 1,
-    discountPercent: item.discountPercentage || item.discountPercent || 0,
-    taxRate: item.taxPercentage || item.taxRate || 0,
-    mrp: item.price || item.mrp || 0,
-    unit: item.unit || 'pcs',
-    afterDiscount: item.baseRate || item.afterDiscount || 0,
-    discountAmount: item.discountAmount || 0,
-    taxAmount: item.taxAmount || 0,
-    netRate: item.netRate || 0,
-    total: item.netRate || item.total || 0,
-  }));
+  return items.map((item) => {
+    const base = {
+      productId: item.productId || '',
+      // Sale/PurchaseItem use `productName`; DocumentItem (quotation, proforma,
+      // credit/debit note, delivery challan) uses `name` instead — recognize both.
+      productName: item.productName || item.name || item.Product?.name || '',
+      hsnCode: item.hsnCode || item.hsncode || '',
+      sku: item.sku || '',
+      batchNumber: item.batchNumber || item.batchNo || '',
+      expiryDate: item.expiryDate || '',
+      serialNumber: item.serialNumber || item.serialNo || '',
+      notes: item.notes || '',
+      price: item.price || 0,
+      quantity: item.quantity || 1,
+      discountPercent: item.discountPercentage || item.discountPercent || 0,
+      // Sale/PurchaseItem use `taxPercentage`; DocumentItem uses `tax` instead.
+      taxRate: item.taxPercentage ?? item.tax ?? item.taxRate ?? 0,
+      mrp: item.price || item.mrp || 0,
+      unit: item.unit || 'pcs',
+    };
+    // DocumentItem only stores a flat `total`, not the afterDiscount/taxAmount
+    // breakdown Sale/PurchaseItem has — rather than guess field names that
+    // don't exist for every item type (and end up defaulting to 0), recompute
+    // the full breakdown from price/quantity/discountPercent/taxRate, which
+    // reliably exist on every item type. Same calculation the row uses live
+    // when a field is edited, so the numbers stay internally consistent.
+    return calcItemRow(base);
+  });
 }
 
 export function buildSaleBillPayload({ billForm, customerForm, validItems, partyId }) {

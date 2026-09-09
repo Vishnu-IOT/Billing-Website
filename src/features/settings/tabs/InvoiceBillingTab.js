@@ -1,8 +1,9 @@
 /* ===== INVOICE & BILLING SETTINGS TAB ===== */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useSettingsStore from '../../../store/settingsStore-DB';
 import { Button } from '../../../components/ui';
 import { formatInvoicePrefix } from '../../../utils/invoice';
+import { previewNextInvoiceNumberAPI } from '../../../api/sales';
 
 function Toggle({ value, onChange, label, description }) {
   return (
@@ -90,6 +91,28 @@ export default function InvoiceBillingTab({ onSaveToast }) {
 
   const [saving, setSaving] = useState(false);
 
+  // The real running counter, fetched from the backend — this is the source of truth,
+  // not form.invoiceStartingNumber (that field only matters the very first time a
+  // company's invoice_settings row is created).
+  const [nextNumberPreview, setNextNumberPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
+
+  const loadPreview = useCallback(async () => {
+    setPreviewLoading(true);
+    try {
+      const res = await previewNextInvoiceNumberAPI(store.companyId || 1);
+      setNextNumberPreview(res?.data?.nextInvoiceNumber || null);
+    } catch {
+      setNextNumberPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [store.companyId]);
+
+  useEffect(() => {
+    loadPreview();
+  }, [loadPreview]);
+
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({
@@ -102,11 +125,12 @@ export default function InvoiceBillingTab({ onSaveToast }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleSave(e) {
+  async function handleSave(e) {
     e.preventDefault();
     setSaving(true);
     try {
-      store.updateSettings(form);
+      await store.updateSettings(form);
+      await loadPreview(); // prefix may have changed — refresh with the real counter, not a guess
       onSaveToast?.('Invoice & Billing settings saved');
     } catch {
       onSaveToast?.('Save failed', 'error');
@@ -118,7 +142,7 @@ export default function InvoiceBillingTab({ onSaveToast }) {
   return (
     <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
       {/* ── Invoice Theme ── */}
-      <div className="card">
+      {/* <div className="card">
         <div className="card__header">
           <span className="card__title">Invoice Theme</span>
         </div>
@@ -158,7 +182,7 @@ export default function InvoiceBillingTab({ onSaveToast }) {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* ── Invoice Numbering ── */}
       <div className="card">
@@ -243,11 +267,13 @@ export default function InvoiceBillingTab({ onSaveToast }) {
                   fontFamily: 'monospace',
                 }}
               >
-                {formatInvoicePrefix(form)}
-                {String(form.invoiceStartingNumber || '1').padStart(
-                  String(form.invoiceStartingNumber || '0001').length || 4,
-                  '0'
-                )}
+                {previewLoading
+                  ? 'Loading…'
+                  : nextNumberPreview || `${formatInvoicePrefix(form)}${String(form.invoiceStartingNumber || '1').padStart(4, '0')}`}
+              </div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
+                This is the actual next number the server will issue — it only changes when an
+                invoice is created, never when you edit the prefix.
               </div>
             </div>
           </div>

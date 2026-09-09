@@ -1,25 +1,24 @@
 /* ===== PURCHASE BILLS — List View ===== */
-import React, { useState, useMemo, useEffect } from 'react';
-import usePurchaseStore from '../../store/purchaseStore';
-import useUIStore from '../../store/uiStore';
+import React, { useState, useMemo, useEffect } from "react";
+import usePurchaseStore from "../../store/purchaseStore";
+import useUIStore from "../../store/uiStore";
 import {
   Button,
   EmptyState,
   PaymentBadge,
-  Pagination,
   ConfirmModal,
   ActionMenu,
   StatCard,
   ToastContainer,
-} from '../../components/ui';
-import { DateRangeFilter } from '../../components/shared/DateRangeFilter';
-import { usePagination } from '../../hooks/usePagination';
-import { useToast } from '../../hooks/useToast';
-import { formatCurrency } from '../../utils/currency';
-import { formatDate } from '../../utils/date';
-import PurchaseBillForm from './PurchaseBillForm';
-import BillPreview from '../billing/BillPreview';
-import '../../styles/bills.css';
+} from "../../components/ui";
+import { DateRangeFilter } from "../../components/shared/DateRangeFilter";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
+import { useToast } from "../../hooks/useToast";
+import { formatCurrency } from "../../utils/currency";
+import { formatDate } from "../../utils/date";
+import PurchaseBillForm from "./PurchaseBillForm";
+import BillPreview from "../billing/BillPreview";
+import "../../styles/bills.css";
 
 export default function PurchaseBills() {
   const {
@@ -33,15 +32,15 @@ export default function PurchaseBills() {
   } = usePurchaseStore();
   const toast = useToast();
 
-  const [view, setView] = useState('list');
+  const [view, setView] = useState("list");
   const [previewBill, setPreviewBill] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   const setHideSidebar = useUIStore((s) => s.setHideSidebar);
 
   useEffect(() => {
-    setHideSidebar(view !== 'list');
+    setHideSidebar(view !== "list");
 
     return () => setHideSidebar(false);
   }, [view]);
@@ -56,15 +55,15 @@ export default function PurchaseBills() {
       (b) =>
         !q ||
         b.Party?.name?.toLowerCase().includes(q) ||
-        b.invoiceNumber?.toLowerCase().includes(q)
+        b.invoiceNumber?.toLowerCase().includes(q),
     );
   }, [purchaseBills, search]);
 
-  const { page, totalPages, paginated, from, to, total, goToPage } =
-    usePagination(filtered, 10);
+  const { visible, hasMore, sentinelRef, containerRef, total, shown } =
+    useInfiniteScroll(filtered, 20);
   const totalPurchases = purchaseBills.reduce(
     (s, b) => s + (parseInt(b.totalAmount) || 0),
-    0
+    0,
   );
 
   async function applyFilter() {
@@ -75,8 +74,8 @@ export default function PurchaseBills() {
 
     const format = (date) => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
 
       return `${year}-${month}-${day}`;
     };
@@ -89,44 +88,45 @@ export default function PurchaseBills() {
 
   async function clearFilter() {
     const range = getCurrentMonthRange();
-    setFilter('thisMonth');
+    setFilter("thisMonth");
     setDateRange(range);
-    await loadBills('thisMonth', range);
+    await loadBills("thisMonth", range);
   }
 
   async function handleDelete() {
     try {
       await deleteBill(deleteId);
-      toast.success('Bill deleted');
+      toast.success("Bill deleted");
     } catch {
-      toast.error('Failed to delete');
+      toast.error("Failed to delete");
     } finally {
       setDeleteId(null);
     }
   }
 
-  if (view === 'preview' && previewBill)
+  if (view === "preview" && previewBill)
     return (
       <BillPreview
         bill={previewBill}
         billType="PURCHASE"
-        onBack={() => setView('list')}
+        onBack={() => setView("list")}
       />
     );
-  if (view === 'create')
+  if (view === "create")
     return (
       <PurchaseBillForm
-        onBack={() => setView('list')}
+        onBack={() => setView("list")}
         onSaved={() => {
-          setView('list');
+          setView("list");
           loadBills();
+          toast.success("Purchase bill saved ✓");
         }}
       />
     );
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}
+      style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}
     >
       <ToastContainer toasts={toast.toasts} />
       <ConfirmModal
@@ -134,7 +134,7 @@ export default function PurchaseBills() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Delete Purchase Bill?"
-        confirmLabel='Delete'
+        confirmLabel="Delete"
       />
 
       <div className="page-header">
@@ -144,7 +144,7 @@ export default function PurchaseBills() {
             Track your vendor purchases and expenses
           </p>
         </div>
-        <Button variant="primary" onClick={() => setView('create')}>
+        <Button variant="primary" onClick={() => setView("create")}>
           + New Purchase Bill
         </Button>
       </div>
@@ -182,13 +182,17 @@ export default function PurchaseBills() {
           icon="📦"
           title="No purchase bills found"
           action={
-            <Button variant="primary" onClick={() => setView('create')}>
+            <Button variant="primary" onClick={() => setView("create")}>
               + New Bill
             </Button>
           }
         />
       ) : (
-        <div className="table-wrapper">
+        <div
+          className="table-wrapper"
+          ref={containerRef}
+          style={{ maxHeight: "65vh", overflowY: "auto" }}
+        >
           <div className="table-desktop-only">
             <table className="data-table">
               <thead>
@@ -203,29 +207,29 @@ export default function PurchaseBills() {
                 </tr>
               </thead>
               <tbody>
-                {paginated.map((bill, i) => (
+                {visible.map((bill, i) => (
                   <tr key={bill.id || bill._id}>
                     <td
                       style={{
-                        color: 'var(--text-muted)',
-                        fontSize: 'var(--fs-xs)',
+                        color: "var(--text-muted)",
+                        fontSize: "var(--fs-xs)",
                       }}
                     >
-                      {from + i}
+                      {i + 1}
                     </td>
                     <td
                       style={{
                         fontWeight: 600,
-                        color: 'var(--primary)',
-                        fontFamily: 'monospace',
-                        fontSize: 'var(--fs-xs)',
+                        color: "var(--primary)",
+                        fontFamily: "monospace",
+                        fontSize: "var(--fs-xs)",
                       }}
                     >
                       {bill.invoiceNumber}
                     </td>
                     <td>{formatDate(bill.purchaseDate)}</td>
                     <td style={{ fontWeight: 500 }}>
-                      {bill.Party?.name || '—'}
+                      {bill.Party?.name || "—"}
                     </td>
                     <td className="text-right" style={{ fontWeight: 700 }}>
                       {formatCurrency(bill.totalAmount)}
@@ -250,8 +254,8 @@ export default function PurchaseBills() {
                           //   },
                           // },
                           {
-                            label: 'Edit',
-                            icon: '✏️',
+                            label: "Edit",
+                            icon: "✏️",
                             onClick: () => {
                               window.location.hash = `purchase/edit/${bill.id || bill._id}`;
                             },
@@ -265,8 +269,8 @@ export default function PurchaseBills() {
                           //   },
                           // },
                           {
-                            label: 'Delete',
-                            icon: '🗑',
+                            label: "Delete",
+                            icon: "🗑",
                             danger: true,
                             onClick: () => setDeleteId(bill.id || bill._id),
                           },
@@ -280,16 +284,16 @@ export default function PurchaseBills() {
           </div>
           <div
             className="bill-cards-list hide-desktop"
-            style={{ padding: 'var(--sp-4)' }}
+            style={{ padding: "var(--sp-4)" }}
           >
-            {paginated.map((bill) => (
+            {visible.map((bill) => (
               <div key={bill.id} className="bill-card-mobile">
                 <div className="bill-card-mobile__row">
                   <span
                     style={{
                       fontWeight: 700,
-                      color: 'var(--primary)',
-                      fontFamily: 'monospace',
+                      color: "var(--primary)",
+                      fontFamily: "monospace",
                     }}
                   >
                     {bill.invoiceNumber}
@@ -306,13 +310,13 @@ export default function PurchaseBills() {
                   <span className="bill-card-mobile__label">
                     {formatDate(bill.purchaseDate)}
                   </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => {
                         setPreviewBill(bill);
-                        setView('preview');
+                        setView("preview");
                       }}
                     >
                       View
@@ -338,14 +342,21 @@ export default function PurchaseBills() {
               </div>
             ))}
           </div>
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            from={from}
-            to={to}
-            total={total}
-            onPageChange={goToPage}
-          />
+          <div
+            ref={sentinelRef}
+            style={{
+              textAlign: "center",
+              padding: "20px",
+              color: "var(--text-muted)",
+              fontSize: "var(--fs-sm)",
+            }}
+          >
+            {hasMore
+              ? `Showing ${shown} of ${total} — scroll for more…`
+              : total > 0
+                ? `Showing all ${total} purchase bills`
+                : null}
+          </div>
         </div>
       )}
     </div>

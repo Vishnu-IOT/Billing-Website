@@ -48,7 +48,7 @@ export const DOCUMENT_TYPES = {
     validUntilLabel: 'Valid Until',
     showValidUntil: true,
     dateField: 'documentDate',
-    itemsField: 'DocumentItems',
+    itemsField: 'items',
   },
   PROFORMA: {
     key: 'PROFORMA',
@@ -62,7 +62,7 @@ export const DOCUMENT_TYPES = {
     validUntilLabel: 'Valid Until',
     showValidUntil: true,
     dateField: 'documentDate',
-    itemsField: 'DocumentItems',
+    itemsField: 'items',
   },
   DELIVERY_CHALLAN: {
     key: 'DELIVERY_CHALLAN',
@@ -75,7 +75,7 @@ export const DOCUMENT_TYPES = {
     convertible: false,
     transportLabel: 'Transport / Vehicle Ref',
     dateField: 'documentDate',
-    itemsField: 'DocumentItems',
+    itemsField: 'items',
   },
   CREDIT_NOTE: {
     key: 'CREDIT_NOTE',
@@ -88,7 +88,7 @@ export const DOCUMENT_TYPES = {
     convertible: false,
     referenceLabel: 'Original Invoice No',
     dateField: 'documentDate',
-    itemsField: 'DocumentItems',
+    itemsField: 'items',
   },
   DEBIT_NOTE: {
     key: 'DEBIT_NOTE',
@@ -101,7 +101,7 @@ export const DOCUMENT_TYPES = {
     convertible: false,
     referenceLabel: 'Original Bill No',
     dateField: 'documentDate',
-    itemsField: 'DocumentItems',
+    itemsField: 'items',
   },
 };
 

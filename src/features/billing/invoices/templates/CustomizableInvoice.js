@@ -5,11 +5,25 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSettingsStore from '../../../../store/settingsStore-DB';
 import './CustomizableInvoice.css';
 
 const CustomizableInvoice = ({ invoice, company, settings: overrideSettings }) => {
-  const settings = useSettingsStore((s) => s.getSettings?.()) || {};
+  // Select primitives with useShallow instead of calling store.getSettings()
+  // inside the selector — that returns a brand-new object every render and
+  // causes "Maximum update depth exceeded".
+  const settings = useSettingsStore(
+    useShallow((s) => ({
+      billTheme: s.billTheme,
+      showUpiQr: s.showUpiQr,
+      defaultTaxRate: s.defaultTaxRate,
+      dateFormat: s.dateFormat,
+      termsAndConditions: s.termsAndConditions,
+      showBankDetails: s.showBankDetails,
+      showSignature: s.showSignature,
+    }))
+  );
   const finalSettings = { ...settings, ...overrideSettings };
 
   const [templateTheme, setTemplateTheme] = useState(finalSettings.billTheme || 'classic');

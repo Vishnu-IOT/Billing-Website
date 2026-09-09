@@ -8,6 +8,10 @@ import {
   fetchCategoryAPI,
   addCategoryAPI,
   deleteCategoryAPI,
+  fetchBrandsAPI,
+  addBrandAPI,
+  updateBrandAPI,
+  deleteBrandAPI,
   fetchPartiesAPI,
   addPartiesAPI,
   updatePartiesAPI,
@@ -22,6 +26,7 @@ const useAppStore = create((set, get) => ({
   // ── State ──
   products: [],
   categories: [],
+  brands: [],
   parties: [],
   customers: [],
   companies: [],
@@ -33,10 +38,11 @@ const useAppStore = create((set, get) => ({
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
-      const [products, categories, parties, customers, companies] =
+      const [products, categories, brands, parties, customers, companies] =
         await Promise.all([
           fetchProductsAPI().catch(() => []),
           fetchCategoryAPI().catch(() => []),
+          fetchBrandsAPI().catch(() => []),
           fetchPartiesAPI().catch(() => []),
           fetchCusotmersAPI().catch(() => []),
           fetchCompaniesAPI(1).catch(() => null),
@@ -46,6 +52,7 @@ const useAppStore = create((set, get) => ({
         categories: Array.isArray(categories)
           ? categories
           : (categories?.data ?? []),
+        brands: Array.isArray(brands) ? brands : (brands?.data ?? []),
         parties: Array.isArray(parties) ? parties : (parties?.data ?? []),
         customers: Array.isArray(customers)
           ? customers
@@ -95,6 +102,28 @@ const useAppStore = create((set, get) => ({
       categories: s.categories.filter(
         (c) => String(c.id || c._id) !== String(id)
       ),
+    }));
+  },
+
+  // ── Brands ──
+  refreshBrands: async () => {
+    const data = await fetchBrandsAPI();
+    set({ brands: Array.isArray(data) ? data : (data?.data ?? []) });
+  },
+  addBrand: async (brand) => {
+    const data = await addBrandAPI(brand);
+    get().refreshBrands();
+    return data;
+  },
+  updateBrand: async (id, brand) => {
+    const data = await updateBrandAPI(id, brand);
+    get().refreshBrands();
+    return data;
+  },
+  deleteBrand: async (id) => {
+    await deleteBrandAPI(id);
+    set((s) => ({
+      brands: s.brands.filter((b) => String(b.id || b._id) !== String(id)),
     }));
   },
 

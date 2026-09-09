@@ -5,12 +5,27 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSettingsStore from '../../../../store/settingsStore-DB';
+import useBillTemplateStore from '../../../../store/billTemplateStore';
+import { getEnabledColumns, renderColumnValue } from './itemColumnsConfig';
 import './B2BInvoiceTemplate.css';
 
-const B2BInvoiceTemplate = ({ invoice, company, settings: overrideSettings }) => {
-  const settings = useSettingsStore((s) => s.getSettings?.()) || {};
+const B2BInvoiceTemplate = ({ invoice, company, settings: overrideSettings, columnsOverride }) => {
+  // Select primitives with useShallow instead of calling store.getSettings()
+  // inside the selector — that returns a brand-new object every render and
+  // causes "Maximum update depth exceeded" (see ThermalBill.js / B2BInvoice.js
+  // for the same documented fix).
+  const settings = useSettingsStore(
+    useShallow((s) => ({
+      defaultTaxRate: s.defaultTaxRate,
+      termsAndConditions: s.termsAndConditions,
+      showBankDetails: s.showBankDetails,
+    }))
+  );
   const finalSettings = { ...settings, ...overrideSettings };
+  const storedColumns = useBillTemplateStore((s) => s.itemColumns);
+  const columns = getEnabledColumns(columnsOverride || storedColumns);
 
   const [showEinvoiceDetails, setShowEinvoiceDetails] = useState(true);
   const [showEwayBillDetails, setShowEwayBillDetails] = useState(true);
@@ -171,29 +186,36 @@ const B2BInvoiceTemplate = ({ invoice, company, settings: overrideSettings }) =>
         <table className="items-table">
           <thead>
             <tr className="header-row">
-              <th className="col-sn">S.N.</th>
-              <th className="col-description">Description</th>
-              <th className="col-hsn">HSN/SAC</th>
-              <th className="col-quantity">Qty</th>
-              <th className="col-unit">Unit</th>
-              <th className="col-rate">Unit Price</th>
-              <th className="col-amount">Total Amount</th>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`col-${col.key}`}
+                  style={col.width ? { width: `${col.width}%` } : undefined}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {invoice.items?.map((item, index) => (
               <tr key={index} className="item-row">
-                <td className="col-sn">{index + 1}</td>
-                <td className="col-description">
-                  <div className="item-name">{item.name}</div>
-                  {item.description && <div className="item-desc">{item.description}</div>}
-                  {item.batchNumber && <div className="item-batch">Batch: {item.batchNumber}</div>}
-                </td>
-                <td className="col-hsn">{item.hsn || '-'}</td>
-                <td className="col-quantity text-right">{item.quantity}</td>
-                <td className="col-unit">{item.unit || 'Unit'}</td>
-                <td className="col-rate text-right">₹ {item.rate.toFixed(2)}</td>
-                <td className="col-amount text-right">₹ {(item.quantity * item.rate).toFixed(2)}</td>
+                {columns.map((col) => (
+                  <td
+                    key={col.key}
+                    className={`col-${col.key} ${['quantity', 'rate', 'amount', 'discount', 'tax'].includes(col.key) ? 'text-right' : ''}`}
+                  >
+                    {col.key === 'description' ? (
+                      <>
+                        <div className="item-name">{item.name}</div>
+                        {item.description && <div className="item-desc">{item.description}</div>}
+                        {item.batchNumber && <div className="item-batch">Batch: {item.batchNumber}</div>}
+                      </>
+                    ) : (
+                      renderColumnValue(col, item, index)
+                    )}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

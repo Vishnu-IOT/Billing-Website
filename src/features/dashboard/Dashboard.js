@@ -1,8 +1,6 @@
 /* ===== DASHBOARD ===== */
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import useAppStore from '../../store/appStore';
-import useSalesStore from '../../store/salesStore';
-import usePurchaseStore from '../../store/purchaseStore';
 import {
   StatCard,
   EmptyState,
@@ -10,56 +8,26 @@ import {
   ToastContainer,
 } from '../../components/ui';
 import { formatCurrency } from '../../utils/currency';
-import { formatDate, getMonthlyData, getMonthName } from '../../utils/date';
+import { formatDate } from '../../utils/date';
 import '../../styles/dashboard.css';
 import { useToast } from '../../hooks/useToast';
 import { getDashboardAPI } from '../../api';
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => getMonthName(i));
-
 export default function Dashboard() {
   const products = useAppStore((s) => s.products);
-  const saleBills = useSalesStore((s) => s.saleBills);
-  const purchaseBills = usePurchaseStore((s) => s.purchaseBills);
   const canvasRef = useRef(null);
   const toast = useToast();
   const [dashData, setDashData] = useState();
 
-  /* ── KPI Calculations ── */
-  const totalSales = useMemo(
-    () => saleBills.reduce((s, b) => s + (parseInt(b.totalAmount) || 0), 0),
-    [saleBills]
-  );
-  const totalPurchases = useMemo(
-    () => purchaseBills.reduce((s, b) => s + (parseInt(b.totalAmount) || 0), 0),
-    [purchaseBills]
-  );
-  const pendingAmount = useMemo(
-    () =>
-      saleBills
-        .filter((b) => b.paymentStatus?.toLowerCase() === 'unpaid')
-        .reduce((s, b) => s + (parseInt(b.totalAmount) || 0), 0),
-    [saleBills]
-  );
-  const profit = totalSales - totalPurchases;
+  /* ── Low stock is independent of the Sales/Purchase filter state, safe to
+     derive from the products store directly ── */
   const lowStock = useMemo(
     () => products.filter((p) => (parseInt(p.stockQuantity) || 0) < 5),
     [products]
   );
 
-  /* ── Monthly chart data ── */
-  const salesData = useMemo(
-    () => getMonthlyData(saleBills, 'saleDate'),
-    [saleBills]
-  );
-  const purchaseData = useMemo(
-    () => getMonthlyData(purchaseBills, 'purchaseDate'),
-    [purchaseBills]
-  );
-
   useEffect(() => {
     async function loadDashboard() {
-      // setLoading(true);
       try {
         const response = await getDashboardAPI();
         const data = response;
@@ -73,19 +41,29 @@ export default function Dashboard() {
     loadDashboard();
   }, []);
 
-  /* ── Canvas Chart ── */
+  /* ── Canvas Chart — driven entirely by dashData.chartData from the dashboard
+     API, NOT from useSalesStore/usePurchaseStore. Those two stores are shared
+     with the Sales/Purchase list pages, and get overwritten with a narrow,
+     filtered slice whenever someone applies a date filter there (e.g. "This
+     Year"). Reading from them here meant the dashboard chart would silently
+     break/shrink to whatever filter was last applied on an unrelated page.
+     The dashboard endpoint always returns its own independent last-12-months
+     dataset regardless of what any other page's filters are doing. ── */
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !dashData?.chartData?.length) return;
+
+    const chartData = dashData.chartData; // [{ month, sales, purchase }, ...]
     const ctx = canvas.getContext('2d');
     const W = (canvas.width = canvas.parentElement.clientWidth);
     const H = (canvas.height = 200);
     const pad = { top: 20, right: 20, bottom: 30, left: 50 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
-    const allVals = [...salesData, ...purchaseData];
+    const n = chartData.length;
+    const allVals = chartData.flatMap((d) => [d.sales, d.purchase]);
     const maxVal = Math.max(...allVals, 1);
-    const barW = chartW / 12 / 2 - 4;
+    const barW = chartW / n / 2 - 4;
     ctx.clearRect(0, 0, W, H);
 
     // Grid lines
@@ -104,10 +82,10 @@ export default function Dashboard() {
     }
 
     // Bars
-    MONTHS.forEach((_, i) => {
-      const x = pad.left + (i * chartW) / 12;
-      const saleH = (salesData[i] / maxVal) * chartH;
-      const purchH = (purchaseData[i] / maxVal) * chartH;
+    chartData.forEach((d, i) => {
+      const x = pad.left + (i * chartW) / n;
+      const saleH = (d.sales / maxVal) * chartH;
+      const purchH = (d.purchase / maxVal) * chartH;
       ctx.fillStyle = '#2563EB';
       ctx.beginPath();
       ctx.roundRect(x + 2, pad.top + chartH - saleH, barW, saleH, [3, 3, 0, 0]);
@@ -125,14 +103,10 @@ export default function Dashboard() {
       ctx.fillStyle = '#94A3B8';
       ctx.textAlign = 'center';
       ctx.font = '10px Inter,sans-serif';
-      ctx.fillText(MONTHS[i], x + barW, H - 8);
+      // month labels come back from the API already short-formatted (e.g. "Sep 2026")
+      ctx.fillText(d.month.split(' ')[0], x + barW, H - 8);
     });
-  }, [salesData, purchaseData]);
-
-  const recentBills = useMemo(
-    () => [...saleBills].reverse().slice(0, 6),
-    [saleBills]
-  );
+  }, [dashData]);
 
   return (
     <div className="dashboard">

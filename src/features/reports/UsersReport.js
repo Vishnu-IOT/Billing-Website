@@ -85,7 +85,7 @@ export default function UsersReport() {
       }
 
       exportToExcel(exportRows, 'Users Report', `Users_Report_${new Date().toISOString().split('T')[0]}`);
-      toast.success('Excel report downloaded ✓');
+      toast.success('Excel report downloaded');
     } catch (err) {
       toast.error('Failed to export to Excel.');
       console.error(err);

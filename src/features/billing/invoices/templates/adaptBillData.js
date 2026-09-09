@@ -121,7 +121,13 @@ export function adaptBillToInvoice(bill, party, items, company) {
         hsn: i.hsncode,
         quantity: i.quantity,
         unit: i.unit || 'Unit',
-        rate: parseFloat(i.baseRate),
+        // i.baseRate is the LINE TOTAL (unit price × qty − discount), not a
+        // per-unit rate — using it here made the template multiply the line
+        // total by quantity again when computing the row amount. i.price is
+        // the actual per-unit price.
+        rate: parseFloat(i.price) || 0,
+        discount: parseFloat(i.discountPercentage) || 0,
+        taxRate: parseFloat(i.taxPercentage) || 0,
         batchNumber: i.batchNo,
       })),
 

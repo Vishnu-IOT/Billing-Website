@@ -78,7 +78,7 @@
 
 .pos-back-btn {
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--sidebar-text);
   padding: 6px 13px;
   border-radius: var(--radius-md);
@@ -133,7 +133,7 @@
   align-items: center;
   gap: 5px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #cbd5e1;
   padding: 6px 13px;
   border-radius: var(--radius-md);
@@ -208,9 +208,7 @@
   gap: 10px;
   border-radius: 10px;
   border: 1px solid #fde68a;
-  background: linear-gradient(135deg,
-      #fffbeb,
-      #fef3c7);
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
   box-sizing: border-box;
 }
 
@@ -287,7 +285,9 @@
   font-size: var(--fs-sm);
   font-family: var(--font);
   outline: none;
-  transition: border-color var(--tr-fast), box-shadow var(--tr-fast);
+  transition:
+    border-color var(--tr-fast),
+    box-shadow var(--tr-fast);
   height: 34px;
 }
 
@@ -1111,14 +1111,14 @@
   cursor: pointer;
   font-family: var(--font);
   transition: all var(--tr-base);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.30);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
   white-space: nowrap;
   letter-spacing: 0.1px;
 }
 
 .pos-btn-checkout:hover:not(:disabled) {
   background: linear-gradient(135deg, #1e3a8a, var(--primary-hover));
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.40);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
   transform: translateY(-1px);
 }
 
@@ -1167,7 +1167,9 @@
   box-shadow: var(--shadow-lg);
   cursor: pointer;
   z-index: 50;
-  transition: transform 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    background 0.2s;
 }
 
 .pos-fab:active {
@@ -1282,7 +1284,6 @@
 }
 
 @media (max-width: 480px) {
-
   .pos-cart-col-gst,
   .pos-cart-item__gst-col {
     display: none;
@@ -1411,7 +1412,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   color: #1e293b;
 }
 
@@ -1505,6 +1508,20 @@
   font-size: 13px;
   font-weight: 700;
   color: #0284c7;
+}
+
+.pos-exact-dropdown-item {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pos-exact-dropdown-item--highlighted {
+  background: #e8f0fe;
+  color: #111827;
+}
+
+.pos-exact-dropdown-item--highlighted .pos-exact-dropdown-name {
+  font-weight: 600;
 }
 
 .pos-exact-scan-btn {
@@ -2008,7 +2025,9 @@
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
   margin-top: 6px;
 }
@@ -2369,7 +2388,6 @@
 }
 
 @keyframes pos-dot-pulse {
-
   0%,
   100% {
     box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
@@ -2477,7 +2495,6 @@
    ========================================================= */
 
 @media print {
-
   /* Hide the complete POS interface */
   body.printing-thermal-receipt .pos-b2c-root {
     display: none !important;
@@ -2560,7 +2577,6 @@
     print-color-adjust: exact !important;
   }
 }
-
 
 /* Remove browser default print margins */
 @page {

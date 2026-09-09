@@ -34,12 +34,8 @@ export async function fetchPaymentsInAPI(
 }
 
 export async function addPaymentInAPI(payment) {
-  try {
-    const response = await axios.post(`${BASE_URL}/payments/in`, payment, getAuthHeaders());
-    return response.data;
-  } catch (err) {
-    alert(err);
-  }
+  const response = await axios.post(`${BASE_URL}/payments/in`, payment, getAuthHeaders());
+  return response.data;
 }
 
 export async function deletePaymentInAPI(id) {
@@ -84,12 +80,8 @@ export async function fetchPaymentsOutAPI(
 }
 
 export async function addPaymentOutAPI(payment) {
-  try {
-    const response = await axios.post(`${BASE_URL}/payments/out`, payment, getAuthHeaders());
-    return response.data;
-  } catch (err) {
-    alert(err);
-  }
+  const response = await axios.post(`${BASE_URL}/payments/out`, payment, getAuthHeaders());
+  return response.data;
 }
 
 export async function deletePaymentOutAPI(id) {

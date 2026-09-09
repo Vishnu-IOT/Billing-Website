@@ -25,7 +25,7 @@ import {
   getDocumentPrefix,
   isInvoiceDocType,
 } from "../../utils/documents";
-import { fetchCompanyUsersAPI } from "../../api";
+import { fetchCompanyUsersAPI, previewNextInvoiceNumberAPI } from "../../api";
 import "../../styles/bills.css";
 
 export default function DocumentForm({
@@ -91,6 +91,40 @@ export default function DocumentForm({
     items: Array.from({ length: 3 }, createEmptyItem),
     globalDiscount: 0,
   });
+
+  // The local getNextInvoiceNo() guess above is only ever right by coincidence —
+  // it depends on saleBills already being loaded into the store. For a fresh page
+  // load (or a filtered/partial list) it silently falls back to "1". The backend's
+  // running counter is the only source of truth, so fetch and use that instead —
+  // this is just what will be shown/created; the server generates the real number
+  // on save regardless of what's in this field.
+  useEffect(() => {
+    if (documentType !== "SALE_INVOICE" || editMode) return;
+
+    let cancelled = false;
+    async function loadRealNextNumber() {
+      try {
+        let companyId = 1;
+        const erpSettings = localStorage.getItem("erp-settings");
+        if (erpSettings) {
+          const companydata = JSON.parse(erpSettings);
+          companyId = companydata?.state?.companyId || 1;
+        }
+        const res = await previewNextInvoiceNumberAPI(companyId);
+        const realNext = res?.data?.nextInvoiceNumber;
+        if (realNext && !cancelled) {
+          setBillForm((f) => ({ ...f, invoiceNo: realNext }));
+        }
+      } catch {
+        // fall back silently to the local guess already in state
+      }
+    }
+    loadRealNextNumber();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentType, editMode]);
 
   const [customerForm, setCustomerForm] = useState({
     name: "",
@@ -758,7 +792,7 @@ export default function DocumentForm({
             >
               {saveLabel}
             </Button>
-            {config.convertible && editMode && (
+            {/* {config.convertible && editMode && (
               <Button
                 variant="success"
                 style={{ width: "100%" }}
@@ -767,7 +801,7 @@ export default function DocumentForm({
               >
                 {config.convertLabel}
               </Button>
-            )}
+            )} */}
             <Button
               variant="secondary"
               style={{ width: "100%" }}
