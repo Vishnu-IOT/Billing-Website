@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import useAppStore from './appStore';
 import {
   fetchWarehousesAPI,
   createWarehouseAPI,
@@ -103,6 +104,11 @@ const useInventoryStore = create((set, get) => ({
     try {
       const res = await createStockTransferAPI(payload);
       await get().loadTransfers();
+      // Dispatching a transfer decrements stock on the source side —
+      // refresh products so the Products/POS pages don't keep showing the
+      // pre-transfer quantity until an unrelated navigation happens to
+      // trigger a reload.
+      useAppStore.getState().refreshProducts();
       return res;
     } catch (err) {
       throw err;
@@ -113,6 +119,9 @@ const useInventoryStore = create((set, get) => ({
     try {
       const res = await receiveStockTransferAPI(id);
       await get().loadTransfers();
+      // Receiving increments stock on the destination side — same
+      // staleness problem as createTransfer above.
+      useAppStore.getState().refreshProducts();
       return res;
     } catch (err) {
       throw err;

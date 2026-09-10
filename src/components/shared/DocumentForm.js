@@ -25,7 +25,7 @@ import {
   getDocumentPrefix,
   isInvoiceDocType,
 } from "../../utils/documents";
-import { fetchCompanyUsersAPI, previewNextInvoiceNumberAPI } from "../../api";
+import { fetchCompanyUsersAPI, previewNextInvoiceNumberAPI, previewNextDocumentNumberAPI } from "../../api";
 import "../../styles/bills.css";
 
 export default function DocumentForm({
@@ -93,25 +93,43 @@ export default function DocumentForm({
   });
 
   // The local getNextInvoiceNo() guess above is only ever right by coincidence —
-  // it depends on saleBills already being loaded into the store. For a fresh page
-  // load (or a filtered/partial list) it silently falls back to "1". The backend's
-  // running counter is the only source of truth, so fetch and use that instead —
-  // this is just what will be shown/created; the server generates the real number
-  // on save regardless of what's in this field.
+  // it depends on saleBills/existingDocs already being loaded into the store.
+  // For a fresh page load (or a filtered/partial list) it silently falls back
+  // to "1". The backend's running counter/count is the only source of truth,
+  // so fetch and use that instead for every document type — this is just what
+  // will be shown/created; the server generates the real number on save
+  // regardless of what's in this field.
+  const DOCUMENT_TYPES_WITH_BACKEND_PREVIEW = [
+    "QUOTATION",
+    "PROFORMA",
+    "DELIVERY_CHALLAN",
+    "CREDIT_NOTE",
+    "DEBIT_NOTE",
+  ];
+
   useEffect(() => {
-    if (documentType !== "SALE_INVOICE" || editMode) return;
+    if (editMode) return;
+    const isSaleInvoice = documentType === "SALE_INVOICE";
+    const isOtherDocument = DOCUMENT_TYPES_WITH_BACKEND_PREVIEW.includes(documentType);
+    if (!isSaleInvoice && !isOtherDocument) return; // PURCHASE_BILL keeps its manual number entry
 
     let cancelled = false;
     async function loadRealNextNumber() {
       try {
-        let companyId = 1;
-        const erpSettings = localStorage.getItem("erp-settings");
-        if (erpSettings) {
-          const companydata = JSON.parse(erpSettings);
-          companyId = companydata?.state?.companyId || 1;
+        let realNext;
+        if (isSaleInvoice) {
+          let companyId = 1;
+          const erpSettings = localStorage.getItem("erp-settings");
+          if (erpSettings) {
+            const companydata = JSON.parse(erpSettings);
+            companyId = companydata?.state?.companyId || 1;
+          }
+          const res = await previewNextInvoiceNumberAPI(companyId);
+          realNext = res?.data?.nextInvoiceNumber;
+        } else {
+          const res = await previewNextDocumentNumberAPI(documentType);
+          realNext = res?.data?.nextNumber;
         }
-        const res = await previewNextInvoiceNumberAPI(companyId);
-        const realNext = res?.data?.nextInvoiceNumber;
         if (realNext && !cancelled) {
           setBillForm((f) => ({ ...f, invoiceNo: realNext }));
         }

@@ -8,6 +8,17 @@ export async function fetchDocumentsAPI(documentType, filters = {}) {
   return response.data || [];
 }
 
+// Read-only — fetches what the next document number would be without
+// reserving it, so Quotation/Proforma/Delivery Challan/Credit Note/Debit
+// Note previews always reflect the real backend count, not a local guess.
+export async function previewNextDocumentNumberAPI(documentType) {
+  const response = await axios.get(
+    `${BASE_URL}/documents/get-Documents/next-number`,
+    { params: { type: documentType }, ...getAuthHeaders() }
+  );
+  return response.data;
+}
+
 export async function fetchDocumentByIdAPI(id) {
   const response = await axios.get(
     `${BASE_URL}/documents/get-Document/${id}`,
