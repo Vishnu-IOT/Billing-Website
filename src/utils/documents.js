@@ -50,6 +50,37 @@ export const DOCUMENT_TYPES = {
     dateField: 'documentDate',
     itemsField: 'items',
   },
+  SALES_ORDER: {
+    key: 'SALES_ORDER',
+    label: 'Sales Order',
+    prefix: 'SO',
+    side: 'sales',
+    showTax: true,
+    showPayment: false,
+    isInvoice: false,
+    convertible: true,
+    convertLabel: 'Convert to Sale Invoice',
+    validUntilLabel: 'Expected Delivery',
+    showValidUntil: true,
+    dateField: 'documentDate',
+    itemsField: 'items',
+  },
+  PURCHASE_ORDER: {
+    key: 'PURCHASE_ORDER',
+    label: 'Purchase Order',
+    prefix: 'PO',
+    side: 'purchase',
+    showTax: true,
+    showPayment: false,
+    isInvoice: false,
+    convertible: true,
+    convertLabel: 'Convert to Purchase Bill',
+    partyLabel: 'Vendor / Party *',
+    validUntilLabel: 'Expected Delivery',
+    showValidUntil: true,
+    dateField: 'documentDate',
+    itemsField: 'items',
+  },
   PROFORMA: {
     key: 'PROFORMA',
     label: 'Proforma Invoice',
@@ -107,11 +138,12 @@ export const DOCUMENT_TYPES = {
 
 export const SALES_DOCUMENT_TYPES = [
   'QUOTATION',
+  'SALES_ORDER',
   'PROFORMA',
   'DELIVERY_CHALLAN',
   'CREDIT_NOTE',
 ];
-export const PURCHASE_DOCUMENT_TYPES = ['DEBIT_NOTE'];
+export const PURCHASE_DOCUMENT_TYPES = ['PURCHASE_ORDER', 'DEBIT_NOTE'];
 
 export function getDocumentConfig(documentType) {
   return DOCUMENT_TYPES[documentType] || DOCUMENT_TYPES.QUOTATION;

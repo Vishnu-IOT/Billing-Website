@@ -101,10 +101,12 @@ export default function DocumentForm({
   // regardless of what's in this field.
   const DOCUMENT_TYPES_WITH_BACKEND_PREVIEW = [
     "QUOTATION",
+    "SALES_ORDER",
     "PROFORMA",
     "DELIVERY_CHALLAN",
     "CREDIT_NOTE",
     "DEBIT_NOTE",
+    "PURCHASE_ORDER",
   ];
 
   useEffect(() => {

@@ -192,7 +192,7 @@ export default function Documents({ searchParams }) {
         </Button>
       </div>
 
-      <div className="bills-tabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      {/* <div className="bills-tabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {TAB_TYPES.map((type) => (
           <button
             key={type}
@@ -206,7 +206,7 @@ export default function Documents({ searchParams }) {
             {DOCUMENT_TYPES[type].label}
           </button>
         ))}
-      </div>
+      </div> */}
 
       <div
         className="bills-filters"

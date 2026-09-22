@@ -49,6 +49,20 @@ export default function SaleBills({ searchParams }) {
     return () => setHideSidebar(false);
   }, [view]);
 
+  // salesStore is shared with other pages (Payment In/Out, Analytics, etc.)
+  // that call loadBills() with their own params — whatever they last fetched
+  // sits in the store until something else overwrites it. Without this,
+  // navigating away and back to Sales showed whatever the last visited page
+  // had triggered instead of the current month. Reassert current month
+  // every time this page mounts, rather than trusting shared store state.
+  useEffect(() => {
+    const range = getCurrentMonthRange();
+    setFilter("thisMonth");
+    setDateRange(range);
+    loadBills("thisMonth", range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /* Handle searchParams from Sidebar sub-menu */
   useEffect(() => {
     if (!searchParams) return;

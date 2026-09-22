@@ -51,6 +51,8 @@ const ComplianceCenter = lazy(
 );
 const GSTR1Report = lazy(() => import('../features/reports/GSTR1Report'));
 const GSTR3BReport = lazy(() => import('../features/reports/GSTR3BReport'));
+const MoreReports = lazy(() => import('../features/reports/MoreReports'));
+const ReportsHub = lazy(() => import('../features/reports/ReportsHub'));
 const InventoryHub = lazy(() => import('../features/inventory/InventoryHub'));
 const AccountingHub = lazy(() => import('../features/financials/AccountingHub'));
 
@@ -175,6 +177,14 @@ function renderPage(page, searchParams, isAuthenticated) {
       return (
         <ProtectedRoute>
           <Parties />
+        </ProtectedRoute>
+      );
+    case 'reports-hub':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <ReportsHub />
+          </RoleGuard>
         </ProtectedRoute>
       );
     case 'user-report':
@@ -313,6 +323,14 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'more-reports':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <MoreReports />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
     case 'shift-management':
       return (
         <ProtectedRoute>
@@ -337,6 +355,7 @@ const ALL_MORE_ITEMS = [
   { key: 'customers', label: 'Customers', allowed: ['OWNER', 'STAFF'] },
   { key: 'parties', label: 'Parties', allowed: ['OWNER', 'STAFF', 'BILLER'] },
   { key: 'documents', label: 'Documents', allowed: ['OWNER', 'STAFF'] },
+  { key: 'reports-hub', label: 'Reports', allowed: ['OWNER', 'STAFF'] },
   { key: 'sale-report', label: 'Sales Report', allowed: ['OWNER', 'STAFF'] },
   {
     key: 'purchase-report',
@@ -394,8 +413,18 @@ export function AppShell() {
   useEffect(() => {
     if (isAuthenticated) {
       loadAll();
-      loadSales('thisMonth', { startDate: '', endDate: '' });
-      loadPurchase('thisMonth', { startDate: '', endDate: '' });
+      // Empty startDate/endDate here previously meant "no date filter" to
+      // the backend, so this bootstrap fetch was silently loading ALL
+      // sales/purchases instead of the current month — the polluted data
+      // then sat in the shared store until something else overwrote it.
+      const today = new Date();
+      const fmt = (d) => d.toISOString().slice(0, 10);
+      const currentMonthRange = {
+        startDate: fmt(new Date(today.getFullYear(), today.getMonth(), 1)),
+        endDate: fmt(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+      };
+      loadSales('thisMonth', currentMonthRange);
+      loadPurchase('thisMonth', currentMonthRange);
     }
   }, [loadAll, loadSales, loadPurchase, isAuthenticated]);
 

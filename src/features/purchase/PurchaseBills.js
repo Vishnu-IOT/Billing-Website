@@ -45,8 +45,18 @@ export default function PurchaseBills() {
     return () => setHideSidebar(false);
   }, [view]);
 
+  // purchaseStore is shared with other pages that call loadBills() with
+  // their own params — whatever they last fetched sits in the store until
+  // something else overwrites it. loadBills() with no args here just
+  // re-fetches whatever filter/dateRange currently happens to be in the
+  // shared store, which isn't necessarily current month. Reassert current
+  // month explicitly every time this page mounts instead.
   useEffect(() => {
-    loadBills();
+    const range = getCurrentMonthRange();
+    setFilter("thisMonth");
+    setDateRange(range);
+    loadBills("thisMonth", range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
