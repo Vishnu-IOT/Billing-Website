@@ -1,6 +1,7 @@
 /* ===== GSTR-1 REPORT ===== */
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchGSTR1ReportAPI } from '../../api';
+import useAppStore from '../../store/appStore';
 import { StatCard, Button, Pagination, ToastContainer } from '../../components/ui';
 import { usePagination } from '../../hooks/usePagination';
 import { useToast } from '../../hooks/useToast';
@@ -12,20 +13,26 @@ import '../../styles/reports.css';
 export default function GSTR1Report() {
   const toast = useToast();
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // local-date formatting (toISOString shifts the day for timezones ahead of UTC)
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const firstOfMonth = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+  const today = iso(now);
+  const parties = useAppStore((s) => s.parties);
 
   const [report, setReport] = useState({ sections: [], summary: {} });
   const [loading, setLoading] = useState(false);
-  const [period, setPeriod] = useState(currentMonth);
+  const [filters, setFilters] = useState({ fromDate: firstOfMonth, toDate: today, partyId: '' });
 
+  // initial load only — after that, reports reload when Apply is clicked
   useEffect(() => {
-    loadReport(period);
-  }, [period]);
+    loadReport(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function loadReport(p) {
+  async function loadReport(f) {
     setLoading(true);
     try {
-      const data = await fetchGSTR1ReportAPI({ period: p });
+      const data = await fetchGSTR1ReportAPI({ fromDate: f.fromDate, toDate: f.toDate, ...(f.partyId ? { partyId: f.partyId } : {}) });
       setReport(data?.data ?? data ?? { sections: [], summary: {} });
     } catch {
       toast.error('Failed to load GSTR-1 data');
@@ -55,7 +62,7 @@ export default function GSTR1Report() {
         'CGST': r.cgst,
         'SGST': r.sgst,
       }));
-      exportToExcel(rows, 'GSTR-1', `GSTR1_${period}`);
+      exportToExcel(rows, 'GSTR-1', `GSTR1_${filters.fromDate}_to_${filters.toDate}`);
       toast.success('GSTR-1 exported');
     } catch {
       toast.error('Export failed');
@@ -78,15 +85,37 @@ export default function GSTR1Report() {
 
       <div className="filter-bar">
         <div className="filter-group">
-          <label className="filter-label">Return Period</label>
+          <label className="filter-label">From Date</label>
           <input
-            type="month"
+            type="date"
             className="form-input"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
+            value={filters.fromDate}
+            onChange={(e) => setFilters((f) => ({ ...f, fromDate: e.target.value }))}
           />
         </div>
-        <Button variant="primary" onClick={() => loadReport(period)} loading={loading}>
+        <div className="filter-group">
+          <label className="filter-label">To Date</label>
+          <input
+            type="date"
+            className="form-input"
+            value={filters.toDate}
+            onChange={(e) => setFilters((f) => ({ ...f, toDate: e.target.value }))}
+          />
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Party</label>
+          <select
+            className="form-input"
+            value={filters.partyId}
+            onChange={(e) => setFilters((f) => ({ ...f, partyId: e.target.value }))}
+          >
+            <option value="">All Parties</option>
+            {parties.map((p) => (
+              <option key={p.id || p._id} value={p.id || p._id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        <Button variant="primary" onClick={() => loadReport(filters)} loading={loading}>
           Apply
         </Button>
       </div>

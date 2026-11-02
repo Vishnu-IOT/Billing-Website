@@ -4,11 +4,14 @@ import useAppStore from '../../store/appStore';
 import { Button, EmptyState, LoadingSpinner } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
+import { exportToExcel } from '../../utils/export';
+import { PiMicrosoftExcelLogoFill } from 'react-icons/pi';
 import {
   fetchSalesByPartyAPI,
   fetchSalesByUserAPI,
   fetchSalesByItemAPI,
   fetchItemSalesByUserAPI,
+  fetchItemSalesByPartyAPI,
   fetchStockSummaryAPI,
   fetchGst2ReportAPI,
   fetchPartyOutstandingAPI,
@@ -69,6 +72,18 @@ export const REPORT_DEFS = {
       { key: 'totalSales', label: 'Total Sales', currency: true },
     ],
   },
+  itemSalesByParty: {
+    label: 'Item Sales by Party',
+    group: 'Sales',
+    fetch: fetchItemSalesByPartyAPI,
+    needsDateRange: true,
+    columns: [
+      { key: 'partyName', label: 'Party' },
+      { key: 'productName', label: 'Product' },
+      { key: 'totalQuantity', label: 'Qty Sold' },
+      { key: 'totalSales', label: 'Total Sales', currency: true },
+    ],
+  },
   purchaseByParty: {
     label: 'Purchase by Party',
     group: 'Purchase',
@@ -96,7 +111,8 @@ export const REPORT_DEFS = {
     label: 'Stock Summary',
     group: 'Inventory',
     fetch: fetchStockSummaryAPI,
-    needsDateRange: false,
+    needsDateRange: true,
+    noPartyFilter: true, // products have no party/vendor link
     columns: [
       { key: 'name', label: 'Product' },
       { key: 'sku', label: 'SKU' },
@@ -123,7 +139,7 @@ export const REPORT_DEFS = {
     label: 'Party-wise Outstanding',
     group: 'Party',
     fetch: fetchPartyOutstandingAPI,
-    needsDateRange: false,
+    needsDateRange: true,
     columns: [
       { key: 'partyName', label: 'Party' },
       { key: 'phone', label: 'Phone' },
@@ -150,13 +166,19 @@ export const REPORT_DEFS = {
 
 const REPORT_KEYS = Object.keys(REPORT_DEFS);
 
+// Local-date formatting — toISOString() converts to UTC first, which shifts
+// the day back by one for timezones ahead of UTC (e.g. India at midnight).
+function localISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return localISO(new Date());
 }
 function firstOfMonthISO() {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return localISO(new Date(d.getFullYear(), d.getMonth(), 1));
 }
+
 
 // Renders the filter bar + results table for ONE report — no picker, no
 // page header. This is what ReportsHub.js embeds per sidebar item.
@@ -180,7 +202,7 @@ export function AnalyticalReportView({ reportKey }) {
     setLoading(true);
     try {
       const filters = def.needsDateRange ? { fromDate, toDate } : {};
-      if (def.needsPartyPicker) filters.partyId = partyId;
+      if (partyId) filters.partyId = partyId;
 
       const res = await def.fetch(filters);
       setRows(res?.data || []);
@@ -208,6 +230,35 @@ export function AnalyticalReportView({ reportKey }) {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportKey]);
+
+  function handleExport() {
+    if (!rows.length) {
+      toast.error('Nothing to export');
+      return;
+    }
+    try {
+      // one Excel row per table row, headed by the same column labels shown on screen
+      const exportRows = rows.map((row) => {
+        const out = {};
+        def.columns.forEach((col) => {
+          const val = row[col.key];
+          if (col.currency) out[col.label] = Number(val) || 0;
+          else if (col.isDate) out[col.label] = val ? new Date(val).toLocaleDateString() : '';
+          else out[col.label] = val ?? '';
+        });
+        return out;
+      });
+      const stamp = new Date().toISOString().slice(0, 10);
+      exportToExcel(
+        exportRows,
+        def.label.slice(0, 31),
+        `${def.label.replace(/[^A-Za-z0-9]+/g, '_')}_${stamp}`
+      );
+      toast.success('Excel exported!');
+    } catch {
+      toast.error('Export failed');
+    }
+  }
 
   function renderCell(row, col) {
     const val = row[col.key];
@@ -243,6 +294,19 @@ export function AnalyticalReportView({ reportKey }) {
             </select>
           </div>
         )}
+        {!def.noPartyFilter && !def.needsPartyPicker && (
+          <div>
+            <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              Party
+            </label>
+            <select className="form-input" value={partyId} onChange={(e) => setPartyId(e.target.value)} style={{ minWidth: 200 }}>
+              <option value="">All Parties</option>
+              {parties.map((p) => (
+                <option key={p.id || p._id} value={p.id || p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {def.needsDateRange && (
           <>
             <div>
@@ -261,6 +325,9 @@ export function AnalyticalReportView({ reportKey }) {
         )}
         <Button variant="primary" size="sm" onClick={loadReport}>
           Apply
+        </Button>
+        <Button variant="success" size="sm" onClick={handleExport} icon={<PiMicrosoftExcelLogoFill />}>
+          Export Excel
         </Button>
       </div>
 
@@ -359,7 +426,7 @@ export default function MoreReports() {
         ))}
       </div>
 
-      <AnalyticalReportView reportKey={activeReport} />
+      <AnalyticalReportView key={activeReport} reportKey={activeReport} />
     </div>
   );
 }

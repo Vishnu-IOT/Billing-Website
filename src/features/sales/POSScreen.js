@@ -348,6 +348,22 @@ export default function POSScreen({
 
   const totals = getComputedTotals();
 
+  console.log("Computed totals:", totals);
+  // Total item-level discount
+  const itemDiscount = cart.reduce(
+    (sum, item) => sum + (Number(item.discountAmount) || 0),
+    0,
+  );
+
+  // Total discount (item discount + global discount)
+  const totalDiscount = itemDiscount + (Number(globalDiscount) || 0);
+
+  const actualTotal = Number(totals.grandTotal) || 0;
+
+  const roundedTotal = Math.round(actualTotal);
+
+  // const roundOff = Number((roundedTotal - actualTotal).toFixed(2));
+ const roundOff = Number(totals.roundOff?.toFixed(2));
   /* ── Add Item Form Handlers ── */
   const handleAddItemSearchChange = (e) => {
     const val = e.target.value;
@@ -1045,7 +1061,11 @@ export default function POSScreen({
         {/* ── Payment Modal ── */}
         <POSPaymentModal
           open={paymentOpen}
-          totals={totals}
+          totals={{
+            ...totals,
+            grandTotal: roundedTotal,
+            roundOff: roundOff,
+          }}
           paymentMethod={paymentMethod}
           onPaymentMethodChange={setPaymentMethod}
           customerInfo={customerInfo}
@@ -1379,7 +1399,8 @@ export default function POSScreen({
                           item.discountPercent > 0
                             ? `-${formatCurrency(discAmount)}`
                             : "-";
-                        const itemTotal = item.total || 0;
+                        console.log(item, "item in cart");
+                        const itemTotal = item.afterDiscount || 0;
 
                         return (
                           <tr key={item.productId || idx}>
@@ -1535,6 +1556,19 @@ export default function POSScreen({
 
             {/* Totals & Payment Section */}
             <div className="pos-exact-totals-box">
+              {/* Total Discount */}
+              {totalDiscount > 0 && (
+                <div
+                  className="pos-exact-summary-row"
+                  style={{ color: "#ef4444" }}
+                >
+                  <span>Total Discount</span>
+                  <span className="pos-exact-summary-val">
+                    −{formatCurrency(totalDiscount)}
+                  </span>
+                </div>
+              )}
+
               <div className="pos-exact-summary-row">
                 <span>Subtotal</span>
                 <span className="pos-exact-summary-val">
@@ -1546,6 +1580,15 @@ export default function POSScreen({
                 <span>Tax (%)</span>
                 <span className="pos-exact-summary-val">
                   {formatCurrency(totals.totalTax)}
+                </span>
+              </div>
+
+              {/* Round Off */}
+              <div className="pos-exact-summary-row">
+                <span>Round Off</span>
+                <span>
+                  {roundOff > 0 ? "+" : ""}
+                  {formatCurrency(roundOff)}
                 </span>
               </div>
 
@@ -1564,7 +1607,8 @@ export default function POSScreen({
               <div className="pos-exact-grand-total">
                 <span className="pos-exact-gt-label">GRAND TOTAL</span>
                 <span className="pos-exact-gt-val">
-                  {formatCurrency(totals.grandTotal)}
+                  {/* {formatCurrency(totals.grandTotal)} */}
+                  {formatCurrency(roundedTotal)}
                 </span>
               </div>
 

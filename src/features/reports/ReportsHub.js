@@ -88,7 +88,7 @@ export default function ReportsHub() {
             <div className="rh-main-header">
               <h2>{active.label}</h2>
             </div>
-            <AnalyticalReportView reportKey={active.reportKey} />
+            <AnalyticalReportView key={active.reportKey} reportKey={active.reportKey} />
           </>
         ) : null}
       </main>

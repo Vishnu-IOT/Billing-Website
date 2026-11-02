@@ -1,6 +1,6 @@
 /* ===== PRODUCTS MODULE ===== */
-import React, { useState, useMemo, useEffect } from 'react';
-import useAppStore from '../../store/appStore';
+import React, { useState, useMemo, useEffect } from "react";
+import useAppStore from "../../store/appStore";
 import {
   Button,
   Modal,
@@ -9,35 +9,35 @@ import {
   Badge,
   Pagination,
   ToastContainer,
-} from '../../components/ui';
-import { usePagination } from '../../hooks/usePagination';
-import { useDebounce } from '../../hooks/useDebounce';
-import { useToast } from '../../hooks/useToast';
-import { formatCurrency } from '../../utils/currency';
-import '../../styles/products.css';
-import useSalesStore from '../../store/salesStore';
-import usePurchaseStore from '../../store/purchaseStore';
-import BrandManagerModal from '../../components/shared/BrandManagerModal';
-import ProductVariantModal from '../../components/shared/ProductVariantModal';
-import { MdOutlineEdit } from 'react-icons/md';
+} from "../../components/ui";
+import { usePagination } from "../../hooks/usePagination";
+import { useDebounce } from "../../hooks/useDebounce";
+import { useToast } from "../../hooks/useToast";
+import { formatCurrency } from "../../utils/currency";
+import "../../styles/products.css";
+import useSalesStore from "../../store/salesStore";
+import usePurchaseStore from "../../store/purchaseStore";
+import BrandManagerModal from "../../components/shared/BrandManagerModal";
+import ProductVariantModal from "../../components/shared/ProductVariantModal";
+import { MdOutlineEdit } from "react-icons/md";
 
 const EMPTY_FORM = {
-  name: '',
-  SKU: '',
-  barcode: '',
-  HSNCode: '',
-  MRP: '',
-  salesPrice: '',
-  purchasePrice: '',
-  taxRate: '',
-  categoryId: '',
+  name: "",
+  SKU: "",
+  barcode: "",
+  HSNCode: "",
+  MRP: "",
+  salesPrice: "",
+  purchasePrice: "",
+  taxRate: "",
+  categoryId: "",
   stockQuantity: 0,
   minStockLevel: 5,
-  unit: 'pcs',
-  sku: '',
-  batchNo: '',
-  expiryDate: '',
-  serialNo: '',
+  unit: "pcs",
+  sku: "",
+  batchNo: "",
+  expiryDate: "",
+  serialNo: "",
 };
 
 export default function Products() {
@@ -49,7 +49,7 @@ export default function Products() {
   const purchaseBills = usePurchaseStore((s) => s.purchaseBills);
   const toast = useToast();
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [editProduct, setEditProduct] = useState(null);
@@ -73,7 +73,9 @@ export default function Products() {
     loadAllSalesBills();
     loadAllPurchaseBills();
     // Load brands for product form dropdown
-    import('../../api/brands').then(({ fetchBrandsAPI }) => fetchBrandsAPI().then(setBrands));
+    import("../../api/brands").then(({ fetchBrandsAPI }) =>
+      fetchBrandsAPI().then(setBrands),
+    );
   }, [loadAllSalesBills, loadAllPurchaseBills]);
 
   // Filter products by Name, Barcode (SKU), or HSN Code
@@ -121,39 +123,43 @@ export default function Products() {
     const errors = {};
     // Product Name
     if (!form.name.trim()) {
-      errors.name = 'Product name is required';
+      errors.name = "Product name is required";
     }
     // HSN Code
     const hsnLength = form.HSNCode.length;
     if (!form.HSNCode) {
-      errors.HSNCode = 'HSN Code is required';
-    }
-    else if (hsnLength !== 2 && hsnLength !== 4 && hsnLength !== 6 && hsnLength !== 8) {
-      errors.HSNCode = 'HSN Code must contain 2, 4, 6, or 8 digits';
+      errors.HSNCode = "HSN Code is required";
+    } else if (
+      hsnLength !== 2 &&
+      hsnLength !== 4 &&
+      hsnLength !== 6 &&
+      hsnLength !== 8
+    ) {
+      errors.HSNCode = "HSN Code must contain 2, 4, 6, or 8 digits";
     }
 
     if (!form.barcode) {
-      errors.barcode = 'Barcode is required';
+      errors.barcode = "Barcode is required";
     }
     // Category
     if (!form.categoryId) {
-      errors.categoryId = 'Category is required';
+      errors.categoryId = "Category is required";
     }
     // Purchase Price
-    if (form.purchasePrice === '' || Number(form.purchasePrice) <= 0) {
-      errors.purchasePrice = 'Purchase price must be greater than 0';
+    if (form.purchasePrice === "" || Number(form.purchasePrice) <= 0) {
+      errors.purchasePrice = "Purchase price must be greater than 0";
     }
     // Sales Price
-    if (form.salesPrice === '' || Number(form.salesPrice) <= 0) {
-      errors.salesPrice = 'Sales price must be greater than 0';
+    if (form.salesPrice === "" || Number(form.salesPrice) <= 0) {
+      errors.salesPrice = "Sales price must be greater than 0";
     }
     // MRP
-    if (form.MRP === '' || Number(form.MRP) <= 0) {
-      errors.MRP = 'MRP must be greater than 0';
+    if (form.MRP === "" || Number(form.MRP) <= 0) {
+      errors.MRP = "MRP must be greater than 0";
     }
     // Tax Rate
-    if (form.taxRate === '') {
-      errors.taxRate = 'Tax rate is required';
+    if (form.taxRate === "") {
+      errors.taxRate = "Tax rate is required";
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -180,36 +186,52 @@ export default function Products() {
 
   async function handleSave(e) {
     e.preventDefault();
+
     if (!validateForm()) return;
+
     setSaving(true);
+
     try {
       if (editProduct) {
         const id = editProduct.id || editProduct._id;
+
         await updateProduct(id, form);
-        toast.success('Product Updated Successfully!');
-        // Update active product state to show fresh data
+
+        toast.success("Product Updated Successfully!");
+
         setActiveProduct({ ...editProduct, ...form });
+
+        // Close modal after editing
+        setModalOpen(false);
       } else {
-        const data = await addProduct(form);
-        console.log(data);
-        toast.success('Product Added Successfully!');
+        await addProduct(form);
+
+        toast.success("Product Added Successfully!");
+
+        // Reset form for the next product
+        setForm({ ...EMPTY_FORM });
+        setEditProduct(null);
+        setLogoPreview(null);
+        setFormErrors({});
+
+        // Keep modal open for adding another product
+        setModalOpen(true);
       }
-      setModalOpen(false);
-    } catch {
-      toast.error('Failed to save');
+    } catch (error) {
+      console.error("Product save error:", error);
+      toast.error("Failed to save");
     } finally {
       setSaving(false);
-      setFormErrors({});
     }
   }
 
   async function handleDelete() {
     try {
       await deleteProduct(deleteId);
-      toast.success('Product Deleted Successfully!');
+      toast.success("Product Deleted Successfully!");
       setActiveProduct(null);
     } catch {
-      toast.error('Failed to delete');
+      toast.error("Failed to delete");
     } finally {
       setDeleteId(null);
     }
@@ -224,12 +246,12 @@ export default function Products() {
     let totalSalesAmt = 0;
     (saleBills || []).forEach((bill) => {
       const matchingItems = (bill.SalesItems || []).filter(
-        (item) => String(item.productId) === String(pId)
+        (item) => String(item.productId) === String(pId),
       );
       matchingItems.forEach((item) => {
         totalSalesQty += Number(item.quantity || 0);
         totalSalesAmt += Number(
-          item.netRate || item.total || item.price * item.quantity || 0
+          item.netRate || item.total || item.price * item.quantity || 0,
         );
       });
     });
@@ -238,12 +260,12 @@ export default function Products() {
     let totalPurchaseAmt = 0;
     (purchaseBills || []).forEach((bill) => {
       const matchingItems = (bill.PurchaseItems || []).filter(
-        (item) => String(item.productId) === String(pId)
+        (item) => String(item.productId) === String(pId),
       );
       matchingItems.forEach((item) => {
         totalPurchaseQty += Number(item.quantity || 0);
         totalPurchaseAmt += Number(
-          item.netRate || item.total || item.price * item.quantity || 0
+          item.netRate || item.total || item.price * item.quantity || 0,
         );
       });
     });
@@ -271,30 +293,30 @@ export default function Products() {
     // Gather Sales
     (saleBills || []).forEach((bill) => {
       const matchingItems = (bill.SalesItems || []).filter(
-        (item) => String(item.productId) === String(pId)
+        (item) => String(item.productId) === String(pId),
       );
       if (matchingItems.length > 0) {
         const qtySold = matchingItems.reduce(
           (sum, i) => sum + Number(i.quantity || 0),
-          0
+          0,
         );
         const totalAmt = matchingItems.reduce(
           (sum, i) =>
             sum + Number(i.netRate || i.total || i.price * i.quantity || 0),
-          0
+          0,
         );
         const rate = matchingItems[0]?.price || activeProduct.salesPrice || 0;
-        const partyName = bill.name || bill.Party?.name || 'Walk-in Customer';
+        const partyName = bill.name || bill.Party?.name || "Walk-in Customer";
 
         txns.push({
           id: `sale-${bill.id || bill._id}-${matchingItems[0]?.id || 0}`,
-          invoiceNo: bill.invoiceNumber || bill.invoiceNo || '—',
-          billType: 'Sales',
+          invoiceNo: bill.invoiceNumber || bill.invoiceNo || "—",
+          billType: "Sales",
           partyName,
           quantity: qtySold,
           rate,
           totalAmount: totalAmt,
-          date: bill.saleDate || bill.date || '—',
+          date: bill.saleDate || bill.date || "—",
           timestamp: new Date(bill.saleDate || bill.date).getTime(),
         });
       }
@@ -303,31 +325,31 @@ export default function Products() {
     // Gather Purchases
     (purchaseBills || []).forEach((bill) => {
       const matchingItems = (bill.PurchaseItems || []).filter(
-        (item) => String(item.productId) === String(pId)
+        (item) => String(item.productId) === String(pId),
       );
       if (matchingItems.length > 0) {
         const qtyPur = matchingItems.reduce(
           (sum, i) => sum + Number(i.quantity || 0),
-          0
+          0,
         );
         const totalAmt = matchingItems.reduce(
           (sum, i) =>
             sum + Number(i.netRate || i.total || i.price * i.quantity || 0),
-          0
+          0,
         );
         const rate =
           matchingItems[0]?.price || activeProduct.purchasePrice || 0;
-        const partyName = bill.Party?.name || 'Supplier';
+        const partyName = bill.Party?.name || "Supplier";
 
         txns.push({
           id: `purchase-${bill.id || bill._id}-${matchingItems[0]?.id || 0}`,
-          invoiceNo: bill.invoiceNumber || bill.invoiceNo || '—',
-          billType: 'Purchase',
+          invoiceNo: bill.invoiceNumber || bill.invoiceNo || "—",
+          billType: "Purchase",
           partyName,
           quantity: qtyPur,
           rate,
           totalAmount: totalAmt,
-          date: bill.purchaseDate || bill.date || '—',
+          date: bill.purchaseDate || bill.date || "—",
           timestamp: new Date(bill.purchaseDate || bill.date).getTime(),
         });
       }
@@ -344,16 +366,16 @@ export default function Products() {
   }, [combinedTransactions, txnPage]);
 
   const totalTxnPages = Math.ceil(
-    combinedTransactions.length / TXN_ITEMS_PER_PAGE
+    combinedTransactions.length / TXN_ITEMS_PER_PAGE,
   );
 
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        gap: 'var(--sp-4)',
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        gap: "var(--sp-4)",
       }}
     >
       <ToastContainer toasts={toast.toasts} />
@@ -370,7 +392,9 @@ export default function Products() {
         onClose={() => {
           setBrandModalOpen(false);
           // Reload brands after closing
-          import('../../api/brands').then(({ fetchBrandsAPI }) => fetchBrandsAPI().then(setBrands));
+          import("../../api/brands").then(({ fetchBrandsAPI }) =>
+            fetchBrandsAPI().then(setBrands),
+          );
         }}
       />
 
@@ -383,12 +407,21 @@ export default function Products() {
 
       <Modal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setFormErrors({}) }}
-        title={editProduct ? 'Edit Product' : 'Add Product'}
+        onClose={() => {
+          setModalOpen(false);
+          setFormErrors({});
+        }}
+        title={editProduct ? "Edit Product" : "Add Product"}
         size="xlg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setModalOpen(false); setFormErrors({}) }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setModalOpen(false);
+                setFormErrors({});
+              }}
+            >
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleSave}>
@@ -418,7 +451,9 @@ export default function Products() {
             />
           </div>
           <div className="form-col-full form-group">
-            <label className="form-label">Name <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              Name <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               className="form-input"
               placeholder="Enter Product Name"
@@ -429,8 +464,10 @@ export default function Products() {
               <span className="um-error-text">{formErrors.name}</span>
             )}
           </div>
-          <div className="form-group form-col-fulls" >
-            <label className="form-label">Barcode <span style={{ color: "red" }}>*</span></label>
+          <div className="form-group form-col-fulls">
+            <label className="form-label">
+              Barcode <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               className="form-input"
               placeholder="Enter Barcode"
@@ -444,7 +481,9 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">HSN Code <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              HSN Code <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               className="form-input"
               type="text"
@@ -474,14 +513,14 @@ export default function Products() {
               type="text"
               className="form-input"
               placeholder="Enter SKU Code"
-              value={form.sku || ''}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, sku: e.target.value }))
-              }
+              value={form.sku || ""}
+              onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Category <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              Category <span style={{ color: "red" }}>*</span>
+            </label>
             <select
               className="form-select"
               value={form.categoryId}
@@ -504,8 +543,10 @@ export default function Products() {
             <label className="form-label">Brand</label>
             <select
               className="form-select"
-              value={form.brandId || ''}
-              onChange={(e) => setForm((f) => ({ ...f, brandId: e.target.value || null }))}
+              value={form.brandId || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, brandId: e.target.value || null }))
+              }
             >
               <option value="">No Brand</option>
               {brands.map((b) => (
@@ -516,7 +557,9 @@ export default function Products() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">GST % <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              GST % <span style={{ color: "red" }}>*</span>
+            </label>
             <select
               className="form-select"
               value={form.taxRate}
@@ -536,7 +579,9 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">MRP (₹) <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              MRP (₹) <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               type="number"
               className="form-input"
@@ -550,7 +595,9 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Sales Price (₹) <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              Sales Price (₹) <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               type="number"
               className="form-input"
@@ -566,7 +613,9 @@ export default function Products() {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Purchase Price (₹) <span style={{ color: "red" }}>*</span></label>
+            <label className="form-label">
+              Purchase Price (₹) <span style={{ color: "red" }}>*</span>
+            </label>
             <input
               type="number"
               className="form-input"
@@ -631,7 +680,7 @@ export default function Products() {
             <input
               type="text"
               className="form-input"
-              value={form.batchNo || ''}
+              value={form.batchNo || ""}
               placeholder="Batch Number (optional)"
               onChange={(e) =>
                 setForm((f) => ({ ...f, batchNo: e.target.value }))
@@ -643,7 +692,7 @@ export default function Products() {
             <input
               type="text"
               className="form-input"
-              value={form.serialNo || ''}
+              value={form.serialNo || ""}
               placeholder="Serial Number (optional)"
               onChange={(e) =>
                 setForm((f) => ({ ...f, serialNo: e.target.value }))
@@ -673,7 +722,14 @@ export default function Products() {
             layout
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
           {/* <Button
             variant="secondary"
             onClick={() => setBrandModalOpen(true)}
@@ -699,7 +755,7 @@ export default function Products() {
         {/* Left Side: Product Selection Pane */}
         <div className="products-list-pane">
           <div className="products-pane-header">
-            <div className="search-bar" style={{ width: '100%' }}>
+            <div className="search-bar" style={{ width: "100%" }}>
               <span className="search-bar__icon">🔍</span>
               <input
                 placeholder="Search Name, SKU, HSN..."
@@ -714,8 +770,8 @@ export default function Products() {
               <div
                 style={{
                   padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
+                  textAlign: "center",
+                  color: "var(--text-muted)",
                 }}
               >
                 No products found
@@ -727,14 +783,14 @@ export default function Products() {
                 const isOut = qty <= 0;
                 const isLow = qty > 0 && qty < min;
 
-                let stockLabel = 'In Stock';
-                let stockStyle = { color: 'var(--success)' };
+                let stockLabel = "In Stock";
+                let stockStyle = { color: "var(--success)" };
                 if (isOut) {
-                  stockLabel = 'Out of Stock';
-                  stockStyle = { color: 'var(--danger)' };
+                  stockLabel = "Out of Stock";
+                  stockStyle = { color: "var(--danger)" };
                 } else if (isLow) {
-                  stockLabel = 'Low Stock';
-                  stockStyle = { color: 'var(--warning)' };
+                  stockLabel = "Low Stock";
+                  stockStyle = { color: "var(--warning)" };
                 }
 
                 const isActive =
@@ -744,7 +800,7 @@ export default function Products() {
                 return (
                   <div
                     key={p.id || p._id}
-                    className={`product-item-card ${isActive ? 'active' : ''}`}
+                    className={`product-item-card ${isActive ? "active" : ""}`}
                     onClick={() => {
                       setActiveProduct(p);
                       setTxnPage(1);
@@ -755,13 +811,13 @@ export default function Products() {
                     </div>
                     <div className="product-item-card__meta-row">
                       <span className="product-item-card__sku">
-                        {p.barcode || p.SKU || p.sku || '—'}
+                        {p.barcode || p.SKU || p.sku || "—"}
                       </span>
                       <span
                         className="product-item-card__stock"
                         style={stockStyle}
                       >
-                        {qty} {p.unit || 'pcs'} ({stockLabel})
+                        {qty} {p.unit || "pcs"} ({stockLabel})
                       </span>
                     </div>
                   </div>
@@ -777,11 +833,11 @@ export default function Products() {
             <div
               style={{
                 flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-muted)',
-                flexDirection: 'column',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-muted)",
+                flexDirection: "column",
                 gap: 12,
               }}
             >
@@ -799,29 +855,29 @@ export default function Products() {
                   </div>
                   <div className="product-analytics-meta">
                     <span>
-                      Barcode:{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
+                      Barcode:{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>
                         {activeProduct.barcode ||
                           activeProduct.SKU ||
                           activeProduct.sku ||
-                          '—'}
+                          "—"}
                       </strong>
                     </span>
                     <span>
-                      HSN Code:{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        {activeProduct.HSNCode || activeProduct.hsnCode || '—'}
+                      HSN Code:{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>
+                        {activeProduct.HSNCode || activeProduct.hsnCode || "—"}
                       </strong>
                     </span>
                     <span>
-                      MRP:{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
+                      MRP:{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>
                         {formatCurrency(activeProduct.MRP)}
                       </strong>
                     </span>
                     <span>
-                      GST:{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
+                      GST:{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>
                         {activeProduct.taxRate || 0}%
                       </strong>
                     </span>
@@ -888,8 +944,8 @@ export default function Products() {
                         style={{
                           color:
                             productMetrics.profit >= 0
-                              ? 'var(--success)'
-                              : 'var(--danger)',
+                              ? "var(--success)"
+                              : "var(--danger)",
                         }}
                       >
                         {formatCurrency(productMetrics.profit)}
@@ -897,14 +953,15 @@ export default function Products() {
                       <div className="kpi-card__sub">
                         <span>Margin Margin</span>
                         <span
-                          className={`profit-badge ${productMetrics.profit >= 0
-                            ? 'profit-badge--positive'
-                            : 'profit-badge--negative'
-                            }`}
+                          className={`profit-badge ${
+                            productMetrics.profit >= 0
+                              ? "profit-badge--positive"
+                              : "profit-badge--negative"
+                          }`}
                         >
                           {productMetrics.totalSalesAmt > 0
                             ? `${Math.round((productMetrics.profit / productMetrics.totalSalesAmt) * 100)}%`
-                            : '0%'}
+                            : "0%"}
                         </span>
                       </div>
                     </div>
@@ -912,13 +969,13 @@ export default function Products() {
                 )}
 
                 {/* Combined Transaction Table */}
-                <div style={{ marginTop: 'var(--sp-2)' }}>
+                <div style={{ marginTop: "var(--sp-2)" }}>
                   <h3
                     style={{
-                      fontSize: 'var(--fs-md)',
+                      fontSize: "var(--fs-md)",
                       fontWeight: 700,
-                      marginBottom: 'var(--sp-3)',
-                      color: 'var(--text-primary)',
+                      marginBottom: "var(--sp-3)",
+                      color: "var(--text-primary)",
                     }}
                   >
                     Combined Transaction History
@@ -928,10 +985,10 @@ export default function Products() {
                     <div
                       style={{
                         padding: 30,
-                        textAlign: 'center',
-                        color: 'var(--text-muted)',
-                        background: 'var(--bg-hover)',
-                        borderRadius: 'var(--radius-md)',
+                        textAlign: "center",
+                        color: "var(--text-muted)",
+                        background: "var(--bg-hover)",
+                        borderRadius: "var(--radius-md)",
                       }}
                     >
                       No transactions recorded for this product
@@ -959,20 +1016,20 @@ export default function Products() {
                               <tr key={txn.id}>
                                 <td
                                   style={{
-                                    fontSize: 'var(--fs-xs)',
-                                    color: 'var(--text-secondary)',
+                                    fontSize: "var(--fs-xs)",
+                                    color: "var(--text-secondary)",
                                   }}
                                 >
                                   {txn.date
                                     ? new Date(txn.date).toLocaleDateString(
-                                      'en-IN',
-                                      {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric',
-                                      }
-                                    )
-                                    : '—'}
+                                        "en-IN",
+                                        {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        },
+                                      )
+                                    : "—"}
                                 </td>
                                 {/* <td style={{ fontWeight: 600 }}>
                                   {txn.invoiceNo}
@@ -980,9 +1037,9 @@ export default function Products() {
                                 <td>
                                   <Badge
                                     variant={
-                                      txn.billType === 'Sales'
-                                        ? 'success'
-                                        : 'warning'
+                                      txn.billType === "Sales"
+                                        ? "success"
+                                        : "warning"
                                     }
                                   >
                                     {txn.billType}
@@ -1004,21 +1061,21 @@ export default function Products() {
                       {totalTxnPages > 1 && (
                         <div
                           style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginTop: 'var(--sp-4)',
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginTop: "var(--sp-4)",
                           }}
                         >
                           <span
                             style={{
-                              fontSize: 'var(--fs-xs)',
-                              color: 'var(--text-muted)',
+                              fontSize: "var(--fs-xs)",
+                              color: "var(--text-muted)",
                             }}
                           >
                             Showing page {txnPage} of {totalTxnPages}
                           </span>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: "flex", gap: 6 }}>
                             <Button
                               variant="secondary"
                               size="sm"

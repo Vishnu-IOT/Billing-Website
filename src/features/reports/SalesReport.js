@@ -1,5 +1,6 @@
 /* ===== SALES REPORT ===== */
 import React, { useState, useMemo, useEffect } from 'react';
+import useAppStore from '../../store/appStore';
 import { fetchSaleBillsByDateAPI } from '../../api';
 import { StatCard, PaymentBadge, Pagination, Button, ToastContainer } from '../../components/ui';
 import { usePagination } from '../../hooks/usePagination';
@@ -14,13 +15,14 @@ function getInitials(name = '') { return name.split(' ').map((w) => w[0]).join('
 
 export default function SalesReport() {
   const toast = useToast();
+  const parties = useAppStore((s) => s.parties);
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '' });
-  const [applied, setApplied] = useState({ startDate: '', endDate: '', status: '' });
+  const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '', partyId: '' });
+  const [applied, setApplied] = useState({ startDate: '', endDate: '', status: '', partyId: '' });
 
   useEffect(() => {
     loadData(applied);
@@ -36,8 +38,12 @@ export default function SalesReport() {
   }
 
   const filtered = useMemo(() => {
-    return bills.filter((b) => !applied.status || b.paymentStatus?.toLowerCase() === applied.status);
-  }, [bills, applied.status]);
+    return bills.filter((b) => {
+      const matchStatus = !applied.status || b.paymentStatus?.toLowerCase() === applied.status;
+      const matchParty = !applied.partyId || String(b.partyId || b.Party?.id) === String(applied.partyId);
+      return matchStatus && matchParty;
+    });
+  }, [bills, applied.status, applied.partyId]);
 
   const { page, totalPages, paginated, from, to, total, goToPage } = usePagination(filtered, 8);
 
@@ -92,9 +98,18 @@ export default function SalesReport() {
             ))}
           </div>
         </div>
+        <div className="filter-group">
+          <label className="filter-label">Party</label>
+          <select className="form-input" value={filters.partyId} onChange={(e) => setFilters((f) => ({ ...f, partyId: e.target.value }))}>
+            <option value="">All Parties</option>
+            {parties.map((p) => (
+              <option key={p.id || p._id} value={p.id || p._id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
         <div className="filter-actions">
           <Button variant="primary" size="sm" onClick={() => setApplied({ ...filters })}>Apply</Button>
-          <Button variant="secondary" size="sm" onClick={() => { setFilters({ startDate: '', endDate: '', status: '' }); setApplied({ startDate: '', endDate: '', status: '' }); }}>Clear</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setFilters({ startDate: '', endDate: '', status: '', partyId: '' }); setApplied({ startDate: '', endDate: '', status: '', partyId: '' }); }}>Clear</Button>
         </div>
       </div>
 

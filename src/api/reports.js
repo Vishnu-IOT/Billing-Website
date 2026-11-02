@@ -12,6 +12,7 @@ export const fetchSalesByPartyAPI = (filters) => getReport('sales-by-party', fil
 export const fetchSalesByUserAPI = (filters) => getReport('sales-by-user', filters);
 export const fetchSalesByItemAPI = (filters) => getReport('sales-by-item', filters);
 export const fetchItemSalesByUserAPI = (filters) => getReport('item-sales-by-user', filters);
+export const fetchItemSalesByPartyAPI = (filters) => getReport('item-sales-by-party', filters);
 export const fetchStockSummaryAPI = () => getReport('stock-summary');
 export const fetchGst2ReportAPI = (filters) => getReport('gst2', filters);
 export const fetchPartyOutstandingAPI = () => getReport('party-outstanding');

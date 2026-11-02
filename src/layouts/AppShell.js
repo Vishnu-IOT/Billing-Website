@@ -418,7 +418,7 @@ export function AppShell() {
       // sales/purchases instead of the current month — the polluted data
       // then sat in the shared store until something else overwrote it.
       const today = new Date();
-      const fmt = (d) => d.toISOString().slice(0, 10);
+      const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const currentMonthRange = {
         startDate: fmt(new Date(today.getFullYear(), today.getMonth(), 1)),
         endDate: fmt(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
