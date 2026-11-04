@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import useSettingsStore from '../../../../store/settingsStore-DB';
 import useBillTemplateStore from '../../../../store/billTemplateStore';
 import { getEnabledColumns, renderColumnValue } from './itemColumnsConfig';
+import { getLogoSrc } from '../../../../utils/logo';
 import './B2BInvoiceTemplate.css';
 
 const B2BInvoiceTemplate = ({ invoice, company, settings: overrideSettings, columnsOverride }) => {
@@ -112,7 +113,7 @@ const B2BInvoiceTemplate = ({ invoice, company, settings: overrideSettings, colu
       <div className="b2b-header">
         <div className="header-main">
           <div className="company-section">
-            {company?.logo && <img src={company.logo} alt="Logo" className="company-logo" />}
+            {company?.logo && <img src={getLogoSrc(company.logo)} alt="Logo" className="company-logo" />}
             <div className="company-details">
               <h1 className="company-name">{company?.name}</h1>
               <p className="company-gstin">GST IN: {company?.gstNumber}</p>

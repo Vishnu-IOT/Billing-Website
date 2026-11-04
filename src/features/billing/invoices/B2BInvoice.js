@@ -23,6 +23,7 @@ import { formatCurrency } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
 import { numberToWords } from "../../../utils/numbers";
 import useSettingsStore from "../../../store/settingsStore-DB";
+import { getCompanyLogo } from "../../../utils/logo";
 
 const box = { border: "1px solid #999", padding: "10px 12px" };
 const th = {
@@ -126,6 +127,7 @@ export default function B2BInvoice({
   // const settledAmount = isPaid ? (bill.totalAmount || 0) : (bill.amountPaid || 0);
   // const balanceAmount = (bill.totalAmount || 0) - settledAmount;
 
+  const companyLogo = getCompanyLogo(companies);
   const financials = companies.financials || {};
   const companyGstin =
     financials.gstin || companies.companyGstin || companies.gstin || "";
@@ -198,11 +200,14 @@ export default function B2BInvoice({
             overflow: "hidden",
           }}
         >
-          {companies.logo ? (
+          {companyLogo ? (
             <img
-              src={companies.logo_url}
+              src={companyLogo}
               alt="Logo"
-              style={{ maxWidth: "100%", maxHeight: "100%" }}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           ) : (
             "Logo"

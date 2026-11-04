@@ -69,7 +69,7 @@ export async function fetchCompanyForInvoice(companyId, companyBasic = {}) {
     zipCode: companyBasic.zipCode,
     phone: companyBasic.phone,
     email: companyBasic.email,
-    logo: companyBasic.logo,
+    logo: companyBasic.logo_url || companyBasic.logo,
 
     // ── Real GST/PAN comes from Company_Financials, not the companies table ──
     gstNumber: financials.gstin || '',

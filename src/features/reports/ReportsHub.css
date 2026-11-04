@@ -94,13 +94,24 @@
   margin: 0;
 }
 
+.rh-mobile-select {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .rh-layout {
     flex-direction: column;
+    width: 100%;
   }
   .rh-sidebar {
+    display: none;
+  }
+  .rh-mobile-select {
+    display: block;
     width: 100%;
-    position: static;
-    max-height: none;
+  }
+  .rh-main {
+    width: 100%;
+    padding: var(--sp-3);
   }
 }

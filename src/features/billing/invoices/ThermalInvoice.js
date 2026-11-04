@@ -23,6 +23,7 @@ import { useShallow } from "zustand/react/shallow";
 import useSettingsStore from "../../../store/settingsStore-DB";
 import "./ThermalInvoice.css";
 import { QRCodeSVG } from "qrcode.react";
+import { getCompanyLogo } from "../../../utils/logo";
 
 const ThermalInvoice = ({
   bill,
@@ -172,6 +173,17 @@ const ThermalInvoice = ({
 
         <div className="thermal-header">
           <div className="header-company">
+            {getCompanyLogo(companies) && (
+              <img
+                src={getCompanyLogo(companies)}
+                alt="Logo"
+                className="thermal-logo"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
             <p className="company-name">
               {companies?.legal_name || companies?.name || "COMPANY NAME"}
             </p>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { fetchCompaniesAPI, updateCompanyAPI } from '../../api';
 import { Button, ToastContainer } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
+import { getLogoSrc } from '../../utils/logo';
 import '../../styles/Company.css';
 
 export default function Company() {
@@ -158,7 +159,15 @@ export default function Company() {
           <form onSubmit={handleSave}>
             <div className="com-form-layout">
               <div className="com-form-img">
-                <img src="/mps.png" alt="LOGO" />
+                <img
+                  src={getLogoSrc(form.logo_url) || '/mps.png'}
+                  alt="LOGO"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith('/mps.png')) {
+                      e.currentTarget.src = '/mps.png';
+                    }
+                  }}
+                />
               </div>
               <div className="com-form-group">
                 <label className="com-form-label com-form-label--required">

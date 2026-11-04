@@ -1,0 +1,59 @@
+/* ===== rv- : ReportView (all 19 backend reports) — plain CSS, reuses global tokens ===== */
+
+.rv-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.rv-filters { align-items: flex-end; }
+.rv-filter { min-width: 150px; }
+.rv-filter-actions { flex-wrap: wrap; }
+.rv-check { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-secondary); height: 34px; cursor: pointer; }
+
+.rv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.rv-search { flex: 1; min-width: 220px; max-width: 420px; }
+.rv-pagesize { display: flex; align-items: center; gap: var(--sp-2); }
+.rv-pagesize .form-select { width: auto; }
+
+.rv-party { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); font-size: var(--fs-sm); color: var(--text-secondary); }
+.rv-party strong { color: var(--text-primary); font-size: var(--fs-md); }
+
+.rv-breakdown { display: flex; flex-direction: column; gap: var(--sp-2); }
+.rv-breakdown__title { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
+.rv-table-wrap { transition: opacity 0.15s ease; }
+.rv-table-wrap.rv-loading { opacity: 0.55; pointer-events: none; }
+.rv-table th { white-space: nowrap; }
+.rv-sortable { cursor: pointer; user-select: none; }
+.rv-sortable:hover { color: var(--primary); }
+.rv-sort { margin-left: 4px; font-size: 0.65rem; color: var(--text-disabled); }
+.rv-sort--on { color: var(--primary); }
+.rv-expand-col { width: 34px; padding-right: 0; }
+.rv-expand { background: none; border: none; cursor: pointer; color: var(--primary); font-size: var(--fs-md); line-height: 1; padding: 2px 6px; }
+.rv-detail-row > td { background: var(--bg-hover); padding: var(--sp-3); }
+.rv-mini { box-shadow: none; }
+
+.rv-error { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-4) var(--sp-5); border: 1px solid var(--danger); background: var(--danger-light); color: var(--danger); border-radius: var(--radius-lg); }
+.rv-error__msg { flex: 1; min-width: 200px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+
+.rv-note { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ── Mobile: filters stack, tables become stacked cards ── */
+@media (max-width: 700px) {
+  .rv-filter { min-width: 100%; }
+  .rv-filter-actions { width: 100%; margin-left: 0; }
+  .rv-filter-actions .btn { flex: 1; }
+  .rv-search { max-width: none; }
+  .rv-actions { width: 100%; }
+  .rv-actions .btn { flex: 1; }
+
+  .rv-table-wrap, .rv-mini { overflow: visible; background: transparent; border: none; box-shadow: none; }
+  .rv-table thead, .rv-mini thead { display: none; }
+  .rv-table, .rv-table tbody, .rv-table tr, .rv-table td,
+  .rv-mini table, .rv-mini tbody, .rv-mini tr, .rv-mini td { display: block; width: 100%; }
+  .rv-table tr, .rv-mini tr { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
+  .rv-table td, .rv-mini td { display: flex; justify-content: space-between; gap: var(--sp-3); text-align: right; padding: 6px 0; border: none; border-bottom: 1px dashed var(--border); }
+  .rv-table td:last-child, .rv-mini td:last-child { border-bottom: none; }
+  .rv-table td[data-label]::before, .rv-mini td[data-label]::before { content: attr(data-label); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--text-muted); text-transform: uppercase; text-align: left; flex-shrink: 0; }
+  .rv-expand-col { width: 100%; padding: 0; }
+  .rv-detail-row, .rv-detail-row > td { padding: 0; background: transparent; border: none; }
+}
+
+@media print { .rv-actions, .rv-filters, .rv-toolbar { display: none !important; } }
