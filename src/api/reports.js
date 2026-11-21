@@ -54,6 +54,16 @@ export const fetchStockSummaryAPI = (filters) => getReport('stock-summary', filt
 export const fetchReportsGstr1API = (filters) => getReport('gstr1', filters);
 export const fetchReportsGstr3bAPI = (filters) => getReport('gstr3b', filters);
 export const fetchGst2ReportAPI = (filters) => getReport('gst2', filters);
+export const fetchGstTemplatePreviewAPI = (type, filters) =>
+  getReport(`gst-templates/${type}/preview`, filters);
+export async function downloadGstTemplateReportAPI(type, filters) {
+  const response = await axios.get(`${BASE_URL}/reports/gst-templates/${type}/export`, {
+    params: cleanParams(filters),
+    responseType: 'blob',
+    ...getAuthHeaders(),
+  });
+  return response.data;
+}
 
 // ── Party ────────────────────────────────────────────────────────────────────
 export const fetchPartyOutstandingAPI = (filters) => getReport('party-outstanding', filters);
@@ -63,6 +73,18 @@ export const fetchCustomerStatementAPI = (partyId, filters) =>
 // ── Category / Brand ─────────────────────────────────────────────────────────
 export const fetchCategoryReportAPI = (filters) => getReport('category-report', filters);
 export const fetchBrandReportAPI = (filters) => getReport('brand-report', filters);
+
+// ── Other Reports ───────────────────────────────────────────────────────────
+export const fetchOtherReportAPI = (type, filters) => getReport(`other/${type}`, filters);
+export const fetchOtherReportDetailsAPI = (type, id) => getReport(`other/${type}/${id}`);
+export async function downloadOtherReportAPI(type, filters, format) {
+  const response = await axios.get(`${BASE_URL}/reports/other/${type}/export`, {
+    params: cleanParams({ ...filters, format }),
+    responseType: 'blob',
+    ...getAuthHeaders(),
+  });
+  return response.data;
+}
 
 // ── Export helper ────────────────────────────────────────────────────────────
 // Pulls EVERY page of a report for the given filters (used by Excel / PDF /

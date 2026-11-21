@@ -12,6 +12,19 @@ export async function fetchPurchaseBillsAPI() {
   }
 }
 
+export async function fetchPurchaseBillByIdAPI(id) {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/purchase/get-purchase/${id}`,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (err) {
+    console.error('Failed to fetch purchase bill:', err);
+    throw new Error(err.response?.data?.message || 'Failed to load purchase bill');
+  }
+}
+
 export async function fetchPurchaseBillsByDateAPI(id, date) {
   try {
     const response = await axios.get(`${BASE_URL}/purchase/get-purchase-date`, {
@@ -38,7 +51,8 @@ export async function addPurchaseBillAPI(bill) {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    console.error('Failed to add purchase bill:', err);
+    throw new Error(err.response?.data?.message || 'Failed to save purchase bill');
   }
 }
 
@@ -51,7 +65,8 @@ export async function updatePurchaseBillAPI(id, bill) {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    console.error('Failed to update purchase bill:', err);
+    throw new Error(err.response?.data?.message || 'Failed to update purchase bill');
   }
 }
 

@@ -13,8 +13,10 @@ import { useToast } from '../hooks/useToast';
 
 import ProtectedRoute from '../components/shared/ProtectedRoute';
 import RoleGuard from '../components/shared/RoleGuard';
+import PermissionGuard from '../components/shared/PermissionGuard';
 import useAuthStore from '../store/authStore';
 import { useSettingsInit } from '../hooks/useSettingsInit';
+import { hasPermission } from '../utils/permissions';
 
 /* ── Lazy-loaded page components ── */
 const Auth = lazy(() => import('../features/auth/Auth'));
@@ -22,6 +24,7 @@ const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
 const SaleBills = lazy(() => import('../features/sales/SaleBills'));
 const PurchaseBills = lazy(() => import('../features/purchase/PurchaseBills'));
 const Products = lazy(() => import('../features/products/Products'));
+const Offers = lazy(() => import('../features/promotions/Offers'));
 const Categories = lazy(() => import('../features/categories/Categories'));
 const Brands = lazy(() => import('../features/brands/Brands'));
 const Customers = lazy(() => import('../features/customers/Customers'));
@@ -37,6 +40,7 @@ const SaleBillForm = lazy(() => import('../features/sales/SaleBillForm'));
 const PurchaseBillForm = lazy(
   () => import('../features/purchase/PurchaseBillForm')
 );
+const PurchaseReturns = lazy(() => import('../features/purchase/PurchaseReturns'));
 const Company = lazy(() => import('../features/company/Company'));
 const Financials = lazy(() => import('../features/financials/Financials'));
 const UserManagement = lazy(
@@ -46,19 +50,41 @@ const UsersReport = lazy(() => import('../features/reports/UsersReport'));
 const Expenses = lazy(() => import('../features/reports/Expenses'));
 const Analytics = lazy(() => import('../features/reports/Analytics'));
 const Documents = lazy(() => import('../features/documents/Documents'));
+const SalesB2CReturn = lazy(() => import('../features/documents/SalesB2CReturn'));
 const ComplianceCenter = lazy(
   () => import('../features/compliance/ComplianceCenter')
 );
 const GSTR1Report = lazy(() => import('../features/reports/GSTR1Report'));
+const GSTR2Report = lazy(() => import('../features/reports/GSTR2Report'));
 const GSTR3BReport = lazy(() => import('../features/reports/GSTR3BReport'));
 const MoreReports = lazy(() => import('../features/reports/MoreReports'));
 const ReportsHub = lazy(() => import('../features/reports/ReportsHub'));
 const InventoryHub = lazy(() => import('../features/inventory/InventoryHub'));
 const AccountingHub = lazy(() => import('../features/financials/AccountingHub'));
+const QuickSaleReview = lazy(() => import('../features/quick-sales/QuickSaleReview'));
 
 const ShiftManagement = lazy(() => import('../features/pos/ShiftManagement'));
+const RoleManagement = lazy(() => import('../features/roles/RoleManagement'));
 
 function renderPage(page, searchParams, isAuthenticated) {
+  if (page === 'sales' && searchParams.get('type') === 'B2C') {
+    return (
+      <ProtectedRoute>
+        <SaleBillForm billingType="B2C" />
+      </ProtectedRoute>
+    );
+  }
+
+  if (page === 'documents' && searchParams.get('type') === 'SALES_RETURN') {
+    return (
+      <ProtectedRoute>
+        <RoleGuard allowedRoles={['OWNER', 'STAFF', 'BILLER']}>
+          <SalesB2CReturn searchParams={searchParams} />
+        </RoleGuard>
+      </ProtectedRoute>
+    );
+  }
+
   if (page.startsWith('sales/edit/')) {
     const id = page.split('/').pop();
     const isB2B = searchParams.get('type') === 'B2B';
@@ -125,11 +151,33 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'purchase-returns':
+      return (
+        <ProtectedRoute>
+          <PermissionGuard page="purchase-returns">
+            <PurchaseReturns />
+          </PermissionGuard>
+        </ProtectedRoute>
+      );
+    case 'quick-sales':
+      return (
+        <ProtectedRoute>
+          <QuickSaleReview />
+        </ProtectedRoute>
+      );
     case 'products':
       return (
         <ProtectedRoute>
           <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
             <Products />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
+    case 'offers':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER']}>
+            <Offers />
           </RoleGuard>
         </ProtectedRoute>
       );
@@ -275,6 +323,12 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'roles':
+      return (
+        <ProtectedRoute>
+          <RoleManagement />
+        </ProtectedRoute>
+      );
     case 'expenses':
       return (
         <ProtectedRoute>
@@ -315,6 +369,14 @@ function renderPage(page, searchParams, isAuthenticated) {
           </RoleGuard>
         </ProtectedRoute>
       );
+    case 'gstr2-report':
+      return (
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={['OWNER', 'STAFF']}>
+            <GSTR2Report />
+          </RoleGuard>
+        </ProtectedRoute>
+      );
     case 'gstr3b-report':
       return (
         <ProtectedRoute>
@@ -348,46 +410,80 @@ function renderPage(page, searchParams, isAuthenticated) {
   }
 }
 
-/* More menu items for mobile with role restrictions */
+/* More menu items for mobile */
 const ALL_MORE_ITEMS = [
-  { key: 'categories', label: 'Categories', allowed: ['OWNER', 'STAFF'] },
-  { key: 'brands', label: 'Brands', allowed: ['OWNER', 'STAFF'] },
-  { key: 'customers', label: 'Customers', allowed: ['OWNER', 'STAFF'] },
-  { key: 'parties', label: 'Parties', allowed: ['OWNER', 'STAFF', 'BILLER'] },
-  { key: 'documents', label: 'Documents', allowed: ['OWNER', 'STAFF'] },
-  { key: 'reports-hub', label: 'Reports', allowed: ['OWNER', 'STAFF'] },
-  { key: 'sale-report', label: 'Sales Report', allowed: ['OWNER', 'STAFF'] },
+  { key: 'offers', label: 'Offers', permission: 'offers.promotions.view' },
+  { key: 'categories', label: 'Categories', permission: 'categories.catalog.view' },
+  { key: 'brands', label: 'Brands', permission: 'brands.catalog.view' },
+  { key: 'customers', label: 'Customers', permission: 'customers.directory.view' },
+  { key: 'parties', label: 'Parties', permission: 'parties.directory.view' },
+  { key: 'documents', label: 'Documents', permission: 'documents.business.view' },
+  { key: 'reports-hub', label: 'Reports', permission: 'reports.business.view' },
+  { key: 'sale-report', label: 'Sales Report', permission: 'reports.business.view' },
   {
     key: 'purchase-report',
     label: 'Purchase Report',
-    allowed: ['OWNER', 'STAFF'],
+    permission: 'reports.business.view',
   },
-  { key: 'stock-report', label: 'Stock Report', allowed: ['OWNER', 'STAFF'] },
-  { key: 'shift-management', label: 'Shift Management', allowed: ['OWNER', 'STAFF'] },
-  { key: 'payment-in', label: 'Payment In', allowed: ['OWNER', 'STAFF'] },
+  { key: 'purchase-returns', label: 'Purchase Returns', permission: 'purchases.returns.view' },
+  { key: 'stock-report', label: 'Stock Report', permission: 'reports.business.view' },
+  { key: 'shift-management', label: 'Shift Management', permission: 'shifts.management.view' },
+  { key: 'quick-sales', label: 'Quick Sale Review', permission: 'quick-sales.aliases.view' },
+  { key: 'payment-in', label: 'Payment In', permission: 'payments.receipts.view' },
   {
     key: 'payment-out',
     label: 'Payment Out',
-    allowed: ['OWNER', 'STAFF'],
+    permission: 'payments.receipts.view',
   },
-  { key: 'settings', label: 'Settings', allowed: ['OWNER'] },
-  { key: 'expenses', label: 'Expenses', allowed: ['OWNER'] },
-  { key: 'analytics', label: 'Analytics', allowed: ['OWNER'] },
+  { key: 'settings', label: 'Settings', permission: 'settings.configuration.view' },
+  { key: 'expenses', label: 'Expenses', permission: 'expenses.management.view' },
+  { key: 'analytics', label: 'Analytics', permission: 'analytics.overview.view' },
+  { key: 'roles', label: 'Roles', permission: 'roles.configuration.view' },
 ];
 
 export function AppShell() {
   const { page, searchParams, setPage, setSearchParams } = useUIStore();
+  const isPosBillingPage =
+    (page === 'sales' && searchParams.get('type') === 'B2C') ||
+    (page.startsWith('sales/edit/') && searchParams.get('type') !== 'B2B');
   const { loadAll, loading } = useAppStore();
   const loadSales = useSalesStore((s) => s.loadBills);
   const loadPurchase = usePurchaseStore((s) => s.loadBills);
   const toast = useToast();
   const [showMore, setShowMore] = useState(false);
+  const [refreshingPermissions, setRefreshingPermissions] = useState(false);
+  const [permissionsRefreshed, setPermissionsRefreshed] = useState(false);
 
   const { user, isAuthenticated } = useAuthStore();
-  const role = user?.role || 'STAFF';
+  const refreshAccess = useAuthStore((state) => state.refreshAccess);
+  const logout = useAuthStore((state) => state.logout);
+  const permissionsLoaded = Array.isArray(user?.permissions);
 
   // ADD inside AppShell component
   const { isInitializing, initError } = useSettingsInit();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPermissionsRefreshed(false);
+      return;
+    }
+    let active = true;
+    setRefreshingPermissions(true);
+    refreshAccess()
+      .catch((error) => {
+        console.error('Failed to refresh permissions:', error);
+        logout();
+      })
+      .finally(() => {
+        if (active) {
+          setRefreshingPermissions(false);
+          setPermissionsRefreshed(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, refreshAccess, logout]);
 
   /* Global redirect to login if not authenticated */
   useEffect(() => {
@@ -401,17 +497,34 @@ export function AppShell() {
     function onHash() {
       const hash = window.location.hash.slice(1) || 'dashboard';
       const [path, query] = hash.split('?');
+      const params = new URLSearchParams(query || '');
+
+      if (isAuthenticated && permissionsLoaded && permissionsRefreshed && path === 'dashboard' && !hasPermission(user, 'dashboard.overview.view')) {
+        const landingPage = [
+          ['sales?type=B2C', 'pos.billing.access'],
+          ['quick-sales', 'quick-sales.aliases.view'],
+          ['sales', 'sales.invoices.view'],
+          ['products', 'products.catalog.view'],
+          ['purchases', 'purchases.invoices.view'],
+          ['customers', 'customers.directory.view'],
+        ].find(([, permission]) => hasPermission(user, permission))?.[0];
+        if (landingPage) {
+          window.location.hash = landingPage;
+          return;
+        }
+      }
+
       setPage(path);
-      setSearchParams(new URLSearchParams(query || ''));
+      setSearchParams(params);
     }
     onHash();
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, [setPage, setSearchParams]);
+  }, [isAuthenticated, permissionsLoaded, permissionsRefreshed, user, setPage, setSearchParams]);
 
   /* Bootstrap data only when authenticated */
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && permissionsLoaded && permissionsRefreshed) {
       loadAll();
       // Empty startDate/endDate here previously meant "no date filter" to
       // the backend, so this bootstrap fetch was silently loading ALL
@@ -423,11 +536,19 @@ export function AppShell() {
         startDate: fmt(new Date(today.getFullYear(), today.getMonth(), 1)),
         endDate: fmt(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
       };
-      loadSales('thisMonth', currentMonthRange);
-      loadPurchase('thisMonth', currentMonthRange);
+      if (user.permissions.includes('sales.invoices.view')) {
+        loadSales('thisMonth', currentMonthRange);
+      }
+      if (user.permissions.includes('purchases.invoices.view')) {
+        loadPurchase('thisMonth', currentMonthRange);
+      }
     }
-  }, [loadAll, loadSales, loadPurchase, isAuthenticated]);
+  }, [loadAll, loadSales, loadPurchase, isAuthenticated, permissionsLoaded, permissionsRefreshed, user]);
 
+
+  if (refreshingPermissions || (isAuthenticated && (!permissionsLoaded || !permissionsRefreshed))) {
+    return <LoadingSpinner message="Loading your permissions..." />;
+  }
 
   if (isInitializing) {
     return <LoadingSpinner message="Loading settings..." />;
@@ -496,7 +617,7 @@ export function AppShell() {
               marginBottom: 6,
             }}
           >
-            NithiX
+            Shree Kamachi Amman Store
           </p>
           <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
             Loading your workspace…
@@ -507,7 +628,7 @@ export function AppShell() {
   }
 
   const filteredMoreItems = ALL_MORE_ITEMS.filter((item) =>
-    item.allowed.includes(role)
+    user?.permissions?.includes(item.permission)
   );
 
   return (
@@ -516,12 +637,14 @@ export function AppShell() {
       <TopBar />
 
       <div className="app-body">
-        <Sidebar />
+        {!isPosBillingPage && <Sidebar />}
 
         <main className="page-content">
           <div className="page-inner">
             <Suspense fallback={<LoadingSpinner message="Loading page…" />}>
-              {renderPage(page, searchParams, isAuthenticated)}
+              <PermissionGuard page={page} searchParams={searchParams}>
+                {renderPage(page, searchParams, isAuthenticated)}
+              </PermissionGuard>
             </Suspense>
           </div>
         </main>

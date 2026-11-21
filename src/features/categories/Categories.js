@@ -1,5 +1,5 @@
 /* ===== CATEGORIES ===== */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useAppStore from '../../store/appStore';
 import {
   Button,
@@ -10,17 +10,31 @@ import {
 } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
+import { formatQuantity, getProductBaseUnit } from '../../utils/quantityUnits';
 import '../../styles/Categories.css';
 
 export default function Categories() {
-  const { categories, products, addCategory, deleteCategory } = useAppStore();
+  const { categories, products, addCategory, updateCategory, deleteCategory } = useAppStore();
   const toast = useToast();
   const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [search, setSearch] = useState('');
+
+  const filteredCategories = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return query
+      ? categories.filter((category) =>
+          String(category.category || category.name || '')
+            .toLocaleLowerCase()
+            .includes(query),
+        )
+      : categories;
+  }, [categories, search]);
 
   // Auto-select first category if available
   useEffect(() => {
@@ -29,20 +43,42 @@ export default function Categories() {
     }
   }, [categories, activeCategory]);
 
-  async function handleAdd() {
-    // if (!name.trim()) {
-    //   toast.error('Enter a category name');
-    //   return;
-    // }
+  function closeForm() {
+    setShowAdd(false);
+    setEditId(null);
+    setName('');
+    setFormErrors({});
+  }
+
+  function openEdit(category) {
+    setEditId(category.id || category._id);
+    setName(category.category || category.name || '');
+    setFormErrors({});
+    setShowAdd(true);
+  }
+
+  async function handleSave() {
     if (!validateForm()) return;
     setSaving(true);
     try {
-      await addCategory({ category: name.trim() });
-      toast.success('Category Added Successfully!');
+      if (editId !== null) {
+        await updateCategory(editId, { category: name.trim() });
+        setActiveCategory((current) =>
+          current && String(current.id || current._id) === String(editId)
+            ? { ...current, category: name.trim() }
+            : current,
+        );
+        toast.success('Category updated successfully');
+      } else {
+        await addCategory({ category: name.trim() });
+        toast.success('Category Added Successfully!');
+      }
       setName('');
       setShowAdd(false);
-    } catch {
-      toast.error('Failed to add');
+      setEditId(null);
+      setFormErrors({});
+    } catch (error) {
+      toast.error(error.message || `Failed to ${editId !== null ? 'update' : 'add'} category`);
     } finally {
       setSaving(false);
     }
@@ -86,15 +122,15 @@ export default function Categories() {
 
       <Modal
         open={showAdd}
-        onClose={() => { setShowAdd(false); setFormErrors({}) }}
-        title="Add Category"
+        onClose={closeForm}
+        title={editId !== null ? 'Edit Category' : 'Add Category'}
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setShowAdd(false); setFormErrors({}) }}>
+            <Button variant="secondary" onClick={closeForm}>
               Cancel
             </Button>
-            <Button variant="primary" loading={saving} onClick={handleAdd}>
-              Add
+            <Button variant="primary" loading={saving} onClick={handleSave}>
+              {editId !== null ? 'Save Changes' : 'Add'}
             </Button>
           </>
         }
@@ -106,7 +142,7 @@ export default function Categories() {
             placeholder="e.g. Electronics"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
           />
           {formErrors.name && (
             <span className="um-error-text">{formErrors.name}</span>
@@ -148,9 +184,24 @@ export default function Categories() {
                 <span className="co-sidebar-count">{categories.length}</span>
               </div>
             </div>
+            <label className="co-sidebar-search">
+              <span className="co-sidebar-search-icon" aria-hidden="true">🔍</span>
+              <input
+                className="co-sidebar-search-input"
+                type="search"
+                placeholder="Search categories..."
+                aria-label="Search categories"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
 
             <div className="co-cat-list">
-              {categories.map((cat) => {
+              {filteredCategories.length === 0 ? (
+                <div className="co-empty-cats" role="status">
+                  No categories match “{search}”.
+                </div>
+              ) : filteredCategories.map((cat) => {
                 const count = products.filter(
                   (p) => String(p.categoryId || p.category) === String(cat.id || cat._id)
                 ).length;
@@ -193,12 +244,20 @@ export default function Categories() {
                 {/* Header */}
                 <div className="co-panel-header">
                   <div>
-                    <h2 className="co-panel-title">{activeCategory.category}</h2>
+                    <h2 className="co-panel-title">{activeCategory.category || activeCategory.name}</h2>
                     <p className="co-panel-sub">
-                      Showing products filtered by <span className="co-filter-chip">{activeCategory.category}</span>
+                      Showing products filtered by <span className="co-filter-chip">{activeCategory.category || activeCategory.name}</span>
                     </p>
                   </div>
                   <div className="co-panel-header-right">
+                    <button
+                      className="co-icon-btn"
+                      title="Edit Category"
+                      aria-label={`Edit ${activeCategory.category || activeCategory.name}`}
+                      onClick={() => openEdit(activeCategory)}
+                    >
+                      ✏️
+                    </button>
                     <button
                       className="co-icon-btn co-icon-btn--danger"
                       title="Delete Category"
@@ -237,7 +296,7 @@ export default function Categories() {
                         </thead>
                         <tbody>
                           {catProducts.map((prod) => {
-                            const qty = parseInt(prod.stockQuantity) || 0;
+                            const qty = Number(prod.stockQuantity) || 0;
                             const min = parseInt(prod.minStockLevel) || 5;
                             const isOut = qty <= 0;
                             const isLow = qty > 0 && qty < min;
@@ -258,7 +317,7 @@ export default function Categories() {
                                   <div className="co-product-cell">
                                     <div className="co-product-info">
                                       <span className="co-product-name">{prod.name}</span>
-                                      <span className="co-product-desc">{prod.unit || 'pcs'}</span>
+                                      <span className="co-product-desc">{getProductBaseUnit(prod)}</span>
                                     </div>
                                   </div>
                                 </td>
@@ -268,7 +327,7 @@ export default function Categories() {
                                   </span>
                                 </td>
                                 <td>
-                                  <span style={{ marginRight: 8, fontWeight: 700 }}>{qty}</span>
+                                  <span style={{ marginRight: 8, fontWeight: 700 }}>{formatQuantity(qty)}</span>
                                   <span className={`co-badge ${badgeClass}`}>{badgeLabel}</span>
                                 </td>
                                 <td>

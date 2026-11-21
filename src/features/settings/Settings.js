@@ -1,5 +1,5 @@
 /* ===== SETTINGS — TABBED ERP SETTINGS SHELL ===== */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ToastContainer } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
 import InvoiceBillingTab from './tabs/InvoiceBillingTab';
@@ -8,6 +8,8 @@ import PaymentsTab from './tabs/PaymentsTab';
 import POSPrintingTab from './tabs/POSPrintingTab';
 import BillTemplatesTab from './tabs/BillTemplatesTab';
 import AuditLogsTab from './tabs/AuditLogsTab';
+import LoyaltyPointsTab from './tabs/LoyaltyPointsTab';
+import POSCounterManagementTab from './tabs/POSCounterManagementTab';
 import {
   FiFileText,
   FiPercent,
@@ -17,13 +19,17 @@ import {
   FiUsers,
   FiShield,
   FiLayout,
+  FiStar,
+  FiMonitor,
 } from 'react-icons/fi';
 
 const TABS = [
   { id: 'invoice', label: 'Invoice & Billing', icon: <FiFileText /> },
   { id: 'tax', label: 'Tax & GST', icon: <FiPercent /> },
+  { id: 'loyalty', label: 'Loyalty Points', icon: <FiStar /> },
   { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
   { id: 'pos', label: 'POS & Printing', icon: <FiPrinter /> },
+  { id: 'pos-counters', label: 'POS Counters', icon: <FiMonitor /> },
   { id: 'bill-templates', label: 'Bill Templates', icon: <FiLayout /> },
   { id: 'audit', label: 'Audit Logs', icon: <FiShield /> },
 ];
@@ -32,13 +38,13 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('invoice');
   const toast = useToast();
 
-  function handleSaveToast(msg, type = 'success') {
+  const handleSaveToast = useCallback((msg, type = 'success') => {
     if (type === 'error') {
       toast.error(msg);
     } else {
       toast.success(msg);
     }
-  }
+  }, [toast.error, toast.success]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
@@ -181,8 +187,10 @@ export default function Settings() {
         <div style={{ maxWidth: 720 }}>
           {activeTab === 'invoice' && <InvoiceBillingTab onSaveToast={handleSaveToast} />}
           {activeTab === 'tax' && <TaxGSTTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'loyalty' && <LoyaltyPointsTab onSaveToast={handleSaveToast} />}
           {activeTab === 'payments' && <PaymentsTab onSaveToast={handleSaveToast} />}
           {activeTab === 'pos' && <POSPrintingTab onSaveToast={handleSaveToast} />}
+          {activeTab === 'pos-counters' && <POSCounterManagementTab onSaveToast={handleSaveToast} />}
           {activeTab === 'bill-templates' && <BillTemplatesTab onSaveToast={handleSaveToast} />}
           {activeTab === 'audit' && <AuditLogsTab />}
         </div>

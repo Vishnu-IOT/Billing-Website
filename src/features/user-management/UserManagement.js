@@ -5,6 +5,9 @@ import {
   updateCompanyUserAPI,
   deleteCompanyUserAPI,
 } from "../../api";
+import { fetchAssignableRolesAPI } from "../../api";
+import useAuthStore from "../../store/authStore";
+import { hasPermission } from "../../utils/permissions";
 import {
   Button,
   Modal,
@@ -18,9 +21,13 @@ import "../../styles/UserManagement.css";
 
 export default function UserManagement() {
   const toast = useToast();
+  const currentUser = useAuthStore((state) => state.user);
+  const refreshAccess = useAuthStore((state) => state.refreshAccess);
+  const logout = useAuthStore((state) => state.logout);
 
   // ── States ──
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -32,7 +39,7 @@ export default function UserManagement() {
     email: "",
     phone: "",
     password: "",
-    role: "Owner",
+    roleId: "",
     status: "1",
   });
   const [formErrors, setFormErrors] = useState({});
@@ -47,10 +54,22 @@ export default function UserManagement() {
   async function loadUsers() {
     setLoading(true);
     try {
-      const data = await fetchCompanyUsersAPI(1); // Default company ID = 1
+      const data = await fetchCompanyUsersAPI(currentUser?.companyId);
+      if (!data?.success) {
+        throw new Error(data?.response?.data?.message || data?.message || "User list request was denied");
+      }
       setUsers(data.data || []);
+      if (
+        hasPermission(currentUser, "users.directory.create") ||
+        hasPermission(currentUser, "users.directory.edit")
+      ) {
+        const roleData = await fetchAssignableRolesAPI();
+        setRoles(roleData.data || []);
+      } else {
+        setRoles([]);
+      }
     } catch (err) {
-      toast.error("Failed to load user listing.");
+      toast.error(err.response?.data?.message || err.message || "Failed to load user listing.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +77,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [currentUser?.companyId]);
 
   // ── Form Input Change ──
   function handleInputChange(e) {
@@ -109,7 +128,7 @@ export default function UserManagement() {
       email: "",
       phone: "",
       password: "",
-      role: "Owner",
+      roleId: String(roles.find((role) => role.systemKey === "STAFF")?.id || ""),
       status: "1",
     });
     setFormErrors({});
@@ -124,7 +143,7 @@ export default function UserManagement() {
       email: user.email || "",
       phone: user.phone || "",
       password: "",
-      role: user.role || "Owner",
+      roleId: String(user.roleId || ""),
       status: user.is_active === true ? "1" : "0" || "1",
     });
     setFormErrors({});
@@ -143,28 +162,34 @@ export default function UserManagement() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      console.log(form);
-
       if (editingUser) {
         // Edit Mode
         const id = editingUser.id || editingUser._id;
-        const result = await updateCompanyUserAPI(id, form);
-        if (result) {
+        const result = await updateCompanyUserAPI(id, { ...form, roleId: Number(form.roleId) });
+        if (result?.success) {
           toast.success("User updated successfully.");
+          if (Number(id) === Number(currentUser?.id)) {
+            if (form.status === "0") {
+              setModalOpen(false);
+              logout();
+              return;
+            }
+            await refreshAccess();
+          }
           setModalOpen(false);
           loadUsers();
         } else {
-          toast.error("Failed to update user.");
+          toast.error(result?.response?.data?.message || result?.message || "Failed to update user.");
         }
       } else {
         // Add Mode
-        const result = await addCompanyUserAPI(1, form);
-        if (result) {
+        const result = await addCompanyUserAPI(currentUser.companyId, { ...form, roleId: Number(form.roleId) });
+        if (result?.success) {
           toast.success("User registered successfully.");
           setModalOpen(false);
           loadUsers();
         } else {
-          toast.error("Failed to add user.");
+          toast.error(result?.response?.data?.message || result?.message || "Failed to add user.");
         }
       }
     } catch (err) {
@@ -218,9 +243,11 @@ export default function UserManagement() {
           </p>
         </div>
         <div className="page-header__right">
-          <Button variant="primary" onClick={handleAddClick} icon={<FiPlus />}>
-            Add User
-          </Button>
+          {hasPermission(currentUser, "users.directory.create") && (
+            <Button variant="primary" onClick={handleAddClick} icon={<FiPlus />}>
+              Add User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -298,7 +325,7 @@ export default function UserManagement() {
                         </div>
                       </td>
                       <td>
-                        <span className={roleCls}>{user.role || "Owner"}</span>
+                        <span className={roleCls}>{user.assignedRole?.name || user.role || "Unassigned"}</span>
                       </td>
                       <td>
                         <span className={statusCls}>
@@ -307,20 +334,20 @@ export default function UserManagement() {
                       </td>
                       <td>
                         <div className="um-btn-actions">
-                          <button
+                          {hasPermission(currentUser, "users.directory.edit") && <button
                             className="um-btn-action um-btn-action--edit"
                             title="Edit User"
                             onClick={() => handleEditClick(user)}
                           >
                             <FiEdit2 />
-                          </button>
-                          <button
+                          </button>}
+                          {hasPermission(currentUser, "users.directory.delete") && <button
                             className="um-btn-action um-btn-action--delete"
                             title="Delete User"
                             onClick={() => handleDeleteClick(user)}
                           >
                             <FiTrash2 />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -420,16 +447,17 @@ export default function UserManagement() {
           <div className="um-form-group">
             <label className="um-form-label">Access Role</label>
             <select
-              name="role"
+              name="roleId"
               className="um-form-select"
-              value={form.role}
+              value={form.roleId}
               onChange={handleInputChange}
             >
-              <option value="Admin">
-                Admin (Reports &amp; Products Controls)
-              </option>
-              <option value="Staff">Staff (Billing &amp; Products)</option>
-              <option value="Owner">Owner (Full Control)</option>
+              <option value="">Select a role</option>
+              {roles
+                .filter((role) => role.status === "ACTIVE")
+                .map((role) => (
+                  <option key={role.id} value={String(role.id)}>{role.name}</option>
+                ))}
             </select>
           </div>
 
@@ -461,7 +489,7 @@ export default function UserManagement() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={submitting}>
+            <Button type="submit" variant="primary" loading={submitting} disabled={!form.roleId}>
               {editingUser ? "Save Changes" : "Create Staff/Rep"}
             </Button>
           </div>

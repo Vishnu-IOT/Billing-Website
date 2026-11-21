@@ -15,9 +15,15 @@
 .chart-legend-dot--purchase { background: var(--chart-purchase); }
 .chart-canvas-wrap { padding: var(--sp-4) var(--sp-5) var(--sp-5); height: 220px; position: relative; }
 .chart-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+.chart-tooltip { position: absolute; z-index: 2; min-width: 144px; padding: var(--sp-2) var(--sp-3); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); pointer-events: none; transform: translate(-50%, -100%); }
+.chart-tooltip__month { display: block; margin-bottom: var(--sp-1); color: var(--text-muted); font-size: var(--fs-xs); }
+.chart-tooltip__value { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-secondary); font-size: var(--fs-xs); }
+.chart-tooltip__value strong { margin-left: auto; color: var(--text-primary); font-size: var(--fs-sm); }
+.chart-tooltip__dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex-shrink: 0; background: var(--chart-sale); }
+.chart-tooltip--purchase .chart-tooltip__dot { background: var(--chart-purchase); }
 
 /* Dashboard grid */
-.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-6); }
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--sp-6); }
 
 /* Recent bills */
 .recent-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
@@ -28,6 +34,12 @@
 .party-list-item { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); transition: background var(--tr-fast); }
 .party-list-item:last-child { border-bottom: none; }
 .party-list-item:hover { background: var(--bg-hover); }
+.dashboard-expiry-item { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); }
+.dashboard-expiry-item:last-child { border-bottom: none; }
+.dashboard-expiry-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.dashboard-expiry-quantity { flex-shrink: 0; color: var(--warning, #b45309); font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-align: right; }
+.dashboard-expiry-quantity--expired { color: var(--danger); }
+.dashboard-expiry-empty { padding: var(--sp-4); color: var(--text-muted); font-size: var(--fs-sm); text-align: center; }
 .party-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
 .party-sub { font-size: var(--fs-xs); color: var(--text-muted); }
 .party-amount { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--primary); text-align: right; }

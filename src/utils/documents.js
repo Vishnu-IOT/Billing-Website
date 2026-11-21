@@ -110,7 +110,7 @@ export const DOCUMENT_TYPES = {
   },
   CREDIT_NOTE: {
     key: 'CREDIT_NOTE',
-    label: 'Credit Note',
+    label: 'Credit Note/Sales Return',
     prefix: 'CN',
     side: 'sales',
     showTax: true,
@@ -123,7 +123,7 @@ export const DOCUMENT_TYPES = {
   },
   DEBIT_NOTE: {
     key: 'DEBIT_NOTE',
-    label: 'Debit Note',
+    label: 'Debit Note/Purchase Return',
     prefix: 'DN',
     side: 'purchase',
     showTax: true,

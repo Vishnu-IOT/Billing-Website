@@ -1751,7 +1751,7 @@
 
 .pos-exact-table-wrap {
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .pos-exact-table {
@@ -1794,6 +1794,35 @@
 .pos-exact-item-sub {
   font-size: 10px;
   color: #94a3b8;
+}
+
+.pos-exact-discount-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.pos-exact-discount-input {
+  width: 48px;
+  padding: 4px 5px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  color: #334155;
+  font: inherit;
+  text-align: right;
+}
+
+.pos-exact-discount-input:focus {
+  border-color: #3b82f6;
+  outline: 2px solid #bfdbfe;
+}
+
+.pos-exact-discount-amount,
+.pos-exact-gst-amount {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
 }
 
 .pos-exact-qty-controls {
@@ -1862,6 +1891,31 @@
 .pos-exact-empty-sub {
   font-size: 12px;
   margin-top: 4px;
+}
+
+.pos-promotion-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  color: #155e75;
+  background: #ecfeff;
+  border-left: 2px solid #0891b2;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.pos-promotion-preview small {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.pos-promotion-preview.is-loading,
+.pos-promotion-preview.is-warning {
+  color: #475569;
+  background: #f1f5f9;
+  border-left-color: #94a3b8;
 }
 
 /* ── Sidebar (Right Column) ── */
@@ -2581,4 +2635,1168 @@
 /* Remove browser default print margins */
 @page {
   margin: 0;
+}
+
+/* ==========================================================================
+   POS — HORIZONTAL CUSTOMER CARD + QTY-ONLY EDIT (overrides, keep at end)
+   ========================================================================== */
+
+/* Customer card now spans the full row */
+.pos-exact-cards-row {
+  grid-template-columns: 1fr;
+}
+
+/* Customer fields laid out horizontally */
+.pos-exact-card--customer .pos-exact-card__body {
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pos-exact-card--customer .pos-exact-form-group {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.pos-exact-card--customer .pos-exact-loyalty-row {
+  flex: 0 0 auto;
+  margin-top: 0;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+/* Quantity input inside the +/- control */
+.pos-exact-qty-input {
+  width: 48px;
+  padding: 2px 0;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.pos-exact-qty-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.12);
+}
+
+/* Retail terminal layout */
+.pos-exact-layout {
+  --pos-navy: #0f172a;
+  --pos-blue: #1e40af;
+  --pos-green: #059669;
+  --pos-red: #dc2626;
+  --pos-border: #e2e8f0;
+  background: #f1f5f9;
+  color: var(--pos-navy);
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+  height: 100dvh;
+}
+
+.pos-exact-topbar {
+  min-height: 48px;
+  padding: 5px 10px;
+  gap: 12px;
+  background: #e8efff;
+  border-bottom: 1px solid #cbd9f5;
+  box-shadow: none;
+}
+
+.pos-exact-topbar__search {
+  max-width: none;
+  min-width: 0;
+  gap: 7px;
+}
+
+.pos-terminal-scanner-badge {
+  min-width: 62px;
+  height: 36px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--pos-navy);
+  color: #fff;
+  font: 700 10px/1 var(--font), Consolas, monospace;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+
+.pos-terminal-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.pos-terminal-status-dot.is-ready {
+  background: #10b981;
+}
+
+.pos-exact-search-input {
+  height: 36px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-radius: 3px;
+  background: #fff;
+  color: var(--pos-navy);
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.pos-exact-scan-btn,
+.pos-exact-pay-btn {
+  background: var(--pos-blue);
+  border-radius: 3px;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.pos-exact-topbar__meta {
+  gap: 6px;
+}
+
+.pos-exact-inv-badge,
+.pos-exact-date-pill,
+.pos-exact-topbar-btn {
+  border-radius: 3px;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.pos-exact-container {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 8px;
+  padding: 8px;
+  min-height: 0;
+}
+
+.pos-exact-left-col {
+  gap: 8px;
+  min-width: 0;
+}
+
+.pos-exact-cards-row {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.pos-exact-card {
+  border-radius: 4px;
+  border-color: var(--pos-border);
+  box-shadow: none;
+}
+
+.pos-exact-card--customer .pos-exact-card__title {
+  display: none;
+}
+
+.pos-exact-card--customer .pos-exact-card__body {
+  padding: 8px;
+  gap: 8px;
+  align-items: center;
+}
+
+.pos-exact-card--customer .pos-exact-form-group {
+  flex: 1 1 180px;
+  gap: 3px;
+}
+
+.pos-exact-card--customer .pos-exact-form-group label {
+  font-size: 9px;
+}
+
+.pos-exact-card--customer .pos-exact-input {
+  height: 34px;
+  border-radius: 3px;
+}
+
+.pos-exact-card--customer .pos-exact-loyalty-row {
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.pos-exact-card--order {
+  min-height: 0;
+  border-radius: 4px;
+}
+
+.pos-exact-card--order .pos-exact-card__header {
+  padding: 6px 10px;
+  min-height: 32px;
+}
+
+.pos-exact-card--order .pos-exact-card__title {
+  padding: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.pos-exact-card--order > .pos-exact-item-sub {
+  padding: 0 10px 5px !important;
+  font-size: 10px;
+}
+
+.pos-exact-item-count-badge {
+  border-radius: 2px;
+  background: #0f172a;
+  color: white;
+  font: 700 10px/1.5 Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.pos-exact-table {
+  min-width: 1000px;
+  font-size: 11px;
+}
+
+.pos-exact-table th {
+  padding: 8px 7px;
+  background: var(--pos-navy);
+  color: #f8fafc;
+  border-color: #263449;
+  font: 700 9px/1.2 Consolas, "Courier New", monospace;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+.pos-exact-table td {
+  padding: 7px;
+  border-bottom: 1px solid #e8edf5;
+  vertical-align: middle;
+}
+
+.pos-exact-table tbody tr:nth-child(even) {
+  background: #f7f9ff;
+}
+
+.pos-exact-item-name {
+  color: var(--pos-navy);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.pos-ledger-meta {
+  margin-top: 2px;
+  color: #475569;
+  font: 10px/1.25 Consolas, "Courier New", monospace;
+}
+
+.pos-ledger-code,
+.pos-ledger-mrp {
+  color: #334155;
+  font: 10px/1.25 Consolas, "Courier New", monospace;
+  white-space: nowrap;
+}
+
+.pos-ledger-code {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-exact-right-col {
+  gap: 8px;
+  min-height: 0;
+}
+
+.pos-exact-user-card,
+.pos-exact-sidebar-btn,
+.pos-exact-totals-box {
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.pos-exact-user-card {
+  padding: 10px;
+  gap: 8px;
+}
+
+.pos-exact-user-avatar {
+  border-radius: 3px;
+  background: #e8efff;
+  color: var(--pos-blue);
+}
+
+.pos-exact-user-name {
+  font-size: 12px;
+}
+
+.pos-terminal-user-meta {
+  margin-top: 2px;
+  color: #64748b;
+  font: 9px/1.35 Consolas, monospace;
+}
+
+.pos-exact-user-shift {
+  font: 10px/1.35 Consolas, monospace;
+}
+
+.pos-exact-sidebar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pos-exact-sidebar-btn {
+  padding: 8px 6px;
+  font: 700 10px/1.2 Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.pos-exact-totals-box {
+  margin-top: auto;
+  padding: 12px;
+  gap: 8px;
+}
+
+.pos-exact-summary-row {
+  font: 11px/1.4 Consolas, "Courier New", monospace;
+}
+
+.pos-exact-gt-label {
+  font: 700 10px/1.3 Consolas, monospace;
+}
+
+.pos-exact-gt-val {
+  color: var(--pos-navy);
+  font: 800 24px/1.1 Consolas, "Courier New", monospace;
+}
+
+.pos-exact-pay-btn {
+  padding: 12px;
+  font-size: 13px;
+}
+
+.pos-terminal-statusbar {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #d5e0f5;
+  background: #e8efff;
+  color: #334155;
+  font: 9px/1.3 Consolas, "Courier New", monospace;
+}
+
+.pos-terminal-devices {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pos-terminal-devices span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 6px;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.pos-terminal-devices strong {
+  color: #64748b;
+  font-size: 8px;
+}
+
+.pos-terminal-shortcuts {
+  color: #475569;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pos-terminal-overlay,
+.pos-checkout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, .72);
+  backdrop-filter: blur(2px);
+}
+
+.pos-terminal-dialog {
+  width: min(100%, 560px);
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .32);
+  color: var(--pos-navy);
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+
+.pos-terminal-dialog-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  color: #fff;
+}
+
+.pos-terminal-dialog-header--green {
+  background: #059669;
+}
+
+.pos-terminal-dialog-header--red {
+  background: #b91c1c;
+}
+
+.pos-terminal-dialog-header h2 {
+  margin: 0;
+  font-family: "Chivo", "Arial Black", "Segoe UI", sans-serif;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.pos-terminal-dialog-header > span {
+  color: rgba(255,255,255,.82);
+  font: 10px/1.4 Consolas, "Courier New", monospace;
+}
+
+.pos-shift-open-dialog .pos-terminal-dialog-header {
+  background-image:
+    linear-gradient(90deg, rgba(6, 78, 59, .25), transparent 62%);
+}
+
+.pos-shift-close-dialog .pos-terminal-dialog-header {
+  position: relative;
+}
+
+.pos-shift-close-dialog .pos-terminal-dialog-header::after {
+  content: "READY TO SETTLE";
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 6px;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font: 700 8px/1 Consolas, monospace;
+  letter-spacing: .05em;
+}
+
+.pos-terminal-kicker {
+  color: #64748b;
+  font: 700 9px/1.3 Consolas, "Courier New", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pos-terminal-dialog-header .pos-terminal-kicker {
+  color: rgba(255,255,255,.78);
+}
+
+.pos-terminal-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 16px 18px;
+}
+
+.pos-terminal-operator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f1f5f9;
+  font-size: 12px;
+}
+
+.pos-terminal-operator > span {
+  color: #64748b;
+  font: 700 9px/1 Consolas, monospace;
+}
+
+.pos-terminal-operator strong {
+  margin-left: auto;
+}
+
+.pos-terminal-operator code {
+  color: #334155;
+  font: 10px Consolas, monospace;
+}
+
+.pos-terminal-field-label,
+.pos-shift-count-field label {
+  display: block;
+  margin-bottom: 5px;
+  color: #475569;
+  font: 700 10px/1.3 Consolas, "Courier New", monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pos-terminal-money-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.pos-terminal-money-input > span {
+  padding: 0 12px;
+  color: var(--pos-navy);
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.pos-terminal-money-input input,
+.pos-shift-count-field input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 8px 12px;
+  border: 0;
+  outline: 0;
+  color: var(--pos-navy);
+  font: 800 24px/1 Consolas, "Courier New", monospace;
+}
+
+.pos-shift-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.pos-shift-presets button {
+  min-height: 34px;
+  border: 1px solid #dbe3ee;
+  background: #eaf0ff;
+  color: var(--pos-blue);
+  font: 700 11px Consolas, monospace;
+  cursor: pointer;
+}
+
+.pos-shift-policy {
+  padding: 9px 10px;
+  border-left: 3px solid var(--pos-green);
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.pos-terminal-dialog-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--pos-border);
+  background: #f8fafc;
+}
+
+.pos-terminal-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font: 700 11px/1.1 Consolas, "Courier New", monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pos-terminal-button:first-child {
+  flex: 1;
+}
+
+.pos-terminal-button:last-child {
+  flex: 2;
+}
+
+.pos-terminal-button kbd,
+.pos-checkout-footer kbd {
+  padding: 2px 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font: 700 8px/1 Consolas, monospace;
+  opacity: .8;
+}
+
+.pos-terminal-button--quiet {
+  border-color: #cbd5e1;
+  background: white;
+  color: #334155;
+}
+
+.pos-terminal-button--green {
+  background: var(--pos-green);
+  color: #fff;
+}
+
+.pos-terminal-button--red {
+  background: var(--pos-red);
+  color: #fff;
+}
+
+.pos-terminal-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.pos-shift-close-dialog {
+  width: min(100%, 760px);
+}
+
+.pos-shift-close-body {
+  gap: 9px;
+}
+
+.pos-shift-audit-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pos-shift-audit-card,
+.pos-shift-payment-card {
+  padding: 9px 11px;
+  border: 1px solid var(--pos-border);
+  background: #f8fafc;
+}
+
+.pos-shift-audit-card strong {
+  display: block;
+  margin-top: 4px;
+  font: 800 18px/1.15 Consolas, "Courier New", monospace;
+}
+
+.pos-shift-audit-card--green {
+  border-left: 3px solid var(--pos-green);
+  background: #ecfdf5;
+}
+
+.pos-shift-audit-card--blue {
+  border-left: 3px solid var(--pos-blue);
+  background: #eff6ff;
+}
+
+.pos-shift-payment-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pos-shift-payment-card strong {
+  display: block;
+  margin-top: 4px;
+  font: 700 12px/1.2 Consolas, monospace;
+}
+
+.pos-shift-count-field input {
+  height: 44px;
+  border: 1px solid #cbd5e1;
+  font-size: 21px;
+}
+
+.pos-shift-expected-cash,
+.pos-shift-variance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #f1f5f9;
+  font: 700 11px/1.35 Consolas, monospace;
+}
+
+.pos-shift-expected-cash span {
+  display: grid;
+  gap: 3px;
+}
+
+.pos-shift-expected-cash small {
+  color: #64748b;
+  font: 9px/1.35 Consolas, monospace;
+}
+
+.pos-shift-variance.is-matched {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.pos-shift-variance.is-short {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.pos-shift-variance.is-surplus {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.pos-denomination-counter {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--pos-border);
+  background: #f8fafc;
+}
+
+.pos-denomination-counter legend {
+  padding: 0 5px;
+  color: #475569;
+  font: 700 10px/1.3 Consolas, "Courier New", monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pos-denomination-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pos-denomination-field {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font: 700 10px/1.2 Consolas, "Courier New", monospace;
+}
+
+.pos-denomination-field input {
+  width: 68px;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  color: var(--pos-navy);
+  font: 700 14px/1 Consolas, "Courier New", monospace;
+  text-align: right;
+}
+
+.pos-denomination-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 9px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font: 700 10px/1.3 Consolas, "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.pos-denomination-total strong {
+  font-size: 15px;
+  text-align: right;
+}
+
+@media (max-width: 480px) {
+  .pos-denomination-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pos-shift-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #334155;
+  font-size: 11px;
+}
+
+.pos-shift-confirm input {
+  margin-top: 1px;
+  accent-color: var(--pos-blue);
+}
+
+.pos-checkout-overlay {
+  z-index: 10000;
+}
+
+.pos-checkout-dialog {
+  width: min(100%, 1040px);
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 25px 60px rgba(15,23,42,.35);
+  color: var(--pos-navy);
+}
+
+.pos-checkout-header {
+  min-height: 76px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(110deg, #0f172a, #1e40af);
+  color: #fff;
+}
+
+.pos-checkout-header .pos-terminal-kicker {
+  color: #bfdbfe;
+}
+
+.pos-checkout-total {
+  margin-top: 3px;
+  font: 800 29px/1.05 Consolas, "Courier New", monospace;
+}
+
+.pos-checkout-reference {
+  margin-top: 4px;
+  color: #dbeafe;
+  font: 10px/1.3 Consolas, monospace;
+}
+
+.pos-checkout-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: rgba(255,255,255,.12);
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.pos-checkout-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 12px;
+  overflow: auto;
+  padding: 14px 18px;
+}
+
+.pos-checkout-customer,
+.pos-checkout-methods,
+.pos-checkout-cash,
+.pos-checkout-split,
+.pos-checkout-summary {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--pos-border);
+  background: #fff;
+}
+
+.pos-checkout-customer {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pos-checkout-methods {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pos-checkout-cash,
+.pos-checkout-split {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.pos-checkout-summary {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 9px;
+  background: #eff4ff;
+}
+
+.pos-checkout-section-label {
+  margin-bottom: 8px;
+  color: #475569;
+  font: 700 10px/1.2 Consolas, monospace;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.pos-checkout-customer input {
+  height: 36px;
+  border: 1px solid var(--pos-border) !important;
+  border-radius: 2px !important;
+  background: #f8fafc;
+  color: var(--pos-navy);
+  font: 12px Consolas, monospace !important;
+}
+
+.pos-checkout-methods > div:last-child {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px !important;
+}
+
+.pos-payment-method {
+  min-width: 0;
+  min-height: 72px;
+  padding: 6px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.pos-payment-method.is-selected {
+  border-color: var(--pos-blue);
+  background: #dbeafe;
+  color: var(--pos-blue);
+}
+
+.pos-payment-method > span:first-child {
+  font-size: 19px !important;
+}
+
+.pos-payment-method-label {
+  font: 700 10px/1.1 Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.pos-payment-method kbd {
+  color: #64748b;
+  font: 8px/1 Consolas, monospace;
+}
+
+.pos-checkout-cash > div:nth-child(2) {
+  margin-bottom: 7px !important;
+}
+
+.pos-cash-quick-amount {
+  flex: 1;
+  min-height: 31px;
+  padding: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  background: #f8fafc;
+  color: #1e40af;
+  font: 700 10px Consolas, monospace;
+  cursor: pointer;
+}
+
+.pos-checkout-money-input {
+  min-width: 0;
+  height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 2px !important;
+  color: var(--pos-navy);
+  font: 700 13px Consolas, monospace !important;
+}
+
+.pos-checkout-change {
+  margin-top: 7px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  background: #ecfdf5;
+  color: #047857;
+  font: 700 11px Consolas, monospace;
+}
+
+.pos-checkout-change.is-negative {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.pos-checkout-split > div:last-child > div {
+  min-width: 0;
+}
+
+.pos-checkout-split > div:last-child > div > span {
+  flex: 0 0 54px !important;
+  color: #334155 !important;
+  font: 700 10px Consolas, monospace !important;
+}
+
+.pos-checkout-summary > div {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 8px;
+  color: #475569 !important;
+  font: 11px/1.4 Consolas, "Courier New", monospace !important;
+}
+
+.pos-checkout-grand-total {
+  margin-top: auto;
+  padding-top: 10px !important;
+  border-top: 1px solid #cbd5e1 !important;
+  color: var(--pos-navy) !important;
+  font: 800 14px/1.3 Consolas, monospace !important;
+}
+
+.pos-checkout-summary-row {
+  color: #475569;
+  font: 11px/1.4 Consolas, monospace;
+}
+
+.pos-checkout-fiscal-note {
+  color: #64748b;
+  font: 9px/1.4 Consolas, monospace;
+}
+
+.pos-checkout-footer {
+  padding: 10px 18px;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--pos-border);
+  background: #f8fafc;
+}
+
+.pos-checkout-back,
+.pos-checkout-confirm {
+  min-height: 40px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 2px;
+  font: 700 11px Consolas, monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pos-checkout-back {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.pos-checkout-confirm {
+  flex: 2;
+  border: 0;
+  background: var(--pos-blue);
+  color: #fff;
+}
+
+.pos-checkout-confirm:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .pos-exact-container {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+
+@media (max-width: 760px) {
+  .pos-exact-layout {
+    height: 100dvh;
+  }
+
+  .pos-exact-topbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .pos-exact-topbar__search,
+  .pos-exact-topbar__meta {
+    width: 100%;
+    max-width: none;
+    overflow-x: auto;
+  }
+
+  .pos-exact-container {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .pos-exact-left-col {
+    overflow: visible;
+  }
+
+  .pos-exact-card--order {
+    min-height: 250px;
+  }
+
+  .pos-exact-right-col {
+    flex: 0 0 auto;
+  }
+
+  .pos-terminal-statusbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pos-terminal-devices {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .pos-terminal-shortcuts {
+    text-align: left;
+  }
+
+  .pos-checkout-body {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .pos-checkout-summary {
+    order: 4;
+  }
+}
+
+@media (max-width: 480px) {
+  .pos-checkout-overlay,
+  .pos-terminal-overlay {
+    padding: 8px;
+  }
+
+  .pos-terminal-dialog {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .pos-checkout-dialog {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .pos-checkout-header,
+  .pos-checkout-body,
+  .pos-checkout-footer {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .pos-shift-payment-breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

@@ -1,6 +1,7 @@
 /* ===== DateRangeFilter — Shared component ===== */
 import React from 'react';
 import { Button } from '../ui';
+import DateInput from './DateInput';
 
 const FILTER_OPTIONS = [
   { value: 'thisMonth', label: 'This Month' },
@@ -122,8 +123,7 @@ export function DateRangeFilter({
       <div className="filter-group">
         <label className="filter-label">From</label>
 
-        <input
-          type="date"
+        <DateInput
           className="form-input"
           value={dateRange.startDate}
           disabled={!isCustom}
@@ -139,8 +139,7 @@ export function DateRangeFilter({
       <div className="filter-group">
         <label className="filter-label">To</label>
 
-        <input
-          type="date"
+        <DateInput
           className="form-input"
           value={dateRange.endDate}
           disabled={!isCustom}

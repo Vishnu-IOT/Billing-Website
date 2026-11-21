@@ -2,7 +2,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiPrinter, FiDownload, FiEye } from 'react-icons/fi';
 import usePosStore from '../../store/posStore';
+import useAuthStore from '../../store/authStore';
+import useAppStore from '../../store/appStore';
 import { fetchCompanyUsersAPI } from '../../api';
+import { fetchPosCountersAPI } from '../../api/pos';
 import { useToast } from '../../hooks/useToast';
 import {
     Button,
@@ -14,7 +17,12 @@ import {
     EmptyState,
 } from '../../components/ui';
 import { exportToCSV } from '../../utils/export';
+import {
+    CASH_DENOMINATIONS,
+    getExpectedClosingCash,
+} from '../../utils/posShift';
 import { todayISO } from '../../utils/date';
+import DateInput from '../../components/shared/DateInput';
 import '../../styles/ShiftManagement.css';
 
 const ITEMS_PER_PAGE = 5;
@@ -34,6 +42,14 @@ function formatMoney(val) {
     return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatDenominations(counts) {
+    if (!counts || typeof counts !== 'object') return 'Not recorded';
+    const counted = CASH_DENOMINATIONS
+        .filter((denomination) => Number(counts[String(denomination)]) > 0)
+        .map((denomination) => `₹${denomination} × ${counts[String(denomination)]}`);
+    return counted.length ? counted.join(', ') : 'None counted';
+}
+
 function getShiftStatusInfo(shift) {
     if (shift.status === 'OPEN') {
         return { label: 'Active', variant: 'success', key: 'ACTIVE' };
@@ -49,6 +65,11 @@ function getShiftStatusInfo(shift) {
 
 export default function ShiftManagement() {
     const toast = useToast();
+    const authUser = useAuthStore((state) => state.user);
+    const companyRecord = useAppStore((state) => state.companies);
+    const companyId = authUser?.companyId || (
+        Array.isArray(companyRecord) ? companyRecord[0]?.id : companyRecord?.id
+    );
     const {
         shiftList,
         loadingShiftList,
@@ -57,6 +78,7 @@ export default function ShiftManagement() {
     } = usePosStore();
 
     const [employees, setEmployees] = useState([]);
+    const [counters, setCounters] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedShift, setSelectedShift] = useState(null);
 
@@ -72,14 +94,19 @@ export default function ShiftManagement() {
     useEffect(() => {
         async function loadEmployees() {
             try {
-                const res = await fetchCompanyUsersAPI(1);
+                if (!companyId) return;
+                const [res, counterRows] = await Promise.all([
+                    fetchCompanyUsersAPI(companyId),
+                    fetchPosCountersAPI(),
+                ]);
                 setEmployees(res?.data || []);
+                setCounters(Array.isArray(counterRows) ? counterRows : []);
             } catch (err) {
-                console.error('Failed to load employees', err);
+                console.error('Failed to load shift filters', err);
             }
         }
         loadEmployees();
-    }, []);
+    }, [companyId]);
 
     const handleApplyFilters = async () => {
         setCurrentPage(1);
@@ -111,17 +138,25 @@ export default function ShiftManagement() {
                 const statusInfo = getShiftStatusInfo(s);
                 const expected =
                     s.status === 'OPEN'
-                        ? Number(s.openingFloat || 0) + Number(s.cashSalesTotal || 0)
+                        ? getExpectedClosingCash(s)
                         : Number(s.closingCashExpected || 0);
                 const actual = s.status === 'OPEN' ? '' : Number(s.closingCashActual || 0);
                 const diff = s.status === 'OPEN' ? '' : (Number(s.closingCashActual || 0) - Number(s.closingCashExpected || 0)).toFixed(2);
                 return {
                     'Shift ID': `SH-${s.id}`,
                     Employee: s.user?.name || '',
+                    Counter: s.counterNameSnapshot || s.counter?.counterName || s.terminalId || '',
                     'Start Time': s.openedAt ? new Date(s.openedAt).toLocaleString('en-IN') : '',
                     'End Time': s.closedAt ? new Date(s.closedAt).toLocaleString('en-IN') : '',
+                    'Opening Float': Number(s.openingFloat || 0).toFixed(2),
+                    'Opening Denominations': formatDenominations(s.openingDenominations),
+                    'Cash Sales': Number(s.cashSalesTotal || 0).toFixed(2),
+                    'UPI Sales': Number(s.upiSalesTotal || 0).toFixed(2),
+                    'Card Sales': Number(s.cardSalesTotal || 0).toFixed(2),
+                    'Total Bills': Number(s.totalSalesCount || 0),
                     'Expected Cash': expected.toFixed(2),
                     'Actual Cash': actual,
+                    'Closing Denominations': formatDenominations(s.closingDenominations),
                     Difference: diff,
                     Status: statusInfo.label,
                 };
@@ -163,15 +198,13 @@ export default function ShiftManagement() {
                 <div className="sm-filter-group sm-filter-group--range">
                     <label className="filter-label">Date Range</label>
                     <div className="sm-date-range">
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-input"
                             value={draftFilters.fromDate}
                             onChange={(e) => handleDraftChange({ fromDate: e.target.value })}
                         />
                         <span className="sm-date-sep">to</span>
-                        <input
-                            type="date"
+                        <DateInput
                             className="form-input"
                             value={draftFilters.toDate}
                             onChange={(e) => handleDraftChange({ toDate: e.target.value })}
@@ -191,6 +224,20 @@ export default function ShiftManagement() {
                             <option key={emp.id || emp._id} value={emp.id || emp._id}>
                                 {emp.name}
                             </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="sm-filter-group">
+                    <label className="filter-label">Counter</label>
+                    <select
+                        className="form-select"
+                        value={draftFilters.counterId || ''}
+                        onChange={(e) => handleDraftChange({ counterId: e.target.value })}
+                    >
+                        <option value="">All Counters</option>
+                        {counters.map((counter) => (
+                            <option key={counter.id} value={counter.id}>{counter.counterName}</option>
                         ))}
                     </select>
                 </div>
@@ -231,6 +278,7 @@ export default function ShiftManagement() {
                                 <tr>
                                     <th>Shift ID</th>
                                     <th>Employee</th>
+                                    <th>Counter</th>
                                     <th>Start Time</th>
                                     <th>End Time</th>
                                     <th>Expected Cash</th>
@@ -247,7 +295,7 @@ export default function ShiftManagement() {
                                     const statusInfo = getShiftStatusInfo(shift);
                                     const isOpen = shift.status === 'OPEN';
                                     const expected = isOpen
-                                        ? Number(shift.openingFloat || 0) + Number(shift.cashSalesTotal || 0)
+                                        ? getExpectedClosingCash(shift)
                                         : Number(shift.closingCashExpected || 0);
                                     const actual = Number(shift.closingCashActual || 0);
                                     const diff = actual - Number(shift.closingCashExpected || 0);
@@ -258,6 +306,7 @@ export default function ShiftManagement() {
                                                 <span className="sm-shift-id">#SH-{shift.id}</span>
                                             </td>
                                             <td>{shift.user?.name || '—'}</td>
+                                            <td>{shift.counterNameSnapshot || shift.counter?.counterName || shift.terminalId || '—'}</td>
                                             <td>
                                                 <div className="sm-time-cell">
                                                     <span>{start.time}</span>
@@ -348,6 +397,15 @@ export default function ShiftManagement() {
                             <strong>{selectedShift.user?.email || '—'}</strong>
                         </div>
                         <div className="sm-detail-row">
+                            <span>Counter</span>
+                            <strong>
+                                {selectedShift.counterNameSnapshot ||
+                                    selectedShift.counter?.counterName ||
+                                    selectedShift.terminalId ||
+                                    '—'}
+                            </strong>
+                        </div>
+                        <div className="sm-detail-row">
                             <span>Terminal</span>
                             <strong>{selectedShift.terminalId || '—'}</strong>
                         </div>
@@ -378,6 +436,10 @@ export default function ShiftManagement() {
                             <span>Opening Float</span>
                             <strong>{formatMoney(selectedShift.openingFloat)}</strong>
                         </div>
+                        <div className="sm-detail-row sm-detail-row--denominations">
+                            <span>Opening Denominations</span>
+                            <strong>{formatDenominations(selectedShift.openingDenominations)}</strong>
+                        </div>
                         <div className="sm-detail-row">
                             <span>Cash Sales</span>
                             <strong>{formatMoney(selectedShift.cashSalesTotal)}</strong>
@@ -391,6 +453,10 @@ export default function ShiftManagement() {
                             <strong>{formatMoney(selectedShift.upiSalesTotal)}</strong>
                         </div>
                         <div className="sm-detail-row">
+                            <span>Other Payments</span>
+                            <strong>{formatMoney(selectedShift.otherSalesTotal)}</strong>
+                        </div>
+                        <div className="sm-detail-row">
                             <span>Total Sales Count</span>
                             <strong>{selectedShift.totalSalesCount ?? 0}</strong>
                         </div>
@@ -402,6 +468,10 @@ export default function ShiftManagement() {
                         <div className="sm-detail-row">
                             <span>Actual Closing Cash</span>
                             <strong>{formatMoney(selectedShift.closingCashActual)}</strong>
+                        </div>
+                        <div className="sm-detail-row sm-detail-row--denominations">
+                            <span>Closing Denominations</span>
+                            <strong>{formatDenominations(selectedShift.closingDenominations)}</strong>
                         </div>
                         <div className="sm-detail-row">
                             <span>Difference</span>

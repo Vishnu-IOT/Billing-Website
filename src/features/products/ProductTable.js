@@ -10,9 +10,11 @@ import ProductBatchTable from "../../components/shared/ProductBatchTable";
 import BarcodeLabelPrint from "../../components/shared/BarcodeLabelPrint";
 import { FiPrinter, FiLayers } from "react-icons/fi";
 import { updateProductsBulkAPI } from "../../api";
+import { getProductBaseUnit } from "../../utils/quantityUnits";
+import { matchesProductSearch } from "../../utils/productSearch";
 
 export default function ProductTable() {
-  const { products, refreshProducts } = useAppStore();
+  const { products, categories, brands, refreshProducts } = useAppStore();
   const { bulkUpdateStock } = useInventoryStore();
   const toast = useToast();
 
@@ -23,17 +25,35 @@ export default function ProductTable() {
   const [barcodeProduct, setBarcodeProduct] = useState(null);
 
   const debouncedSearch = useDebounce(search, 250);
+  const brandNamesById = useMemo(
+    () =>
+      new Map(
+        (brands || []).map((brand) => [
+          String(brand.id || brand._id),
+          brand.name || brand.brand || "",
+        ]),
+      ),
+    [brands],
+  );
+  const categoryNamesById = useMemo(
+    () =>
+      new Map(
+        (categories || []).map((category) => [
+          String(category.id || category._id),
+          category.category || category.name || "",
+        ]),
+      ),
+    [categories],
+  );
 
   const filteredProducts = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
-    return (products || []).filter(
-      (p) =>
-        !q ||
-        (p.name || "").toLowerCase().includes(q) ||
-        (p.HSNCode || "").toLowerCase().includes(q) ||
-        (p.barcode || p.SKU || "").toLowerCase().includes(q),
+    return (products || []).filter((product) =>
+      matchesProductSearch(product, debouncedSearch, [
+        brandNamesById.get(String(product.brandId)),
+        categoryNamesById.get(String(product.categoryId)),
+      ]),
     );
-  }, [products, debouncedSearch]);
+  }, [products, debouncedSearch, brandNamesById, categoryNamesById]);
 
   const { page, totalPages, paginated, from, to, total, goToPage } =
     usePagination(filteredProducts, 10);
@@ -82,6 +102,7 @@ export default function ProductTable() {
           <ProductBatchTable
             productId={batchProduct.id || batchProduct._id}
             productName={batchProduct.name}
+            unit={getProductBaseUnit(batchProduct)}
           />
         )}
       </Modal>
@@ -217,19 +238,43 @@ export default function ProductTable() {
                         />
                       </td>
                       <td>
-                        <input
-                          className="form-input"
-                          style={{
-                            height: 32,
-                            minWidth: 80,
-                            textAlign: "right",
-                          }}
-                          type="number"
-                          value={e.stockQuantity ?? p.stockQuantity ?? ""}
-                          onChange={(ev) =>
-                            handleEdit(id, "stockQuantity", ev.target.value)
-                          }
-                        />
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <input
+                            className="form-input"
+                            style={{
+                              height: 32,
+                              minWidth: 70,
+                              textAlign: "right",
+                            }}
+                            type="number"
+                            step={p.unitType === "WEIGHT" ? "0.001" : "1"}
+                            value={e.stockQuantity ?? p.stockQuantity ?? ""}
+                            onChange={(ev) =>
+                              handleEdit(id, "stockQuantity", ev.target.value)
+                            }
+                          />
+                          <span>{getProductBaseUnit(p)}</span>
+                        </div>
+                        {Number(e.stockQuantity ?? p.stockQuantity ?? 0) >
+                          Number(p.stockQuantity || 0) && (
+                          <input
+                            className="form-input"
+                            style={{ height: 30, minWidth: 140, marginTop: 5 }}
+                            type="number"
+                            min="0"
+                            step="0.0001"
+                            aria-label={`Acquisition cost for additional unbatched ${p.name} stock`}
+                            placeholder="Added stock cost / unit"
+                            value={e.unbatchedAcquisitionCost ?? ""}
+                            onChange={(ev) =>
+                              handleEdit(
+                                id,
+                                "unbatchedAcquisitionCost",
+                                ev.target.value,
+                              )
+                            }
+                          />
+                        )}
                       </td>
                       <td className="text-center">
                         <div
@@ -321,7 +366,8 @@ export default function ProductTable() {
                 </div>
                 <div className="bill-card-mobile__row">
                   <span className="bill-card-mobile__label">
-                    Stock: {e.stockQuantity ?? p.stockQuantity ?? 0}
+                    Stock: {e.stockQuantity ?? p.stockQuantity ?? 0}{" "}
+                    {getProductBaseUnit(p)}
                   </span>
                   <div style={{ display: "flex", gap: 6 }}>
                     <Button

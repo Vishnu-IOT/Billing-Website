@@ -1,5 +1,5 @@
 /* ===== BRANDS ===== */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useAppStore from '../../store/appStore';
 import {
   Button,
@@ -10,17 +10,29 @@ import {
 } from '../../components/ui';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
+import { formatQuantity, getProductBaseUnit } from '../../utils/quantityUnits';
 import '../../styles/Categories.css';
 
 export default function Brands() {
-  const { brands, products, addBrand, deleteBrand } = useAppStore();
+  const { brands, products, addBrand, updateBrand, deleteBrand } = useAppStore();
   const toast = useToast();
   const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeBrand, setActiveBrand] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [search, setSearch] = useState('');
+
+  const filteredBrands = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return query
+      ? brands.filter((brand) =>
+          String(brand.name || '').toLocaleLowerCase().includes(query),
+        )
+      : brands;
+  }, [brands, search]);
 
   // Auto-select first brand if available
   useEffect(() => {
@@ -29,16 +41,42 @@ export default function Brands() {
     }
   }, [brands, activeBrand]);
 
-  async function handleAdd() {
+  function closeForm() {
+    setShowAdd(false);
+    setEditId(null);
+    setName('');
+    setFormErrors({});
+  }
+
+  function openEdit(brand) {
+    setEditId(brand.id || brand._id);
+    setName(brand.name || '');
+    setFormErrors({});
+    setShowAdd(true);
+  }
+
+  async function handleSave() {
     if (!validateForm()) return;
     setSaving(true);
     try {
-      await addBrand({ name: name.trim() });
-      toast.success('Brand Added Successfully!');
+      if (editId !== null) {
+        await updateBrand(editId, { name: name.trim() });
+        setActiveBrand((current) =>
+          current && String(current.id || current._id) === String(editId)
+            ? { ...current, name: name.trim() }
+            : current,
+        );
+        toast.success('Brand updated successfully');
+      } else {
+        await addBrand({ name: name.trim() });
+        toast.success('Brand Added Successfully!');
+      }
       setName('');
       setShowAdd(false);
-    } catch {
-      toast.error('Failed to add');
+      setEditId(null);
+      setFormErrors({});
+    } catch (error) {
+      toast.error(error.message || `Failed to ${editId !== null ? 'update' : 'add'} brand`);
     } finally {
       setSaving(false);
     }
@@ -82,15 +120,15 @@ export default function Brands() {
 
       <Modal
         open={showAdd}
-        onClose={() => { setShowAdd(false); setFormErrors({}) }}
-        title="Add Brand"
+        onClose={closeForm}
+        title={editId !== null ? 'Edit Brand' : 'Add Brand'}
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setShowAdd(false); setFormErrors({}) }}>
+            <Button variant="secondary" onClick={closeForm}>
               Cancel
             </Button>
-            <Button variant="primary" loading={saving} onClick={handleAdd}>
-              Add
+            <Button variant="primary" loading={saving} onClick={handleSave}>
+              {editId !== null ? 'Save Changes' : 'Add'}
             </Button>
           </>
         }
@@ -102,7 +140,7 @@ export default function Brands() {
             placeholder="e.g. Samsung"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
           />
           {formErrors.name && (
             <span className="um-error-text">{formErrors.name}</span>
@@ -144,9 +182,24 @@ export default function Brands() {
                 <span className="co-sidebar-count">{brands.length}</span>
               </div>
             </div>
+            <label className="co-sidebar-search">
+              <span className="co-sidebar-search-icon" aria-hidden="true">🔍</span>
+              <input
+                className="co-sidebar-search-input"
+                type="search"
+                placeholder="Search brands..."
+                aria-label="Search brands"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
 
             <div className="co-cat-list">
-              {brands.map((brand) => {
+              {filteredBrands.length === 0 ? (
+                <div className="co-empty-cats" role="status">
+                  No brands match “{search}”.
+                </div>
+              ) : filteredBrands.map((brand) => {
                 const count = products.filter(
                   (p) => String(p.brandId) === String(brand.id || brand._id)
                 ).length;
@@ -192,6 +245,14 @@ export default function Brands() {
                   </div>
                   <div className="co-panel-header-right">
                     <button
+                      className="co-icon-btn"
+                      title="Edit Brand"
+                      aria-label={`Edit ${activeBrand.name}`}
+                      onClick={() => openEdit(activeBrand)}
+                    >
+                      ✏️
+                    </button>
+                    <button
                       className="co-icon-btn co-icon-btn--danger"
                       title="Delete Brand"
                       onClick={() => setDeleteId(activeBrand.id || activeBrand._id)}
@@ -229,7 +290,7 @@ export default function Brands() {
                         </thead>
                         <tbody>
                           {brandProducts.map((prod) => {
-                            const qty = parseInt(prod.stockQuantity) || 0;
+                            const qty = Number(prod.stockQuantity) || 0;
                             const min = parseInt(prod.minStockLevel) || 5;
                             const isOut = qty <= 0;
                             const isLow = qty > 0 && qty < min;
@@ -250,7 +311,7 @@ export default function Brands() {
                                   <div className="co-product-cell">
                                     <div className="co-product-info">
                                       <span className="co-product-name">{prod.name}</span>
-                                      <span className="co-product-desc">{prod.unit || 'pcs'}</span>
+                                      <span className="co-product-desc">{getProductBaseUnit(prod)}</span>
                                     </div>
                                   </div>
                                 </td>
@@ -260,7 +321,7 @@ export default function Brands() {
                                   </span>
                                 </td>
                                 <td>
-                                  <span style={{ marginRight: 8, fontWeight: 700 }}>{qty}</span>
+                                  <span style={{ marginRight: 8, fontWeight: 700 }}>{formatQuantity(qty)}</span>
                                   <span className={`co-badge ${badgeClass}`}>{badgeLabel}</span>
                                 </td>
                                 <td>

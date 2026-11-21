@@ -24,6 +24,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../../utils/currency';
 import { numberToWords } from '../../utils/numbers';
 import useSettingsStore from '../../store/settingsStore-DB';
+import { getReadableQuantity, isWeightProduct } from '../../utils/quantityUnits';
 
 /**
  * ThermalBill
@@ -221,30 +222,48 @@ export default function ThermalBill({ bill, company, printerWidth = '80' }) {
       {/* ── ITEMS ── */}
       {items.map((item, i) => {
         const rate = item.price || 0;
-        const qty = item.quantity || 1;
+        const readableQty = getReadableQuantity(item);
         const disc = item.discountAmount || 0;
         const total = item.total || 0;
+        const isGift = item.itemRole === 'GIFT';
         return (
           <div key={i} className="thermal-item-row">
             <div className="thermal-item-detail">
               <span className="thermal-item-name">{item.productName}</span>
-              <span className="thermal-item-qty-col">{qty}</span>
+              <span className="thermal-item-qty-col">{readableQty}</span>
               <span className="thermal-item-amt-col">
-                {formatCurrency(total)}
+                {isGift ? 'FREE' : formatCurrency(total)}
               </span>
             </div>
             {(item.variantName || item.notes) && (
               <div className="thermal-item-sub">({item.variantName || item.notes})</div>
             )}
             <div className="thermal-item-sub">
-              {qty} x {formatCurrency(rate)}
-              {showGst && item.taxRate > 0 ? ` (GST ${item.taxRate}%)` : ''}
+              {isGift ? `${readableQty} x FREE` : `${readableQty} x ${formatCurrency(rate)}`}
+              {!isGift && isWeightProduct(item) ? ' / KG' : ''}
+              {!isGift && showGst && item.taxRate > 0 ? ` (GST ${item.taxRate}%)` : ''}
             </div>
             {item.hsnCode && (
               <div className="thermal-item-sub">HSN: {item.hsnCode}</div>
             )}
             {item.batchNumber && (
               <div className="thermal-item-sub">Batch: {item.batchNumber}</div>
+            )}
+            {(item.mrp ?? item.MRP) != null && Number(item.mrp ?? item.MRP) > 0 && (
+              <div className="thermal-item-sub">MRP: {formatCurrency(item.mrp ?? item.MRP)}</div>
+            )}
+            {item.itemRole === 'GIFT' && (
+              <div className="thermal-item-sub">
+                FREE GIFT{item.promotionName || item.offerName ? ` · ${item.promotionName || item.offerName}` : ''}
+              </div>
+            )}
+            {item.itemRole !== 'GIFT' &&
+              (Number(item.freeQuantity) > 0 || item.offerName || item.promotionName) && (
+              <div className="thermal-item-sub">
+                {item.promotionName || item.offerName ? `${item.promotionName || item.offerName} · ` : ''}
+                Paid {item.paidQuantity ?? item.quantity} · FREE {item.freeQuantity || 0}
+                {' · '}Total {item.totalQuantity ?? item.quantity}
+              </div>
             )}
             {disc > 0 && (
               <div className="thermal-item-sub">
@@ -292,7 +311,7 @@ export default function ThermalBill({ bill, company, printerWidth = '80' }) {
       <div className="thermal-words">
         <span className="thermal-words-label">Amount in Words:</span>
         <span className="thermal-words-value">
-          {numberToWords(Math.round(totals.grandTotal || 0))}
+          {numberToWords(Number(totals.grandTotal) || 0)}
         </span>
       </div>
 

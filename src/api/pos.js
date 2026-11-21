@@ -1,15 +1,66 @@
 import { axios, BASE_URL, getAuthHeaders } from './client';
 
-export async function fetchCurrentShiftAPI(userId) {
+export async function fetchAssignedPosCountersAPI() {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/pos/counters/assigned`,
+      getAuthHeaders()
+    );
+    return response.data?.data || [];
+  } catch (err) {
+    console.error('fetchAssignedPosCountersAPI error:', err);
+    throw err.response?.data?.message || err.message;
+  }
+}
+
+export async function fetchPosCountersAPI() {
+  try {
+    const response = await axios.get(`${BASE_URL}/pos/counters`, getAuthHeaders());
+    return response.data?.data || [];
+  } catch (err) {
+    console.error('fetchPosCountersAPI error:', err);
+    throw err.response?.data?.message || err.message;
+  }
+}
+
+export async function createPosCounterAPI(payload) {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/pos/counters`,
+      payload,
+      getAuthHeaders()
+    );
+    return response.data?.data || null;
+  } catch (err) {
+    console.error('createPosCounterAPI error:', err);
+    throw err.response?.data?.message || err.message;
+  }
+}
+
+export async function updatePosCounterAPI(id, payload) {
+  try {
+    const response = await axios.put(
+      `${BASE_URL}/pos/counters/${id}`,
+      payload,
+      getAuthHeaders()
+    );
+    return response.data?.data || null;
+  } catch (err) {
+    console.error('updatePosCounterAPI error:', err);
+    throw err.response?.data?.message || err.message;
+  }
+}
+
+export async function fetchCurrentShiftAPI(userId, companyId) {
   try {
     const response = await axios.get(`${BASE_URL}/pos/shifts/current`, {
-      params: { userId },
+      params: { userId, companyId },
       ...getAuthHeaders(),
     });
     return response.data?.data || null;
   } catch (err) {
     console.error('fetchCurrentShiftAPI error:', err);
-    return null;
+    throw err.response?.data?.message || err.message;
   }
 }
 

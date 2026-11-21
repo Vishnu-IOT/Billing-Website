@@ -32,9 +32,9 @@
 }
 
 .topbar__logo {
-  width: 32px;
-  height: 32px;
-  background: var(--primary);
+  width: 36px;
+  height: 36px;
+  /* background: var(--primary); */
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -45,10 +45,12 @@
 }
 
 .topbar__app-name {
-  font-size: var(--fs-lg);
+  font-size: clamp(0.72rem, 3.5vw, var(--fs-lg));
   font-weight: var(--fw-extrabold);
   color: var(--text-primary);
   letter-spacing: -0.4px;
+  line-height: 1.15;
+  max-width: 44vw;
 }
 
 .topbar__actions {

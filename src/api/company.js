@@ -50,7 +50,10 @@ export async function updateFinancialDetailsAPI(companyId, id, data) {
   }
 }
 
-export async function fetchCompanyUsersAPI(companyId = 1) {
+export async function fetchCompanyUsersAPI(companyId) {
+  if (!companyId) {
+    throw new Error('Company ID is required to fetch users');
+  }
   try {
     const response = await axios.get(
       `${BASE_URL}/company/get-User/${companyId}`,

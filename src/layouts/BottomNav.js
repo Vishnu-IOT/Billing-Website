@@ -5,32 +5,29 @@ import { FiBox, FiFileText, FiShoppingCart, FiUsers } from 'react-icons/fi';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import useUIStore from '../store/uiStore';
 import useAuthStore from '../store/authStore';
+import { hasPermission } from '../utils/permissions';
 
-const OWNER_STAFF_NAV = [
-  { key: 'dashboard', icon: <IoHome />,          label: 'Home' },
-  { key: 'products',  icon: <FiBox />,            label: 'Products' },
-  { key: 'sales',     icon: <FiFileText />,       label: 'Sales' },
-  { key: 'purchases', icon: <FiShoppingCart />,   label: 'Purchase' },
-  { key: 'more',      icon: <FiMoreHorizontal />, label: 'More' },
-];
-
-const BILLER_NAV = [
-  { key: 'dashboard',     icon: <IoHome />,           label: 'Home' },
-  { key: 'sales?type=B2C', icon: <IoReceiptOutline />, label: 'POS Billing' },
-  { key: 'customers',     icon: <FiUsers />,          label: 'Customers' },
-  { key: 'sales',         icon: <FiFileText />,       label: 'Sales' },
+const NAV_ITEMS = [
+  { key: 'dashboard', icon: <IoHome />, label: 'Home', permission: 'dashboard.overview.view' },
+  { key: 'sales?type=B2C', icon: <IoReceiptOutline />, label: 'POS Billing', permission: 'pos.billing.access' },
+  { key: 'products', icon: <FiBox />, label: 'Products', permission: 'products.catalog.view' },
+  { key: 'sales', icon: <FiFileText />, label: 'Sales', permission: 'sales.invoices.view' },
+  { key: 'purchases', icon: <FiShoppingCart />, label: 'Purchase', permission: 'purchases.invoices.view' },
+  { key: 'customers', icon: <FiUsers />, label: 'Customers', permission: 'customers.directory.view' },
 ];
 
 export function BottomNav({ onMoreClick }) {
   const page = useUIStore((s) => s.page);
   const user = useAuthStore((s) => s.user);
-  const role = user?.role || 'STAFF';
 
   function navigate(key) { 
     window.location.hash = key; 
   }
 
-  const items = role === 'BILLER' ? BILLER_NAV : OWNER_STAFF_NAV;
+  const items = NAV_ITEMS.filter((item) => hasPermission(user, item.permission));
+  if ((user?.permissions?.length || 0) > 1) {
+    items.push({ key: 'more', icon: <FiMoreHorizontal />, label: 'More' });
+  }
 
   return (
     <nav className="bottom-nav">

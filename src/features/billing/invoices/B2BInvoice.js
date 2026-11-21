@@ -23,7 +23,7 @@ import { formatCurrency } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
 import { numberToWords } from "../../../utils/numbers";
 import useSettingsStore from "../../../store/settingsStore-DB";
-import { getCompanyLogo } from "../../../utils/logo";
+import { formatQuantity, getProductBaseUnit, isWeightProduct } from "../../../utils/quantityUnits";
 
 const box = { border: "1px solid #999", padding: "10px 12px" };
 const th = {
@@ -127,7 +127,6 @@ export default function B2BInvoice({
   // const settledAmount = isPaid ? (bill.totalAmount || 0) : (bill.amountPaid || 0);
   // const balanceAmount = (bill.totalAmount || 0) - settledAmount;
 
-  const companyLogo = getCompanyLogo(companies);
   const financials = companies.financials || {};
   const companyGstin =
     financials.gstin || companies.companyGstin || companies.gstin || "";
@@ -200,14 +199,11 @@ export default function B2BInvoice({
             overflow: "hidden",
           }}
         >
-          {companyLogo ? (
+          {companies.logo ? (
             <img
-              src={companyLogo}
+              src={companies.logo_url}
               alt="Logo"
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
+              style={{ maxWidth: "100%", maxHeight: "100%" }}
             />
           ) : (
             "Logo"
@@ -352,13 +348,36 @@ export default function B2BInvoice({
                       Batch: {item.batchNumber}
                     </div>
                   )}
+                  {(item.mrp ?? item.MRP) != null && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                      MRP: {Number(item.mrp ?? item.MRP).toFixed(2)}
+                    </div>
+                  )}
+                  {item.itemRole === "GIFT" && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 600 }}>
+                      FREE GIFT{item.promotionName || item.offerName ? ` · ${item.promotionName || item.offerName}` : ""}
+                    </div>
+                  )}
+                  {item.itemRole !== "GIFT" &&
+                    (Number(item.freeQuantity) > 0 || item.offerName || item.promotionName) && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                      {item.promotionName || item.offerName ? `${item.promotionName || item.offerName} · ` : ""}
+                      Paid {item.paidQuantity ?? item.quantity} · FREE{" "}
+                      {item.freeQuantity || 0} · Total{" "}
+                      {item.totalQuantity ?? item.quantity}
+                    </div>
+                  )}
                 </td>
                 <td style={{ ...td, textAlign: "right" }}>
                   {item.Product?.HSNCode || "-"}
                 </td>
-                <td style={{ ...td, textAlign: "right" }}>{qty.toFixed(2)}</td>
+                <td style={{ ...td, textAlign: "right" }}>
+                  {formatQuantity(qty)}
+                </td>
                 <td style={{ ...td, textAlign: "center" }}>
-                  {item.unit || "Pcs"}
+                  {isWeightProduct(item)
+                    ? item.quantityUnit || "KG"
+                    : item.unit || getProductBaseUnit(item)}
                 </td>
                 <td style={{ ...td, textAlign: "right" }}>
                   {price.toFixed(2)}

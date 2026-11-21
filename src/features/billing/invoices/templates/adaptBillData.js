@@ -69,7 +69,7 @@ export async function fetchCompanyForInvoice(companyId, companyBasic = {}) {
     zipCode: companyBasic.zipCode,
     phone: companyBasic.phone,
     email: companyBasic.email,
-    logo: companyBasic.logo_url || companyBasic.logo,
+    logo: companyBasic.logo,
 
     // ── Real GST/PAN comes from Company_Financials, not the companies table ──
     gstNumber: financials.gstin || '',
@@ -120,7 +120,10 @@ export function adaptBillToInvoice(bill, party, items, company) {
         name: i.productName,
         hsn: i.hsncode,
         quantity: i.quantity,
-        unit: i.unit || 'Unit',
+        unit:
+          i.unitType === 'WEIGHT' || i.Product?.unitType === 'WEIGHT'
+            ? i.quantityUnit || 'KG'
+            : i.unit || 'PCS',
         // i.baseRate is the LINE TOTAL (unit price × qty − discount), not a
         // per-unit rate — using it here made the template multiply the line
         // total by quantity again when computing the row amount. i.price is

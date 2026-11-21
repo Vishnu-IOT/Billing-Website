@@ -22,4 +22,6 @@ export * from './brands';
 export * from './variants';
 export * from './audit';
 export * from './reports';
-
+export * from './loyalty';
+export * from './promotions';
+export * from './roles';

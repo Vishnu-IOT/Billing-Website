@@ -1,6 +1,8 @@
 /* ===== BARCODE INPUT — Universal Search ===== */
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
+import { formatQuantity, getProductBaseUnit } from '../../utils/quantityUnits';
+import { matchesProductSearch } from '../../utils/productSearch';
 
 /**
  * Universal Product Search
@@ -10,7 +12,14 @@ import { formatCurrency } from '../../utils/currency';
  * - Exact barcode match (scanner) triggers instant add
  * - Arrow keys & Enter for navigation
  */
-export default function BarcodeInput({ products, onProductFound, onNotFound, disabled }) {
+export default function BarcodeInput({
+  products,
+  brands,
+  categories,
+  onProductFound,
+  onNotFound,
+  disabled,
+}) {
   const inputRef = useRef(null);
   const [value, setValue] = useState('');
   const [status, setStatus] = useState('idle'); // idle | success | error
@@ -22,6 +31,26 @@ export default function BarcodeInput({ products, onProductFound, onNotFound, dis
   const [isMobile, setIsMobile] = useState(false);
   const searchTimeout = useRef(null);
   const dropdownRef = useRef(null);
+  const brandNamesById = useMemo(
+    () =>
+      new Map(
+        (brands || []).map((brand) => [
+          String(brand.id || brand._id),
+          brand.name || brand.brand || '',
+        ]),
+      ),
+    [brands],
+  );
+  const categoryNamesById = useMemo(
+    () =>
+      new Map(
+        (categories || []).map((category) => [
+          String(category.id || category._id),
+          category.category || category.name || '',
+        ]),
+      ),
+    [categories],
+  );
 
   /* ── Mobile Detection ── */
   useEffect(() => {
@@ -125,14 +154,13 @@ export default function BarcodeInput({ products, onProductFound, onNotFound, dis
     }
 
     searchTimeout.current = setTimeout(() => {
-      const v = val.trim().toLowerCase();
-      const matches = products
-        .filter((p) => {
-          const bMatch = p.barcode && p.barcode.toLowerCase().includes(v);
-          const hMatch = p.HSNCode && p.HSNCode.toLowerCase().includes(v);
-          const nMatch = p.name && p.name.toLowerCase().includes(v);
-          return bMatch || hMatch || nMatch;
-        })
+      const matches = (products || [])
+        .filter((product) =>
+          matchesProductSearch(product, val, [
+            brandNamesById.get(String(product.brandId)),
+            categoryNamesById.get(String(product.categoryId)),
+          ]),
+        )
         .slice(0, 50); // limit for perf
 
       setSuggestions(matches);
@@ -439,7 +467,7 @@ export default function BarcodeInput({ products, onProductFound, onNotFound, dis
                         marginTop: '4px',
                       }}
                     >
-                      {item.stockQuantity} in stock
+                      {formatQuantity(item.stockQuantity)} {getProductBaseUnit(item)} in stock
                     </div>
                   )}
                 </div>

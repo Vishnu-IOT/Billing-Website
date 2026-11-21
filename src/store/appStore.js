@@ -7,6 +7,7 @@ import {
   deleteProductsAPI,
   fetchCategoryAPI,
   addCategoryAPI,
+  updateCategoryAPI,
   deleteCategoryAPI,
   fetchBrandsAPI,
   addBrandAPI,
@@ -21,6 +22,8 @@ import {
 } from '../api';
 
 import useSettingsStore from './settingsStore';
+import useAuthStore from './authStore';
+import { hasPermission } from '../utils/permissions';
 
 const useAppStore = create((set, get) => ({
   // ── State ──
@@ -38,14 +41,18 @@ const useAppStore = create((set, get) => ({
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
+      const user = useAuthStore.getState().user;
+      const canLoad = (...permissions) => permissions.some((permission) => hasPermission(user, permission));
       const [products, categories, brands, parties, customers, companies] =
         await Promise.all([
-          fetchProductsAPI().catch(() => []),
-          fetchCategoryAPI().catch(() => []),
-          fetchBrandsAPI().catch(() => []),
-          fetchPartiesAPI().catch(() => []),
-          fetchCusotmersAPI().catch(() => []),
-          fetchCompaniesAPI(1).catch(() => null),
+          canLoad('products.catalog.view', 'pos.billing.access', 'quick-sales.aliases.map') ? fetchProductsAPI().catch(() => []) : [],
+          canLoad('categories.catalog.view', 'pos.billing.access') ? fetchCategoryAPI().catch(() => []) : [],
+          canLoad('brands.catalog.view', 'pos.billing.access') ? fetchBrandsAPI().catch(() => []) : [],
+          canLoad('parties.directory.view') ? fetchPartiesAPI().catch(() => []) : [],
+          canLoad('customers.directory.view', 'pos.billing.access') ? fetchCusotmersAPI().catch(() => []) : [],
+          canLoad('company.profile.view', 'pos.billing.access', 'purchases.invoices.create')
+            ? fetchCompaniesAPI(user?.companyId).catch(() => null)
+            : null,
         ]);
       set({
         products: Array.isArray(products) ? products : (products?.data ?? []),
@@ -73,12 +80,13 @@ const useAppStore = create((set, get) => ({
   },
   addProduct: async (product) => {
     const data = await addProductsAPI(product);
-    get().refreshProducts();
+    await get().refreshProducts();
     return data;
   },
   updateProduct: async (id, data) => {
     await updateProductsAPI(id, data);
-    get().refreshProducts();
+    // Wait for the refresh so callers see the backend-recalculated values
+    await get().refreshProducts();
   },
   deleteProduct: async (id) => {
     await deleteProductsAPI(id);
@@ -93,8 +101,14 @@ const useAppStore = create((set, get) => ({
     set({ categories: Array.isArray(data) ? data : (data?.data ?? []) });
   },
   addCategory: async (cat) => {
-    await addCategoryAPI(cat);
-    get().refreshCategories();
+    const data = await addCategoryAPI(cat);
+    await get().refreshCategories();
+    return data?.cat ?? data?.data ?? data;
+  },
+  updateCategory: async (id, cat) => {
+    const data = await updateCategoryAPI(id, cat);
+    await get().refreshCategories();
+    return data;
   },
   deleteCategory: async (id) => {
     await deleteCategoryAPI(id);
@@ -112,12 +126,12 @@ const useAppStore = create((set, get) => ({
   },
   addBrand: async (brand) => {
     const data = await addBrandAPI(brand);
-    get().refreshBrands();
-    return data;
+    await get().refreshBrands();
+    return data?.data ?? data;
   },
   updateBrand: async (id, brand) => {
     const data = await updateBrandAPI(id, brand);
-    get().refreshBrands();
+    await get().refreshBrands();
     return data;
   },
   deleteBrand: async (id) => {
@@ -131,6 +145,15 @@ const useAppStore = create((set, get) => ({
   refreshCustomers: async () => {
     const data = await fetchCusotmersAPI();
     set({ customers: Array.isArray(data) ? data : (data?.data ?? []) });
+  },
+  updateCustomerLoyaltyPoints: (customerId, loyaltyPoints) => {
+    set((s) => ({
+      customers: s.customers.map((customer) =>
+        String(customer.id || customer._id) === String(customerId)
+          ? { ...customer, loyalty_points: loyaltyPoints }
+          : customer
+      ),
+    }));
   },
 
   // ── Parties ──

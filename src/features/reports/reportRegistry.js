@@ -29,6 +29,8 @@ import {
   fetchCustomerStatementAPI,
   fetchCategoryReportAPI,
   fetchBrandReportAPI,
+  fetchOtherReportAPI,
+  fetchOtherReportDetailsAPI,
 } from '../../api';
 import { getQuickRange, fyLabel, fyStartYear } from '../../utils/reportDates';
 
@@ -59,6 +61,14 @@ const SALES_DOC_FILTERS = [
 const PURCHASE_DOC_FILTERS = [
   'period', 'party', 'status', 'paymentMode', 'purchaseNumber', 'product', 'category', 'brand',
 ];
+const OTHER_REPORT_DEFAULTS = () => withDefaults('thisMonth');
+const otherReport = (type, options) => ({
+  ...options,
+  defaults: OTHER_REPORT_DEFAULTS,
+  serverExport: type,
+  fetch: (filters) => fetchOtherReportAPI(type, filters),
+  fetchDetails: (row) => fetchOtherReportDetailsAPI(type, options.detailId(row)),
+});
 
 const itemCols = (qtyLabel, totalKey, totalLabel, countKey, countLabel) => [
   num('totalQuantity', qtyLabel, 'totalQuantity'),
@@ -335,6 +345,9 @@ export const REPORTS = {
       c('brandName', 'Brand', 'text', 'brandName'),
       c('unit', 'Unit'),
       num('stockQuantity', 'Stock Qty', 'stockQuantity'),
+      num('reportedResalableReturnQty', 'Resalable Returns'),
+      num('reportedDamagedReturnQty', 'Damaged Returns'),
+      num('reportedExpiredReturnQty', 'Expired Returns'),
       num('minStockLevel', 'Min Level'),
       money('purchasePrice', 'Cost'),
       money('salesPrice', 'Sale Price'),
@@ -350,12 +363,16 @@ export const REPORTS = {
     summary: [
       card('totalProducts', 'Products', 'number', '📦', 'blue'),
       card('totalQuantity', 'Total Qty', 'number', '🔢', 'purple'),
+      card('reportedResalableReturnQty', 'Resalable Returns', 'number', '↩️', 'green'),
+      card('reportedDamagedReturnQty', 'Damaged Returns', 'number', '⚠️', 'amber'),
+      card('reportedExpiredReturnQty', 'Expired Returns', 'number', '⏳', 'red'),
       card('totalStockValueAtCost', 'Value (Cost)', 'currency', '💰', 'green'),
       card('totalStockValueAtSale', 'Value (Sale)', 'currency', '🏷️', 'cyan'),
       card('lowStockCount', 'Low Stock', 'number', '⚠️', 'amber'),
       card('outOfStockCount', 'Out of Stock', 'number', '🚫', 'red'),
       card('negativeStockCount', 'Negative Stock', 'number', '⛔', 'red'),
     ],
+    note: 'Return quantities are historical totals grouped by recorded condition, not a separate on-hand or disposal balance. Stock Qty remains the saleable inventory figure.',
     rowKey: (r) => r.id,
   },
 
@@ -369,18 +386,30 @@ export const REPORTS = {
       const counts = [num('inStockCount', 'In Stock'), num('lowStockCount', 'Low'), num('outOfStockCount', 'Out'), num('negativeStockCount', 'Negative')];
       if (f.groupBy === 'category') {
         return [c('categoryName', 'Category', 'text', 'categoryName'), num('productCount', 'Products', 'productCount'),
-          num('stockQuantity', 'Stock Qty', 'stockQuantity'), money('stockValueAtCost', 'Value (Cost)', 'stockValueAtCost'),
+          num('stockQuantity', 'Stock Qty', 'stockQuantity'),
+          num('reportedResalableReturnQty', 'Resalable Returns'),
+          num('reportedDamagedReturnQty', 'Damaged Returns'),
+          num('reportedExpiredReturnQty', 'Expired Returns'),
+          money('stockValueAtCost', 'Value (Cost)', 'stockValueAtCost'),
           money('stockValueAtSale', 'Value (Sale)', 'stockValueAtSale'), ...counts];
       }
       if (f.groupBy === 'brand') {
         return [c('brandName', 'Brand', 'text', 'brandName'), num('productCount', 'Products', 'productCount'),
-          num('stockQuantity', 'Stock Qty', 'stockQuantity'), money('stockValueAtCost', 'Value (Cost)', 'stockValueAtCost'),
+          num('stockQuantity', 'Stock Qty', 'stockQuantity'),
+          num('reportedResalableReturnQty', 'Resalable Returns'),
+          num('reportedDamagedReturnQty', 'Damaged Returns'),
+          num('reportedExpiredReturnQty', 'Expired Returns'),
+          money('stockValueAtCost', 'Value (Cost)', 'stockValueAtCost'),
           money('stockValueAtSale', 'Value (Sale)', 'stockValueAtSale'), ...counts];
       }
       return [
         c('name', 'Product', 'text', 'name'), c('sku', 'SKU', 'mono', 'sku'),
         c('categoryName', 'Category', 'text', 'categoryName'), c('brandName', 'Brand', 'text', 'brandName'),
-        num('stockQuantity', 'Stock Qty', 'stockQuantity'), money('purchasePrice', 'Cost'), money('salesPrice', 'Sale Price'),
+        num('stockQuantity', 'Stock Qty', 'stockQuantity'),
+        num('reportedResalableReturnQty', 'Resalable Returns'),
+        num('reportedDamagedReturnQty', 'Damaged Returns'),
+        num('reportedExpiredReturnQty', 'Expired Returns'),
+        money('purchasePrice', 'Cost'), money('salesPrice', 'Sale Price'),
         money('stockValueAtCost', 'Value (Cost)', 'stockValueAtCost'), money('stockValueAtSale', 'Value (Sale)', 'stockValueAtSale'),
         c('stockStatus', 'Status', 'stock', 'stockStatus'),
       ];
@@ -393,7 +422,11 @@ export const REPORTS = {
       card('inStockCount', 'In Stock', 'number', '✅', 'green'),
       card('lowStockCount', 'Low Stock', 'number', '⚠️', 'amber'),
       card('outOfStockCount', 'Out of Stock', 'number', '🚫', 'red'),
+      card('reportedResalableReturnQty', 'Resalable Returns', 'number', '↩️', 'green'),
+      card('reportedDamagedReturnQty', 'Damaged Returns', 'number', '⚠️', 'amber'),
+      card('reportedExpiredReturnQty', 'Expired Returns', 'number', '⏳', 'red'),
     ],
+    note: 'Return quantities are historical totals grouped by recorded condition, not a separate on-hand or disposal balance. Stock Qty remains the saleable inventory figure.',
     rowKey: (r, i) => r.id ?? r.categoryId ?? r.brandId ?? `g${i}`,
   },
 
@@ -429,6 +462,18 @@ export const REPORTS = {
     ],
     rowKey: (r, i) => `${r.saleId}-${r.taxRate}-${i}`,
     note: 'Tax is reported in total — the schema stores no place of supply, so there is no CGST/SGST/IGST split.',
+  },
+
+  gstr1Template: {
+    label: 'GST 1 – Sales Report (Excel Template)', group: 'GST',
+    subtitle: 'Multi-sheet sales report using the supplied GST 1 workbook format',
+    templateReport: 'gstr1',
+  },
+
+  gstr2Template: {
+    label: 'GST 2 – Purchase Report (Excel Template)', group: 'GST',
+    subtitle: 'Multi-sheet purchase report using the supplied GST 2 workbook format',
+    templateReport: 'gstr2',
   },
 
   gstr3b: {
@@ -566,6 +611,228 @@ export const REPORTS = {
     expandable: true,
     rowKey: (r, i) => r.brandId ?? `b${i}`,
   },
+
+  salesReturnsReport: otherReport('sales-returns', {
+    label: 'Sales Return Report',
+    group: 'Other Reports',
+    subtitle: 'Recorded returns against B2C and B2B sales invoices',
+    defaultSort: sd('returnDate'),
+    dateRangeLabel: 'Return Period',
+    searchPlaceholder: 'Invoice, return ref, customer, product or barcode…',
+    filters: ['period', 'status', 'billType', 'invoiceNumber', 'returnNumber', 'customerName', 'customerPhone', 'productName', 'barcode', 'batchNumber', 'category', 'brand', 'reason', 'returnCondition', 'user'],
+    filterLabels: {
+      period: 'Return date range', status: 'Return record', user: 'Processed user',
+      invoiceNumber: 'Original invoice', returnNumber: 'Return reference',
+      customerName: 'Customer', customerPhone: 'Customer mobile',
+      productName: 'Product', barcode: 'Barcode', batchNumber: 'Batch',
+      category: 'Category', brand: 'Brand', reason: 'Reason',
+      returnCondition: 'Condition', billType: 'Bill type',
+    },
+    filterOptions: {
+      status: [{ value: 'RECORDED', label: 'Recorded returns' }, { value: 'ALL', label: 'All eligible records' }],
+      returnCondition: [
+        { value: 'GOOD', label: 'Good / Resalable' },
+        { value: 'DAMAGED', label: 'Damaged' },
+        { value: 'EXPIRED', label: 'Expired' },
+      ],
+    },
+    note: 'Good / resalable returns are restored to saleable stock. Damaged and expired returns are excluded from saleable stock; there is no separate disposal workflow. Cancelled original sales invoices are excluded.',
+    detailId: (row) => row.id,
+    columns: [
+      c('returnNumber', 'Return Reference', 'mono', 'returnNumber'),
+      c('invoiceNumber', 'Original Invoice', 'mono', 'invoiceNumber'),
+      date('returnDate', 'Return Date', 'returnDate'),
+      c('customerName', 'Customer', 'text', 'customerName'),
+      c('customerPhone', 'Mobile'),
+      c('productName', 'Product', 'text', 'productName'),
+      c('barcode', 'Barcode', 'mono'),
+      c('batchNumber', 'Batch'),
+      num('originalSoldQuantity', 'Original Sold Qty'),
+      num('previousReturnedQuantity', 'Previously Returned'),
+      money('originalSellingRate', 'Original Selling Rate'),
+      num('gstRate', 'GST %'),
+      num('returnedQuantity', 'Returned Qty', 'returnedQuantity'),
+      c('quantityUnit', 'Unit'),
+      c('returnCondition', 'Condition', 'badge'),
+      c('inventoryDisposition', 'Inventory Disposition'),
+      money('returnAmount', 'Return Amount', 'returnAmount'),
+      money('creditAmount', 'Credit Amount'),
+      c('refundStatus', 'Refund / Credit', 'badge'),
+      c('processedBy', 'Processed By'),
+      c('returnStatus', 'Status', 'badge'),
+    ],
+    summary: [
+      card('totalReturns', 'Sales Returns', 'number', '↩️', 'blue'),
+      card('totalReturnedQuantity', 'Returned Quantity', 'number', '📦', 'purple'),
+      card('totalReturnValue', 'Return Value', 'currency', '💰', 'green'),
+      card('totalReturnCreditAmount', 'Return Credit', 'currency', '🧾', 'cyan'),
+      card('resalableQuantity', 'Resalable Qty', 'number', '✅', 'green'),
+      card('damagedQuantity', 'Damaged Qty', 'number', '⚠️', 'amber'),
+      card('expiredQuantity', 'Expired Qty', 'number', '⏳', 'red'),
+    ],
+    breakdowns: [{
+      key: 'conditionBreakdown',
+      title: 'Return quantities and value by condition',
+      cols: [
+        c('returnCondition', 'Condition', 'badge'),
+        num('returnedQuantity', 'Returned Quantity'),
+        money('returnAmount', 'Return Value'),
+      ],
+    }],
+    rowKey: (row) => row.id,
+  }),
+
+  purchaseReturnsReport: otherReport('purchase-returns', {
+    label: 'Purchase Return Report',
+    group: 'Other Reports',
+    subtitle: 'Supplier returns, original purchase rates and credit settlement',
+    defaultSort: sd('returnDate'),
+    dateRangeLabel: 'Return Period',
+    searchPlaceholder: 'Return ref, invoice, supplier, product, batch or barcode…',
+    filters: ['period', 'status', 'invoiceNumber', 'returnNumber', 'supplierName', 'supplierPhone', 'productName', 'barcode', 'batchNumber', 'reason', 'user'],
+    filterLabels: {
+      period: 'Return date range', status: 'Return status', user: 'Processed user',
+      invoiceNumber: 'Original purchase', returnNumber: 'Return reference',
+      supplierName: 'Supplier', supplierPhone: 'Supplier mobile',
+      productName: 'Product', barcode: 'Barcode', batchNumber: 'Batch',
+      reason: 'Reason',
+    },
+    filterOptions: {
+      status: [
+        { value: 'ACTIVE', label: 'Active / completed' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+        { value: 'ALL', label: 'All statuses' },
+      ],
+    },
+    detailId: (row) => row.purchaseReturnId,
+    columns: [
+      c('returnNumber', 'Return Reference', 'mono', 'returnNumber'),
+      c('invoiceNumber', 'Original Purchase', 'mono', 'invoiceNumber'),
+      date('returnDate', 'Return Date', 'returnDate'),
+      c('supplierName', 'Supplier', 'text', 'supplierName'),
+      c('supplierPhone', 'Supplier Mobile'),
+      c('productName', 'Product', 'text', 'productName'),
+      c('barcode', 'Barcode', 'mono'),
+      c('batchNumber', 'Batch'),
+      num('returnedQuantity', 'Returned Qty', 'returnedQuantity'),
+      c('quantityUnit', 'Unit'),
+      money('purchasePrice', 'Purchase Price'),
+      money('returnValue', 'Return Value', 'returnValue'),
+      c('reason', 'Reason'),
+      c('refundCreditStatus', 'Refund / Credit', 'badge'),
+      c('processedBy', 'Processed By'),
+      c('returnStatus', 'Status', 'status'),
+    ],
+    summary: [
+      card('totalReturns', 'Purchase Returns', 'number', '↩️', 'blue'),
+      card('totalReturnedQuantity', 'Returned Quantity', 'number', '📦', 'purple'),
+      card('totalReturnValue', 'Return Value', 'currency', '💰', 'green'),
+      card('totalSuppliers', 'Suppliers', 'number', '🏢', 'cyan'),
+      card('completedReturns', 'Completed', 'number', '✅', 'green'),
+      card('cancelledReturns', 'Cancelled', 'number', '⊘', 'amber'),
+    ],
+    rowKey: (row) => row.id,
+  }),
+
+  expiryProductsReport: otherReport('expiry-products', {
+    label: 'Expiry Products Report',
+    group: 'Other Reports',
+    subtitle: 'Available batch stock by actual expiry date, valued at inventory cost',
+    defaultSort: sd('expiryDate', 'asc'),
+    dateRangeLabel: 'Expiry Period',
+    searchPlaceholder: 'Product, barcode, batch or supplier…',
+    filters: ['period', 'expiryStatus', 'productName', 'barcode', 'category', 'brand', 'batchNumber', 'supplierName'],
+    filterLabels: {
+      period: 'Expiry date range', expiryStatus: 'Expiry status',
+      productName: 'Product', barcode: 'Barcode', category: 'Category',
+      brand: 'Brand', batchNumber: 'Batch', supplierName: 'Supplier',
+    },
+    filterOptions: {
+      expiryStatus: [
+        { value: 'EXPIRED', label: 'Expired' },
+        { value: 'TODAY', label: 'Expiring today' },
+        { value: 'WITHIN_7_DAYS', label: '1–7 days' },
+        { value: 'WITHIN_30_DAYS', label: '8–30 days' },
+        { value: 'WITHIN_60_DAYS', label: '31–60 days' },
+        { value: 'SAFE', label: 'Beyond 60 days' },
+      ],
+    },
+    detailId: (row) => row.batchId,
+    columns: [
+      c('productName', 'Product', 'text', 'productName'),
+      c('barcode', 'Barcode', 'mono'),
+      c('categoryName', 'Category'),
+      c('brandName', 'Brand'),
+      c('batchNumber', 'Batch', 'mono', 'batchNumber'),
+      date('manufacturingDate', 'Manufactured'),
+      date('expiryDate', 'Expiry Date', 'expiryDate'),
+      num('daysRemaining', 'Days Remaining', 'daysRemaining'),
+      money('mrp', 'MRP'),
+      money('purchasePrice', 'Purchase Price'),
+      num('availableQuantity', 'Available Qty', 'availableQuantity'),
+      money('stockValue', 'Stock Value (Cost)', 'stockValue'),
+      c('expiryStatus', 'Expiry Status', 'badge'),
+      c('supplierName', 'Supplier'),
+    ],
+    summary: [
+      card('expiredBatches', 'Expired Batches', 'number', '⚠️', 'danger'),
+      card('expiredQuantity', 'Expired Quantity', 'number', '📦', 'amber'),
+      card('expiringToday', 'Expiring Today', 'number', '📅', 'amber'),
+      card('expiringWithin7Days', 'Within 7 Days', 'number', '⏳', 'amber'),
+      card('expiringWithin30Days', '8–30 Days', 'number', '📆', 'blue'),
+      card('expiringWithin60Days', '31–60 Days', 'number', '📅', 'cyan'),
+      card('expiringStockValue', 'Upcoming Stock Value (Cost)', 'currency', '💰', 'green'),
+    ],
+    rowKey: (row) => row.batchId,
+  }),
+
+  redeemedLoyaltyPointsReport: otherReport('loyalty-redemptions', {
+    label: 'Redeemed Loyalty Points Report',
+    group: 'Other Reports',
+    subtitle: 'Customer point redemptions with recorded reward values and reversals',
+    defaultSort: sd('redemptionDate'),
+    dateRangeLabel: 'Redemption Period',
+    searchPlaceholder: 'Customer, mobile, invoice or redemption reference…',
+    filters: ['period', 'status', 'customerName', 'customerPhone', 'invoiceNumber', 'referenceNumber', 'user', 'billType'],
+    filterLabels: {
+      period: 'Redemption date range', status: 'Redemption status', user: 'Processed user',
+      customerName: 'Customer', customerPhone: 'Customer mobile',
+      invoiceNumber: 'Invoice', referenceNumber: 'Redemption reference',
+      billType: 'Bill type',
+    },
+    filterOptions: {
+      status: [
+        { value: 'COMPLETED', label: 'Completed' },
+        { value: 'REVERSED', label: 'Reversed' },
+        { value: 'ALL', label: 'All statuses' },
+      ],
+    },
+    note: 'Monetary value and value-per-point are shown only for CASH_DISCOUNT redemptions with a value recorded when redeemed. Other reward types are not converted using current loyalty settings.',
+    detailId: (row) => row.id,
+    columns: [
+      c('referenceNumber', 'Redemption Reference', 'mono', 'referenceNumber'),
+      date('redemptionDate', 'Redemption Date', 'redemptionDate'),
+      c('customerName', 'Customer', 'text', 'customerName'),
+      c('customerPhone', 'Mobile'),
+      c('invoiceNumber', 'Invoice', 'mono'),
+      num('pointsRedeemed', 'Points', 'pointsRedeemed'),
+      c('redemptionRate', 'Value / Point', 'number'),
+      money('redemptionValue', 'Redemption Value', 'redemptionValue'),
+      c('processedBy', 'Processed By'),
+      c('redemptionStatus', 'Status', 'status', 'redemptionStatus'),
+      c('redemptionMethod', 'Method', 'badge'),
+      c('rewardType', 'Reward Type', 'badge'),
+    ],
+    summary: [
+      card('totalRedemptions', 'Redemptions', 'number', '🎁', 'blue'),
+      card('totalPointsRedeemed', 'Points Redeemed', 'number', '⭐', 'purple'),
+      card('totalRedemptionValue', 'Recorded Cash Value', 'currency', '💰', 'green'),
+      card('uniqueCustomers', 'Customers', 'number', '👥', 'cyan'),
+      card('averagePointsPerRedemption', 'Avg. Points / Redemption', 'number', '📊', 'blue'),
+      card('reversedRedemptions', 'Reversed', 'number', '↩️', 'amber'),
+    ],
+    rowKey: (row) => row.id,
+  }),
 };
 
 // Category/Brand columns; sales/purchase blocks follow transactionType (backend
@@ -611,7 +878,7 @@ export const PRODUCT_DETAIL_COLUMNS = [
 ];
 
 // ── helpers consumed by the hook / view ─────────────────────────────────────
-export const REPORT_GROUP_ORDER = ['Sales', 'Purchase', 'Inventory', 'GST', 'Party', 'Category / Brand'];
+export const REPORT_GROUP_ORDER = ['Sales', 'Purchase', 'Inventory', 'GST', 'Party', 'Category / Brand', 'Other Reports'];
 
 export const getColumns = (def, filters) => (def.columnsFor ? def.columnsFor(filters) : def.columns);
 export const getDefaultSort = (def, filters) => (typeof def.defaultSort === 'function' ? def.defaultSort(filters) : def.defaultSort);

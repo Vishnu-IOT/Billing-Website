@@ -7,7 +7,6 @@
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useSettingsStore from '../../../../store/settingsStore-DB';
-import { getLogoSrc } from '../../../../utils/logo';
 import './CustomizableInvoice.css';
 
 const CustomizableInvoice = ({ invoice, company, settings: overrideSettings }) => {
@@ -122,7 +121,7 @@ const CustomizableInvoice = ({ invoice, company, settings: overrideSettings }) =
       <div className="invoice-header">
         <div className="company-info">
           <div className="company-logo-section">
-            {company?.logo && <img src={getLogoSrc(company.logo)} alt="Company Logo" className="company-logo" />}
+            {company?.logo && <img src={company.logo} alt="Company Logo" className="company-logo" />}
             <div className="company-name">{company?.name || 'Your Company'}</div>
           </div>
 

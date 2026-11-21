@@ -1,13 +1,16 @@
 /* ===== PRODUCT BATCH TABLE — batch/expiry sub-table per product ===== */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   fetchProductBatchesAPI,
   addProductBatchAPI,
+  updateProductBatchAPI,
   deleteProductBatchAPI,
 } from '../../api';
 import { Button, Badge, Modal, ConfirmModal } from '../ui';
 import { useToast } from '../../hooks/useToast';
 import { formatDateInput } from '../../utils/date';
+import { invalidateBatchCache } from './BatchSelector';
+import DateInput from './DateInput';
 
 function getExpiryStatus(expiryDate) {
   if (!expiryDate) return null;
@@ -21,34 +24,49 @@ function getExpiryStatus(expiryDate) {
   return { label: 'OK', variant: 'success' };
 }
 
-const EMPTY_BATCH = { batchNumber: '', quantity: '', expiryDate: '', mfgDate: '' };
+const EMPTY_BATCH = {
+  batchNumber: '',
+  quantity: '',
+  freeQuantity: 0,
+  MRP: '',
+  purchasePrice: '',
+  sellingPrice: '',
+  discount: 0,
+  gstPercentage: '',
+  expiryDate: '',
+  mfgDate: '',
+};
 
-export default function ProductBatchTable({ productId, productName }) {
+export default function ProductBatchTable({ productId, productName, unit = 'PCS' }) {
   const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [editingBatch, setEditingBatch] = useState(null);
   const [form, setForm] = useState(EMPTY_BATCH);
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [loadError, setLoadError] = useState('');
 
-  async function loadBatches() {
+  const loadBatches = useCallback(async () => {
     if (!productId) return;
     setLoading(true);
+    setLoadError('');
     try {
       const data = await fetchProductBatchesAPI(productId);
       setBatches(Array.isArray(data) ? data : data?.data ?? []);
-    } catch {
+    } catch (error) {
       setBatches([]);
+      setLoadError(error.message || 'Failed to load batches');
     } finally {
       setLoading(false);
     }
-  }
+  }, [productId]);
 
   useEffect(() => {
     loadBatches();
-  }, [productId]);
+  }, [loadBatches]);
 
   // ── Form Validation ──
   function validateForm() {
@@ -56,22 +74,24 @@ export default function ProductBatchTable({ productId, productName }) {
     if (!form.batchNumber.trim()) {
       errors.batchNumber = 'Batch number is required';
     }
-    if (!form.quantity || Number(form.quantity) <= 0) {
+    if (!editingBatch && (!form.quantity || Number(form.quantity) <= 0)) {
       errors.quantity = 'Quantity must be greater than 0';
     }
 
     const today = new Date().toISOString().split("T")[0];
 
-    if (!form.mfgDate) {
-      errors.mfgDate = "Mfg Date is required";
-    } else if (form.mfgDate > today) {
-      errors.mfgDate = "Mfg Date cannot be a future date";
-    }
+    if (!editingBatch) {
+      if (!form.mfgDate) {
+        errors.mfgDate = "Mfg Date is required";
+      } else if (form.mfgDate > today) {
+        errors.mfgDate = "Mfg Date cannot be a future date";
+      }
 
-    if (!form.expiryDate) {
-      errors.expiryDate = "Expiry Date is required";
-    } else if (form.expiryDate < today) {
-      errors.expiryDate = "Expiry Date cannot be a past date";
+      if (!form.expiryDate) {
+        errors.expiryDate = "Expiry Date is required";
+      } else if (form.expiryDate < today) {
+        errors.expiryDate = "Expiry Date cannot be a past date";
+      }
     }
 
     if (form.mfgDate && form.expiryDate && form.expiryDate < form.mfgDate) {
@@ -88,13 +108,60 @@ export default function ProductBatchTable({ productId, productName }) {
     }
     setSaving(true);
     try {
-      await addProductBatchAPI(productId, form);
-      toast.success('Batch added');
+      const quantity = Number(form.quantity);
+      const freeQuantity = Number(form.freeQuantity) || 0;
+      let companyId;
+      try {
+        const erpSettings = localStorage.getItem('erp-settings');
+        companyId = erpSettings
+          ? JSON.parse(erpSettings)?.state?.companyId
+          : null;
+      } catch {
+        companyId = null;
+      }
+      const batchPayload = {
+        batchNumber: form.batchNumber,
+        ...(form.MRP !== '' && { mrp: Number(form.MRP) }),
+        ...(form.purchasePrice !== '' && {
+          purchasePrice: Number(form.purchasePrice),
+        }),
+        ...(form.sellingPrice !== '' && {
+          salePrice: Number(form.sellingPrice),
+        }),
+        discount: Number(form.discount) || 0,
+        ...(form.gstPercentage !== '' && {
+          gstPercentage: Number(form.gstPercentage),
+        }),
+        ...(form.mfgDate && { mfgDate: form.mfgDate }),
+        ...(form.expiryDate && { expiryDate: form.expiryDate }),
+      };
+      if (editingBatch) {
+        await updateProductBatchAPI(
+          productId,
+          editingBatch.id || editingBatch._id,
+          batchPayload,
+        );
+        toast.success('Batch updated');
+      } else {
+        if (!companyId) {
+          toast.error('Company details are required to add a batch');
+          return;
+        }
+        await addProductBatchAPI(productId, {
+          ...batchPayload,
+          paidQuantity: quantity,
+          freeQuantity,
+          companyId: Number(companyId),
+        });
+        toast.success('Batch added');
+      }
+      invalidateBatchCache(productId);
       setModalOpen(false);
+      setEditingBatch(null);
       setForm(EMPTY_BATCH);
       loadBatches();
-    } catch {
-      toast.error('Failed to add batch');
+    } catch (error) {
+      toast.error(error.message || 'Failed to add batch');
     } finally {
       setSaving(false);
     }
@@ -104,9 +171,10 @@ export default function ProductBatchTable({ productId, productName }) {
     try {
       await deleteProductBatchAPI(productId, deleteId);
       toast.success('Batch deleted');
+      invalidateBatchCache(productId);
       loadBatches();
-    } catch {
-      toast.error('Delete failed');
+    } catch (error) {
+      toast.error(error.message || 'Delete failed');
     } finally {
       setDeleteId(null);
     }
@@ -128,11 +196,11 @@ export default function ProductBatchTable({ productId, productName }) {
 
       <Modal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setFormErrors({}) }}
-        title={`Add Batch — ${productName}`}
+        onClose={() => { setModalOpen(false); setEditingBatch(null); setFormErrors({}) }}
+        title={`${editingBatch ? 'Edit' : 'Add'} Batch — ${productName}`}
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setModalOpen(false); setFormErrors({}) }}>
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setEditingBatch(null); setFormErrors({}) }}>
               Cancel
             </Button>
             <Button variant="primary" loading={saving} onClick={handleSave}>
@@ -155,12 +223,15 @@ export default function ProductBatchTable({ productId, productName }) {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Quantity *</label>
+            <label className="form-label">Paid Quantity *</label>
             <input
               type="number"
+              min="0.001"
+              step={unit === 'KG' ? '0.001' : '1'}
               placeholder='Enter Qty'
               className="form-input"
               value={form.quantity}
+              readOnly={!!editingBatch}
               onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
             />
             {formErrors.quantity && (
@@ -168,9 +239,95 @@ export default function ProductBatchTable({ productId, productName }) {
             )}
           </div>
           <div className="form-group">
-            <label className="form-label">Mfg Date *</label>
+            <label className="form-label">Supplier Free Quantity</label>
             <input
-              type="date"
+              type="number"
+              min="0"
+              step={unit === 'KG' ? '0.001' : '1'}
+              className="form-input"
+              value={form.freeQuantity}
+              readOnly={!!editingBatch}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  freeQuantity: e.target.value,
+                }))
+              }
+            />
+            <span className="price-gst-hint">
+              {editingBatch
+                ? `Available: ${form.quantity || 0} ${unit}`
+                : `Total received: ${Number(form.quantity || 0) + Number(form.freeQuantity || 0)} ${unit}`}
+            </span>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Batch MRP (₹)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="form-input"
+              value={form.MRP}
+              onChange={(e) => setForm((current) => ({ ...current, MRP: e.target.value }))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Purchase Price (₹)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="form-input"
+              value={form.purchasePrice}
+              onChange={(e) =>
+                setForm((current) => ({ ...current, purchasePrice: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Selling Price (₹)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="form-input"
+              value={form.sellingPrice}
+              onChange={(e) =>
+                setForm((current) => ({ ...current, sellingPrice: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Discount (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              className="form-input"
+              value={form.discount}
+              onChange={(e) =>
+                setForm((current) => ({ ...current, discount: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">GST (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              className="form-input"
+              value={form.gstPercentage}
+              onChange={(e) =>
+                setForm((current) => ({ ...current, gstPercentage: e.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Mfg Date *</label>
+            <DateInput
               className="form-input"
               max={new Date().toISOString().split("T")[0]}
               value={form.mfgDate}
@@ -182,8 +339,7 @@ export default function ProductBatchTable({ productId, productName }) {
           </div>
           <div className="form-group">
             <label className="form-label">Expiry Date *</label>
-            <input
-              type="date"
+            <DateInput
               min={new Date().toISOString().split("T")[0]}
               className="form-input"
               value={form.expiryDate}
@@ -212,13 +368,23 @@ export default function ProductBatchTable({ productId, productName }) {
             </Badge>
           )}
         </h3>
-        <Button variant="secondary" size="sm" onClick={() => setModalOpen(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setEditingBatch(null);
+            setForm(EMPTY_BATCH);
+            setModalOpen(true);
+          }}
+        >
           + Add Batch
         </Button>
       </div>
 
       {loading ? (
         <div style={{ padding: 16, color: 'var(--text-muted)' }}>Loading batches…</div>
+      ) : loadError ? (
+        <div className="um-error-text" role="alert">{loadError}</div>
       ) : batches.length === 0 ? (
         <div
           style={{
@@ -237,7 +403,15 @@ export default function ProductBatchTable({ productId, productName }) {
             <thead>
               <tr>
                 <th>Batch No</th>
-                <th>Qty</th>
+                <th>MRP</th>
+                <th>Purchase</th>
+                <th>Selling</th>
+                <th>Discount</th>
+                <th>GST</th>
+                <th>Paid Qty</th>
+                <th>Free Qty</th>
+                <th>Total Received</th>
+                <th>Available</th>
                 <th>Mfg Date</th>
                 <th>Expiry</th>
                 <th>Status</th>
@@ -250,7 +424,15 @@ export default function ProductBatchTable({ productId, productName }) {
                 return (
                   <tr key={b.id || b._id}>
                     <td style={{ fontWeight: 600 }}>{b.batchNo || b.batchNumber}</td>
-                    <td>{b.quantity ?? '—'}</td>
+                    <td>{b.MRP ?? b.mrp ?? '—'}</td>
+                    <td>{b.purchasePrice ?? '—'}</td>
+                    <td>{b.salePrice ?? b.sellingPrice ?? '—'}</td>
+                    <td>{b.discount ?? 0}%</td>
+                    <td>{b.gstPercentage ?? '—'}%</td>
+                    <td>{b.paidQuantity ?? b.quantity ?? '—'} {unit}</td>
+                    <td>{b.freeQuantity ?? 0} {unit}</td>
+                    <td>{b.totalReceivedQuantity ?? (Number(b.paidQuantity ?? b.quantity ?? 0) + Number(b.freeQuantity ?? 0))} {unit}</td>
+                    <td>{b.availableQuantity ?? b.quantity ?? '—'} {unit}</td>
                     <td>{formatDateInput(b.mfgDate) || '—'}</td>
                     <td>{formatDateInput(b.expiryDate) || '—'}</td>
                     <td>
@@ -261,6 +443,32 @@ export default function ProductBatchTable({ productId, productName }) {
                       )}
                     </td>
                     <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setEditingBatch(b);
+                            setForm({
+                              batchNumber: b.batchNumber || b.batchNo || '',
+                              quantity: b.availableQuantity ?? b.quantity ?? '',
+                              freeQuantity: b.freeQuantity ?? 0,
+                              MRP: b.MRP ?? b.mrp ?? '',
+                              purchasePrice: b.purchasePrice ?? '',
+                              sellingPrice: b.salePrice ?? b.sellingPrice ?? '',
+                              discount: b.discount ?? 0,
+                              gstPercentage: b.gstPercentage ?? '',
+                              expiryDate: b.expiryDate
+                                ? String(b.expiryDate).slice(0, 10)
+                                : '',
+                              mfgDate: b.mfgDate ? String(b.mfgDate).slice(0, 10) : '',
+                            });
+                            setFormErrors({});
+                            setModalOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
                       <Button
                         variant="danger-outline"
                         size="sm"
@@ -268,6 +476,7 @@ export default function ProductBatchTable({ productId, productName }) {
                       >
                         Delete
                       </Button>
+                      </div>
                     </td>
                   </tr>
                 );

@@ -17,6 +17,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useToast } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
+import DateInput from '../../components/shared/DateInput';
 import { FiPlus } from 'react-icons/fi';
 import '../../styles/payments.css';
 
@@ -334,8 +335,7 @@ export default function PaymentOut() {
         <div className="filter-group">
           <label className="filter-label">Start Date</label>
 
-          <input
-            type="date"
+          <DateInput
             className="form-input"
             value={filters.startDate}
             onChange={(e) =>
@@ -351,8 +351,7 @@ export default function PaymentOut() {
         <div className="filter-group">
           <label className="filter-label">End Date</label>
 
-          <input
-            type="date"
+          <DateInput
             className="form-input"
             min={filters.startDate || undefined}
             value={filters.endDate}

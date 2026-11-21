@@ -7,6 +7,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { usePagination } from '../../hooks/usePagination';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
+import DateInput from '../../components/shared/DateInput';
 import { FiPlus, FiTrendingDown, FiTag, FiTrash2 } from 'react-icons/fi';
 import '../../styles/reports.css';
 
@@ -427,8 +428,7 @@ export default function Expenses() {
                 >
                   Date
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   className="form-input"
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}

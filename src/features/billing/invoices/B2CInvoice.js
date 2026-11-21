@@ -10,6 +10,10 @@ import { formatCurrency } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
 import { numberToWords } from "../../../utils/numbers";
 import useSettingsStore from "../../../store/settingsStore-DB";
+import {
+  formatQuantity,
+  getReadableQuantity,
+} from "../../../utils/quantityUnits";
 
 export default function B2CInvoice({
   bill,
@@ -28,6 +32,12 @@ export default function B2CInvoice({
       showSignature: s.showSignature,
     })),
   );
+  const hasPendingQuickSaleItems = Boolean(bill?.gstClassificationPending) ||
+    (items || []).some(
+      (item) =>
+        (item?.itemType === "QUICK_SALE" || item?.cartItemType === "QUICK_SALE") &&
+        item?.gstVerificationStatus === "GST_PENDING",
+    );
   return (
     <div
       ref={printRef}
@@ -78,7 +88,7 @@ export default function B2CInvoice({
               letterSpacing: 1,
             }}
           >
-            {invoiceLabel}
+            {hasPendingQuickSaleItems ? "CASH BILL" : invoiceLabel}
           </h1>
           <div
             style={{
@@ -158,14 +168,64 @@ export default function B2CInvoice({
             const price = parseFloat(item.price) || 0;
             const disc = item.discountPercentage || 0;
             const total = parseFloat(item.netRate) || 0;
+            const freeQuantity = Number(item.freeQuantity) || 0;
+            const paidQuantity = Number(
+              item.paidQuantity ?? Math.max(0, Number(qty) - freeQuantity),
+            );
+            const quantityUnit =
+              item.enteredQuantityUnit || item.quantityUnit || "";
+            const unitSuffix =
+              quantityUnit === "KG"
+                ? "kg"
+                : quantityUnit === "GRAM"
+                  ? "g"
+                  : quantityUnit && quantityUnit !== "PCS"
+                    ? ` ${quantityUnit}`
+                    : "";
+            const quantityLabel =
+              freeQuantity > 0 && item.itemRole !== "GIFT"
+                ? `${formatQuantity(paidQuantity)}+${formatQuantity(freeQuantity)}${unitSuffix}`
+                : getReadableQuantity(item);
             return (
               <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
                 <td style={{ padding: "12px 8px" }}>{idx + 1}</td>
                 <td style={{ padding: "12px 8px", fontWeight: 600 }}>
                   {item.productName || item.product?.name}
+                  {(item.batchNumber || item.batchNo) && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                      Batch: {item.batchNumber || item.batchNo}
+                    </div>
+                  )}
+                  {(item.mrp ?? item.MRP) != null && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                      MRP: {Number(item.mrp ?? item.MRP).toFixed(2)}
+                    </div>
+                  )}
+                  {Number(item.taxPercentage ?? item.taxRate) > 0 && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                      GST: {Number(item.taxPercentage ?? item.taxRate)}%
+                    </div>
+                  )}
+                  {(item.itemType === "QUICK_SALE" || item.cartItemType === "QUICK_SALE") &&
+                    item.gstVerificationStatus === "GST_PENDING" && (
+                      <div style={{ fontSize: 11, color: "#92400e", fontWeight: 600 }}>
+                        QUICK SALE · GST PENDING VERIFICATION
+                      </div>
+                    )}
+                  {item.itemRole === "GIFT" && (
+                    <div style={{ fontSize: 11, color: "#666", fontWeight: 600 }}>
+                      FREE GIFT{item.promotionName || item.offerName ? ` · ${item.promotionName || item.offerName}` : ""}
+                    </div>
+                  )}
+                  {item.itemRole !== "GIFT" &&
+                    (item.offerName || item.promotionName) && (
+                      <div style={{ fontSize: 11, color: "#666", fontWeight: 400 }}>
+                        {item.promotionName || item.offerName}
+                      </div>
+                    )}
                 </td>
                 <td style={{ padding: "12px 8px", textAlign: "right" }}>
-                  {qty} {item.unit || "pcs"}
+                  {quantityLabel}
                 </td>
                 <td style={{ padding: "12px 8px", textAlign: "right" }}>
                   {price.toFixed(2)}

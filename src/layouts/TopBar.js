@@ -3,13 +3,15 @@ import React from 'react';
 import { IoReceiptOutline } from 'react-icons/io5';
 import { FiSettings, FiLogOut } from 'react-icons/fi';
 import useUIStore from '../store/uiStore';
-import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
+import { hasPermission } from '../utils/permissions';
 
 export function TopBar() {
-  const { toggleSidebar } = useUIStore();
-  const settings = useAppStore((s) => s.settings);
+  const { toggleSidebar, page, searchParams } = useUIStore();
   const { user, logout } = useAuthStore();
+  const isPosBillingPage =
+    (page === 'sales' && searchParams.get('type') === 'B2C') ||
+    (page.startsWith('sales/edit/') && searchParams.get('type') !== 'B2B');
 
   function navigate(page) {
     window.location.hash = page;
@@ -43,13 +45,15 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar__brand">
-        <button
-          className="topbar__hamburger"
-          onClick={toggleSidebar}
-          aria-label="Toggle menu"
-        >
-          ☰
-        </button>
+        {!isPosBillingPage && (
+          <button
+            className="topbar__hamburger"
+            onClick={toggleSidebar}
+            aria-label="Toggle menu"
+          >
+            ☰
+          </button>
+        )}
         {/* <div className="topbar__logo"><IoReceiptOutline /></div> */}
         <div className="topbar__logo">
           <img
@@ -58,7 +62,7 @@ export function TopBar() {
             alt="logo"
           />
         </div>
-        <span className="topbar__app-name">NithiX</span>
+        <span className="topbar__app-name">Shree Kamachi Amman Store</span>
       </div>
 
       <div className="topbar__actions">
@@ -93,12 +97,12 @@ export function TopBar() {
                 ...getRoleBadgeStyles(user.role),
               }}
             >
-              {user.role}
+              {user.roleName || user.role}
             </span>
           </div>
         )}
 
-        {user?.role === 'OWNER' && (
+        {hasPermission(user, 'settings.configuration.view') && (
           <button
             className="topbar__icon-btn"
             onClick={() => navigate('settings')}

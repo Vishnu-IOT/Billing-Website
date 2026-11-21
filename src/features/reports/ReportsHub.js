@@ -1,6 +1,7 @@
 /* ===== REPORTS HUB — single page, internal sidebar for all 19 reports ===== */
 import React, { useState } from 'react';
 import ReportView from './ReportView';
+import GSTTemplateReport from './GSTTemplateReport';
 import { REPORTS, REPORT_GROUP_ORDER } from './reportRegistry';
 import './ReportsHub.css';
 
@@ -56,7 +57,14 @@ export default function ReportsHub() {
       </aside>
 
       <main className="rh-main">
-        <ReportView key={activeKey} reportKey={activeKey} />
+        {REPORTS[activeKey].templateReport ? (
+          <GSTTemplateReport
+            key={activeKey}
+            reportType={REPORTS[activeKey].templateReport}
+          />
+        ) : (
+          <ReportView key={activeKey} reportKey={activeKey} />
+        )}
       </main>
     </div>
   );

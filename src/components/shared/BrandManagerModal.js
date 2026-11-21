@@ -18,9 +18,15 @@ export default function BrandManagerModal({ open, onClose }) {
 
   async function loadBrands() {
     setLoading(true);
-    const data = await fetchBrandsAPI();
-    setBrands(data);
-    setLoading(false);
+    try {
+      const data = await fetchBrandsAPI();
+      setBrands(data);
+      setError('');
+    } catch (loadError) {
+      setError(loadError.message || 'Failed to load brands');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openAdd() {
@@ -42,22 +48,32 @@ export default function BrandManagerModal({ open, onClose }) {
       return;
     }
     setSaving(true);
-    if (editId) {
-      await updateBrandAPI(editId, form);
-    } else {
-      await addBrandAPI(form);
+    try {
+      if (editId) {
+        await updateBrandAPI(editId, form);
+      } else {
+        await addBrandAPI(form);
+      }
+      setEditId(null);
+      setForm({ name: '', description: '' });
+      setError('');
+      await loadBrands();
+    } catch (saveError) {
+      setError(saveError.message || 'Failed to save brand');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setEditId(null);
-    setForm({ name: '', description: '' });
-    setError('');
-    loadBrands();
   }
 
   async function handleDelete() {
-    await deleteBrandAPI(deleteId);
-    setDeleteId(null);
-    loadBrands();
+    try {
+      await deleteBrandAPI(deleteId);
+      setDeleteId(null);
+      await loadBrands();
+    } catch (deleteError) {
+      setError(deleteError.message || 'Failed to delete brand');
+      setDeleteId(null);
+    }
   }
 
   return (

@@ -5,8 +5,7 @@ export async function fetchBrandsAPI() {
     const response = await axios.get(`${BASE_URL}/brands/get-Brands`, getAuthHeaders());
     return response.data?.data || [];
   } catch (err) {
-    console.error(err);
-    return [];
+    throw new Error(err.response?.data?.message || err.message || 'Failed to load brands');
   }
 }
 
@@ -15,7 +14,9 @@ export async function addBrandAPI(brand) {
     const response = await axios.post(`${BASE_URL}/brands/add-Brand`, brand, getAuthHeaders());
     return response.data;
   } catch (err) {
-    alert(err?.response?.data?.message || 'Failed to create brand');
+    throw new Error(
+      err?.response?.data?.message || err.message || 'Failed to create brand'
+    );
   }
 }
 
@@ -24,7 +25,9 @@ export async function updateBrandAPI(id, brand) {
     const response = await axios.put(`${BASE_URL}/brands/update-Brand/${id}`, brand, getAuthHeaders());
     return response.data;
   } catch (err) {
-    alert(err?.response?.data?.message || 'Failed to update brand');
+    throw new Error(
+      err?.response?.data?.message || err.message || 'Failed to update brand'
+    );
   }
 }
 
@@ -33,6 +36,8 @@ export async function deleteBrandAPI(id) {
     const response = await axios.delete(`${BASE_URL}/brands/delete-Brand/${id}`, getAuthHeaders());
     return response.data;
   } catch (err) {
-    alert(err?.response?.data?.message || 'Failed to delete brand');
+    throw new Error(
+      err?.response?.data?.message || err.message || 'Failed to delete brand'
+    );
   }
 }

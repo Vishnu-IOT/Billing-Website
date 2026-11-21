@@ -1,446 +1,436 @@
-/* ===== POS PAYMENT MODAL — Checkout flow ===== */
-import React, { useState } from 'react';
-import { formatCurrency } from '../../utils/currency';
+/* ===== POS PAYMENT MODAL — fiscal checkout terminal =====
+ * Presentation redesign. Payment collection, validation, the payload sent to
+ * onConfirm and the Alt+1..4 / Ctrl+Enter shortcuts are unchanged.
+ */
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FiUser,
+  FiPhone,
+  FiDollarSign,
+  FiSmartphone,
+  FiCreditCard,
+  FiShuffle,
+  FiPrinter,
+  FiPauseCircle,
+  FiArrowLeft,
+  FiFileText,
+  FiTag,
+  FiStar,
+  FiCheckCircle,
+} from "react-icons/fi";
+import { TerminalModal, ModalClose, Kbd, money, rupees } from "./posTerminal";
 
 const PAYMENT_METHODS = [
-  { key: 'Cash', icon: '💵', label: 'Cash' },
-  { key: 'UPI', icon: '📱', label: 'UPI' },
-  { key: 'Card', icon: '💳', label: 'Card' },
-  { key: 'Split', icon: '⚡', label: 'Split' },
+  { key: "Cash", icon: <FiDollarSign />, label: "CASH", sub: "Drawer Direct" },
+  { key: "UPI", icon: <FiSmartphone />, label: "UPI QR", sub: "GPay / PhonePe" },
+  { key: "Card", icon: <FiCreditCard />, label: "CARD", sub: "Debit / Credit" },
+  { key: "Split", icon: <FiShuffle />, label: "SPLIT", sub: "Multi-Tender" },
 ];
 
-/**
- * POSPaymentModal
- * Shown when user clicks "Checkout".
- * Collects payment method, shows grand total, confirms save.
- */
+const ADD_STEPS = [50, 100, 500];
+const num = (v) => parseFloat(v) || 0;
+
 export default function POSPaymentModal({
   open,
   totals,
   paymentMethod,
   onPaymentMethodChange,
   customerInfo,
-  onCustomerChange,
   invoiceNo,
-  saleDate,
   onConfirm,
   onClose,
+  onHold,
   saving,
+  operatorName,
+  operatorId,
+  terminalId,
+  tierLabel,
+  printerLabel,
+  loyaltyRedemptionEnabled = false,
+  availableLoyaltyPoints = 0,
+  loyaltyPointsToRedeem = 0,
+  maximumRedeemablePoints = 0,
+  minimumRedeemablePoints = 1,
+  loyaltyRedemptionAmountPerPoint = 0,
+  redeemLoyaltyOptIn = false,
+  onRedeemLoyaltyOptInChange,
+  onLoyaltyPointsToRedeemChange,
 }) {
-  const [cashGiven, setCashGiven] = useState('');
-  const [splitCash, setSplitCash] = useState('');
-  const [splitCard, setSplitCard] = useState('');
-  const [splitUPI, setSplitUPI] = useState('');
+  const [cashGiven, setCashGiven] = useState("");
+  const [splitCash, setSplitCash] = useState("");
+  const [splitCard, setSplitCard] = useState("");
+  const [splitUPI, setSplitUPI] = useState("");
+  const firstPaymentMethodRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
-  const change = Math.max(0, (parseFloat(cashGiven) || 0) - (totals?.grandTotal || 0));
-  const splitTotal = (parseFloat(splitCash) || 0) + (parseFloat(splitCard) || 0) + (parseFloat(splitUPI) || 0);
+  useEffect(() => {
+    if (!open) return undefined;
+    previousFocusRef.current = document.activeElement;
+    firstPaymentMethodRef.current?.focus();
+    return () => {
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [open]);
+
+  const payable = totals?.grandTotal || 0;
+  const given = num(cashGiven);
+  const change = Math.max(0, given - payable);
+  const balanceDue = cashGiven ? Math.max(0, payable - given) : 0;
+  const splitTotal = num(splitCash) + num(splitCard) + num(splitUPI);
+  const splitRemaining = payable - splitTotal;
+  const splitExact = Math.abs(splitRemaining) < 0.01;
+  const confirmDisabled =
+    saving ||
+    (paymentMethod === "Cash" && cashGiven && given < payable) ||
+    (paymentMethod === "Split" && Math.abs(splitTotal - payable) > 0.01);
 
   const handleConfirmClick = () => {
     let paymentDetails = null;
-    if (paymentMethod === 'Split') {
-      paymentDetails = {
-        cash: parseFloat(splitCash) || 0,
-        card: parseFloat(splitCard) || 0,
-        upi: parseFloat(splitUPI) || 0,
-      };
-    } else if (paymentMethod === 'Cash') {
-      paymentDetails = { cash: totals.grandTotal };
-    } else if (paymentMethod === 'Card') {
-      paymentDetails = { card: totals.grandTotal };
-    } else if (paymentMethod === 'UPI') {
-      paymentDetails = { upi: totals.grandTotal };
+    let amountReceived = payable;
+    if (paymentMethod === "Split") {
+      amountReceived = splitTotal;
+      paymentDetails = { cash: num(splitCash), card: num(splitCard), upi: num(splitUPI) };
+    } else if (paymentMethod === "Cash") {
+      amountReceived = given || payable;
+      paymentDetails = { cash: payable };
+    } else if (paymentMethod === "Card") {
+      paymentDetails = { card: payable };
+    } else if (paymentMethod === "UPI") {
+      paymentDetails = { upi: payable };
     }
-
-    onConfirm(paymentDetails);
+    onConfirm(paymentDetails, {
+      amountReceived,
+      amountReturned: paymentMethod === "Cash" ? change : 0,
+    });
   };
 
   if (!open) return null;
 
-  const quickAmounts = [
-    Math.ceil(totals.grandTotal / 50) * 50,
-    Math.ceil(totals.grandTotal / 100) * 100,
-    Math.ceil(totals.grandTotal / 500) * 500,
-  ].filter((v, i, arr) => arr.indexOf(v) === i && v >= totals.grandTotal);
+  const tax = Number(totals.totalTax) || 0;
+  const cgst = Number((tax / 2).toFixed(2));
+  const sgst = Number((tax - cgst).toFixed(2));
+  const itemDiscount = Number(totals.itemDiscount) || 0;
+  const globalDiscount = Number(totals.globalDiscountAmount) || 0;
+  const roundOff = Number(totals.roundOff) || 0;
+  const returnCredit = Number(totals.returnCreditAmount) || 0;
+  const loyaltyRedemption = Number(totals.loyaltyRedemptionAmount) || 0;
+
+  const setAmount = (v) => setCashGiven(v === "" ? "" : String(Number(v.toFixed(2))));
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15,23,42,0.7)',
-        zIndex: 'var(--z-modal)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        backdropFilter: 'blur(4px)',
-        animation: 'fadeIn 0.2s ease',
+    <TerminalModal
+      tone="blue"
+      label="Checkout"
+      width={1040}
+      onOverlayClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        } else if ((e.key === "Enter" && e.ctrlKey) || e.key === "F8") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!confirmDisabled) handleConfirmClick();
+        } else if (e.key === "F10" && onHold) {
+          e.preventDefault();
+          e.stopPropagation();
+          onHold();
+        } else if (e.altKey && /^[1-4]$/.test(e.key)) {
+          e.preventDefault();
+          onPaymentMethodChange(PAYMENT_METHODS[Number(e.key) - 1].key);
+        }
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 20,
-          width: '100%',
-          maxWidth: 480,
-          overflow: 'hidden',
-          boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-            padding: '20px 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>
-              Checkout
-            </div>
-            <div style={{ color: '#fff', fontSize: 28, fontWeight: 800 }}>
-              {formatCurrency(totals.grandTotal)}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>
-              Invoice {invoiceNo}
-            </div>
+      <header className="bf-modal__header bf-modal__header--checkout">
+        <div className="bf-modal__logo"><FiFileText /></div>
+        <div className="bf-modal__headtext">
+          <h2 className="bf-modal__title bf-modal__title--sm">
+            CHECKOUT • BILLFLOW POS <span className="bf-tag">{invoiceNo || "—"}</span>
+          </h2>
+          <div className="bf-modal__meta">
+            {terminalId ? `TERMINAL ${terminalId}` : ""}
+            {operatorName ? ` • OPERATOR ${operatorName}` : ""}
+            {operatorId ? ` (#${operatorId})` : ""}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: 'none',
-              borderRadius: 10,
-              color: '#fff',
-              width: 36,
-              height: 36,
-              cursor: 'pointer',
-              fontSize: 18,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            ✕
-          </button>
         </div>
+        <div className="bf-modal__amount">
+          <span>NET AMOUNT PAYABLE</span>
+          <strong>{rupees(payable)}</strong>
+        </div>
+        <ModalClose onClick={onClose} />
+      </header>
 
-        {/* Body */}
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Customer */}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
-              Customer Details
+      <div className="bf-modal__body bf-checkout">
+        <div className="bf-checkout__left">
+          <section className="bf-section bf-section--panel">
+            <div className="bf-panelhead">
+              <span className="bf-label"><FiUser /> CUSTOMER IDENTIFICATION</span>
+              {tierLabel && <span className="bf-tag bf-tag--soft">{tierLabel.toUpperCase()} TIER</span>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ position: 'relative' }}>
-                <input
-                  value={customerInfo.name}
-                  onChange={(e) => onCustomerChange({ name: e.target.value })}
-                  placeholder="Name"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                  }}
-                  readOnly
-                />
+            <div className="bf-split2 bf-split2--tight">
+              <div>
+                <span className="bf-label">CUSTOMER NAME</span>
+                <div className="bf-readfield"><FiUser /> {customerInfo?.name || "—"}</div>
               </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  value={customerInfo.phone}
-                  onChange={(e) => onCustomerChange({ phone: e.target.value })}
-                  placeholder="Phone"
-                  type="tel"
-                  style={{
-                    // width: '100%',
-                    padding: '10px 12px',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                  }}
-                  readOnly
-                />
+              <div>
+                <span className="bf-label">PHONE NUMBER</span>
+                <div className="bf-readfield"><FiPhone /> {customerInfo?.phone ? `+91 ${customerInfo.phone}` : "—"}</div>
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Payment Method */}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
-              Payment Method
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              {PAYMENT_METHODS.map((pm) => (
+          {loyaltyRedemptionEnabled && (
+            <section className="bf-section bf-section--panel">
+              <label className="bf-panelhead" style={{ cursor: "pointer" }}>
+                <span className="bf-label"><FiStar /> REDEEM LOYALTY POINTS</span>
+                <input
+                  type="checkbox"
+                  aria-label="Redeem loyalty points"
+                  checked={redeemLoyaltyOptIn}
+                  onChange={(event) =>
+                    onRedeemLoyaltyOptInChange?.(event.target.checked)
+                  }
+                />
+              </label>
+              <div className="bf-label">
+                Available: {Number(availableLoyaltyPoints) || 0} pts
+                {" · "}₹{Number(loyaltyRedemptionAmountPerPoint).toFixed(2)} per point
+              </div>
+              {redeemLoyaltyOptIn && (
+                <div className="bf-split2 bf-split2--tight" style={{ marginTop: 10 }}>
+                  <div>
+                    <label className="bf-label" htmlFor="loyalty-points-to-redeem">
+                      POINTS TO REDEEM (MIN {minimumRedeemablePoints}, MAX {maximumRedeemablePoints})
+                    </label>
+                    <input
+                      id="loyalty-points-to-redeem"
+                      type="number"
+                      min={minimumRedeemablePoints}
+                      max={maximumRedeemablePoints}
+                      step="1"
+                      inputMode="numeric"
+                      value={loyaltyPointsToRedeem}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (/^\d*$/.test(value)) {
+                          onLoyaltyPointsToRedeemChange?.(
+                            Math.min(Number(value) || 0, maximumRedeemablePoints)
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="bf-readfield" aria-live="polite">
+                    Discount: {rupees(
+                      Number(loyaltyPointsToRedeem) *
+                        Number(loyaltyRedemptionAmountPerPoint)
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          <section>
+            <span className="bf-label">PAYMENT METHOD [ALT+1 – ALT+4]</span>
+            <div className="bf-methods" role="group" aria-label="Payment method">
+              {PAYMENT_METHODS.map((pm, i) => (
                 <button
                   key={pm.key}
+                  type="button"
+                  ref={pm.key === "Cash" ? firstPaymentMethodRef : undefined}
+                  className={`bf-method ${paymentMethod === pm.key ? "is-selected" : ""}`}
+                  aria-pressed={paymentMethod === pm.key}
                   onClick={() => onPaymentMethodChange(pm.key)}
-                  style={{
-                    padding: '12px 8px',
-                    borderRadius: 12,
-                    border: paymentMethod === pm.key ? '2px solid #2563eb' : '2px solid #e2e8f0',
-                    background: paymentMethod === pm.key ? '#eff6ff' : '#f8fafc',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 4,
-                    transition: 'all 0.15s ease',
-                    transform: paymentMethod === pm.key ? 'scale(1.03)' : 'scale(1)',
-                  }}
                 >
-                  <span style={{ fontSize: 22 }}>{pm.icon}</span>
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: paymentMethod === pm.key ? '#2563eb' : '#64748b',
-                  }}>
-                    {pm.label}
-                  </span>
+                  <span className="bf-method__top">{pm.icon}<Kbd>ALT+{i + 1}</Kbd></span>
+                  <strong>{pm.label}</strong>
+                  <small>{pm.sub}</small>
                 </button>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Cash quick amounts */}
-          {paymentMethod === 'Cash' && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
-                Cash Received
+          {paymentMethod === "Cash" && (
+            <section className="bf-section bf-section--panel">
+              <div className="bf-panelhead">
+                <span className="bf-label">CURRENCY RECEIVED MATRIX</span>
+                <span className="bf-label bf-label--blue">DENOMINATION SHORTCUTS</span>
               </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                {quickAmounts.slice(0, 3).map((amt) => (
-                  <button
-                    key={amt}
-                    onClick={() => setCashGiven(String(amt))}
-                    style={{
-                      flex: 1,
-                      padding: '8px',
-                      borderRadius: 8,
-                      border: cashGiven === String(amt) ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                      background: cashGiven === String(amt) ? '#eff6ff' : '#f8fafc',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: cashGiven === String(amt) ? '#2563eb' : '#374151',
-                    }}
-                  >
-                    ₹{amt}
-                  </button>
+              <div className="bf-quick">
+                {ADD_STEPS.map((a) => (
+                  <button key={a} type="button" onClick={() => setAmount(given + a)}>+₹{a}</button>
                 ))}
+                <button type="button" className="is-exact" onClick={() => setAmount(payable)}>
+                  EXACT (₹{money(payable).replace(".00", "")})
+                </button>
+                <button type="button" onClick={() => setAmount(2000)}>₹2,000</button>
               </div>
-              <input
-                type="number"
-                value={cashGiven}
-                onChange={(e) => setCashGiven(e.target.value)}
-                placeholder={`Enter amount (≥ ₹${totals.grandTotal})`}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1.5px solid #e2e8f0',
-                  borderRadius: 10,
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
-                }}
-              />
-              {parseFloat(cashGiven) > 0 && (
-                <div style={{
-                  marginTop: 8,
-                  padding: '10px 14px',
-                  background: change >= 0 ? '#f0fdf4' : '#fef2f2',
-                  borderRadius: 8,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: change >= 0 ? '#15803d' : '#dc2626' }}>
-                    {change >= 0 ? '✓ Change to Return' : '⚠ Insufficient'}
-                  </span>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: change >= 0 ? '#15803d' : '#dc2626' }}>
-                    {change >= 0 ? formatCurrency(change) : ''}
-                  </span>
+              <div className="bf-tendered">
+                <span className="bf-tag bf-tag--dark">TENDERED</span> <span className="bf-label">INR (₹)</span>
+                <div className="bf-tendered__row">
+                  <span>₹</span>
+                  <input
+                    inputMode="decimal"
+                    aria-label="Tendered amount"
+                    placeholder={money(payable)}
+                    value={cashGiven}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d{0,8}(\.\d{0,2})?$/.test(v)) setCashGiven(v);
+                    }}
+                    onFocus={(e) => e.target.select()}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+              <div className="bf-split2 bf-split2--tight">
+                <div className="bf-result bf-result--ok">
+                  <span className="bf-label">CHANGE TO RETURN</span>
+                  <strong>{rupees(change)}</strong>
+                </div>
+                <div className={`bf-result ${balanceDue > 0 ? "bf-result--bad" : ""}`}>
+                  <span className="bf-label">BALANCE DUE</span>
+                  <strong>{rupees(balanceDue)}</strong>
+                </div>
+              </div>
+            </section>
           )}
 
-          {/* Split Payment inputs */}
-          {paymentMethod === 'Split' && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
-                Split Payment Breakdown
+          {(paymentMethod === "UPI" || paymentMethod === "Card") && (
+            <section className="bf-section bf-section--panel">
+              <span className="bf-label">
+                {paymentMethod === "UPI" ? "UPI COLLECTION" : "CARD COLLECTION"}
+              </span>
+              <div className="bf-collect">
+                <strong>{rupees(payable)}</strong>
+                <span>
+                  Collect the full amount by {paymentMethod === "UPI" ? "UPI" : "card"}, then confirm.
+                  The sale is recorded as a single {paymentMethod === "UPI" ? "UPI" : "card"} tender.
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💵 Cash</span>
-                  <input
-                    type="number"
-                    value={splitCash}
-                    onChange={(e) => setSplitCash(e.target.value)}
-                    placeholder="Cash ₹"
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      border: '1.5px solid #e2e8f0',
-                      borderRadius: 8,
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💳 Card</span>
-                  <input
-                    type="number"
-                    value={splitCard}
-                    onChange={(e) => setSplitCard(e.target.value)}
-                    placeholder="Card ₹"
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      border: '1.5px solid #e2e8f0',
-                      borderRadius: 8,
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>📱 UPI</span>
-                  <input
-                    type="number"
-                    value={splitUPI}
-                    onChange={(e) => setSplitUPI(e.target.value)}
-                    placeholder="UPI ₹"
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      border: '1.5px solid #e2e8f0',
-                      borderRadius: 8,
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-
-                <div style={{
-                  padding: '10px 14px',
-                  background: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#f0fdf4' : '#fff7ed',
-                  border: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '1px solid #bbf7d0' : '1px solid #fed7aa',
-                  borderRadius: 8,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#15803d' : '#c2410c',
-                }}>
-                  <span>
-                    {Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '✓ Exact Split Amount' : `Remaining: ${formatCurrency(totals.grandTotal - splitTotal)}`}
-                  </span>
-                  <span>Sum: {formatCurrency(splitTotal)}</span>
-                </div>
-              </div>
-            </div>
+            </section>
           )}
 
-          {/* Bill Summary */}
-          <div style={{
-            background: '#f8fafc',
-            borderRadius: 12,
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#64748b' }}>
-              <span>Subtotal</span>
-              <span>{formatCurrency(totals.subtotal)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#64748b' }}>
-              <span>GST</span>
-              <span>{formatCurrency(totals.totalTax)}</span>
-            </div>
-            {totals.rawTotal !== totals.grandTotal && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#dc2626' }}>
-                <span>Discount</span>
-                <span>−{formatCurrency(totals.rawTotal - totals.grandTotal - totals.roundOff)}</span>
+          {paymentMethod === "Split" && (
+            <section className="bf-section bf-section--panel">
+              <span className="bf-label">SPLIT PAYMENT BREAKDOWN</span>
+              {[
+                ["CASH", splitCash, setSplitCash],
+                ["CARD", splitCard, setSplitCard],
+                ["UPI", splitUPI, setSplitUPI],
+              ].map(([label, value, setter]) => (
+                <div className="bf-splitrow" key={label}>
+                  <span className="bf-label">{label}</span>
+                  <div className="bf-input">
+                    <span>₹</span>
+                    <input
+                      inputMode="decimal"
+                      aria-label={`${label} amount`}
+                      placeholder="0.00"
+                      value={value}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d{0,8}(\.\d{0,2})?$/.test(v)) setter(v);
+                      }}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className={`bf-warnrow ${splitExact ? "is-ok" : ""}`}>
+                {splitExact ? <><FiCheckCircle /> Exact split amount</> : <>Remaining: <strong>{rupees(splitRemaining)}</strong></>}
+                <span className="bf-spacer" />
+                SUM: {rupees(splitTotal)}
               </div>
-            )}
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
-              <span>TOTAL</span>
-              <span>{formatCurrency(totals.grandTotal)}</span>
-            </div>
-          </div>
+            </section>
+          )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: '0 24px 24px', display: 'flex', gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '14px',
-              borderRadius: 12,
-              border: '1.5px solid #e2e8f0',
-              background: '#f8fafc',
-              color: '#374151',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Back
-          </button>
-          <button
-            onClick={handleConfirmClick}
-            disabled={
-              saving ||
-              (paymentMethod === 'Cash' && cashGiven && parseFloat(cashGiven) < totals.grandTotal) ||
-              (paymentMethod === 'Split' && Math.abs(splitTotal - totals.grandTotal) > 0.01)
-            }
-            style={{
-              flex: 2,
-              padding: '14px',
-              borderRadius: 12,
-              border: 'none',
-              background: saving ? '#93c5fd' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: saving ? 'wait' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
-              transition: 'all 0.2s',
-            }}
-          >
-            {saving ? (
+        <div className="bf-checkout__right">
+          <section className="bf-section bf-section--panel bf-ledger">
+            <div className="bf-panelhead">
+              <span className="bf-label"><FiFileText /> FISCAL LEDGER BREAKDOWN</span>
+            </div>
+            <div className="bf-ledger__row"><span>CLASSIFIED TAXABLE VALUE</span><strong>{rupees(totals.subtotal)}</strong></div>
+            {itemDiscount > 0 && (
+              <div className="bf-ledger__row is-green">
+                <span><FiTag /> ITEM DISCOUNT (INCLUDED)</span><strong>{rupees(itemDiscount)}</strong>
+              </div>
+            )}
+            {totals.hasPendingQuickSale ? (
               <>
-                <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
-                Saving…
+                {tax > 0 && (
+                  <div className="bf-ledger__row">
+                    <span>GST ON CLASSIFIED ITEMS</span><strong>{rupees(tax)}</strong>
+                  </div>
+                )}
+                <div className="bf-ledger__row is-warn">
+                  <span>QUICK SALE · GST PENDING</span>
+                  <strong>{rupees(totals.quickSalePendingAmount)}</strong>
+                  <small>Payable now; excluded from the GST split until reviewed.</small>
+                </div>
               </>
             ) : (
-              <>🖨 Confirm & Print</>
+              <div className="bf-ledger__row bf-ledger__row--stack">
+                <span>GST REVENUE SPLIT</span><strong>{rupees(tax)}</strong>
+                <small>CGST {rupees(cgst)} + SGST {rupees(sgst)}</small>
+              </div>
             )}
-          </button>
+            {globalDiscount > 0 && (
+              <div className="bf-ledger__row is-green"><span>BILL DISCOUNT (-)</span><strong>-{rupees(globalDiscount)}</strong></div>
+            )}
+            {returnCredit > 0 && (
+              <div className="bf-ledger__row is-green"><span><FiStar /> RETURN CREDIT (-)</span><strong>-{rupees(returnCredit)}</strong></div>
+            )}
+            {loyaltyRedemption > 0 && (
+              <div className="bf-ledger__row is-green"><span><FiStar /> LOYALTY REDEMPTION (-)</span><strong>-{rupees(loyaltyRedemption)}</strong></div>
+            )}
+            {roundOff !== 0 && (
+              <div className="bf-ledger__row">
+                <span>INVOICE TOTAL BEFORE ROUND-OFF</span>
+                <strong>
+                  {rupees(
+                    Number(totals.preCreditGrandTotal ?? totals.grandTotal) -
+                      roundOff,
+                  )}
+                </strong>
+              </div>
+            )}
+            {roundOff !== 0 && (
+              <div className="bf-ledger__row"><span>ROUND OFF ADJUSTMENT</span><strong>{roundOff > 0 ? "+" : "-"}{rupees(Math.abs(roundOff))}</strong></div>
+            )}
+          </section>
+
+          <div className="bf-grand">
+            <div className="bf-grand__top"><span>TOTAL PAYABLE NET DUE</span><span>CURRENCY: INR</span></div>
+            <div className="bf-grand__row"><span>GRAND TOTAL:</span><strong>{rupees(payable)}</strong></div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <footer className="bf-modal__footer">
+        <button type="button" className="bf-btn bf-btn--ghost" onClick={onClose}>
+          <FiArrowLeft /> BACK <Kbd>ESC</Kbd>
+        </button>
+        {onHold && (
+          <button type="button" className="bf-btn bf-btn--ghost" onClick={onHold} disabled={saving}>
+            <FiPauseCircle /> HOLD <Kbd>F10</Kbd>
+          </button>
+        )}
+        <span className="bf-spacer" />
+        {printerLabel && <span className="bf-footnote">PRINTER: {printerLabel}</span>}
+        <button
+          type="button"
+          className="bf-btn bf-btn--blue bf-btn--lg"
+          onClick={handleConfirmClick}
+          disabled={confirmDisabled}
+        >
+          <FiPrinter /> {saving ? "SAVING…" : "CONFIRM & PRINT BILL"} <Kbd>F8</Kbd>
+        </button>
+      </footer>
+    </TerminalModal>
   );
 }

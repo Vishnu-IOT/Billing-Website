@@ -62,7 +62,7 @@ export function getSampleCompany(realCompany) {
     state: realCompany?.state || 'Tamil Nadu',
     zipCode: realCompany?.zipCode || '636001',
     phone: realCompany?.phone || '+91 98765 43210',
-    logo: realCompany?.logo_url || realCompany?.logo || null,
+    logo: realCompany?.logo || null,
     bankDetails: realCompany?.bankDetails || {
       accountName: 'Your Company Name Pvt Ltd',
       accountNumber: 'XXXXXXXXXX1234',

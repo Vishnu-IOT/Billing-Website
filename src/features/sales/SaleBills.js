@@ -218,8 +218,8 @@ export default function SaleBills({ searchParams }) {
     try {
       await deleteBill(deleteId);
       toast.success("Invoice deleted");
-    } catch {
-      toast.error("Failed to delete");
+    } catch (error) {
+      toast.error(error.message || "Failed to cancel sales invoice");
     } finally {
       setDeleteId(null);
     }

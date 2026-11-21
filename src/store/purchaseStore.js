@@ -8,6 +8,7 @@ import {
   updatePaymentOutAPI,
   updatePurchaseBillAPI,
 } from '../api';
+import { refreshProductsAfterInventoryChange } from './refreshProductsAfterInventoryChange';
 
 const formatDate = (date) => {
   const year = date.getFullYear();
@@ -68,13 +69,16 @@ const usePurchaseStore = create((set, get) => ({
   },
 
   addBill: async (payload) => {
-    await addPurchaseBillAPI(payload);
+    const response = await addPurchaseBillAPI(payload);
     await get().loadBills();
+    await refreshProductsAfterInventoryChange('Purchase invoice');
+    return response;
   },
 
   updateBill: async (id, payload) => {
     await updatePurchaseBillAPI(id, payload);
     await get().loadBills();
+    await refreshProductsAfterInventoryChange('Purchase invoice update');
   },
 
   deleteBill: async (id) => {
@@ -84,6 +88,7 @@ const usePurchaseStore = create((set, get) => ({
         (b) => String(b.id || b._id) !== String(id)
       ),
     }));
+    await refreshProductsAfterInventoryChange('Purchase invoice deletion');
   },
 
   updatePaymentStatus: async (id, payload) => {

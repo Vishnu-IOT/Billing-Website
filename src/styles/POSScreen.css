@@ -1,0 +1,1227 @@
+.billflow-pos-terminal {
+  --terminal-navy: #0f172a;
+  --terminal-blue: #1e40af;
+  --terminal-green: #059669;
+  --terminal-border: #e2e8f0;
+  --terminal-muted: #64748b;
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f1f5f9;
+  color: var(--terminal-navy);
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+
+.billflow-pos-terminal *,
+.billflow-checkout *,
+.billflow-pos-terminal *::before,
+.billflow-pos-terminal *::after {
+  box-sizing: border-box;
+}
+
+.billflow-pos-terminal .pos-exact-topbar {
+  z-index: 20;
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #263449;
+  background: var(--terminal-navy);
+  color: #fff;
+}
+
+.billflow-pos-terminal .pos-exact-topbar__search,
+.billflow-pos-terminal .pos-exact-topbar__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.billflow-pos-terminal .pos-exact-topbar__search {
+  flex: 1 1 640px;
+}
+
+.billflow-pos-terminal .pos-exact-topbar__meta {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.billflow-pos-terminal .pos-exact-back-btn,
+.billflow-pos-terminal .pos-exact-scan-btn,
+.billflow-pos-terminal .pos-terminal-price-check,
+.billflow-pos-terminal .pos-exact-topbar-btn {
+  min-height: 36px;
+  border: 1px solid #334155;
+  border-radius: 3px;
+  background: #17243b;
+  color: #e2e8f0;
+  font: 700 10px/1.2 "JetBrains Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+
+.billflow-pos-terminal .pos-exact-back-btn,
+.billflow-pos-terminal .pos-exact-scan-btn,
+.billflow-pos-terminal .pos-terminal-price-check {
+  padding: 0 10px;
+}
+
+.billflow-pos-terminal .pos-exact-back-btn:hover,
+.billflow-pos-terminal .pos-exact-scan-btn:hover,
+.billflow-pos-terminal .pos-terminal-price-check:hover,
+.billflow-pos-terminal .pos-exact-topbar-btn:hover {
+  border-color: #60a5fa;
+  background: #1e293b;
+}
+
+.billflow-pos-terminal .pos-terminal-price-check.is-active {
+  border-color: #fbbf24;
+  background: #422006;
+  color: #fef3c7;
+}
+
+.billflow-pos-terminal .pos-terminal-price-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.billflow-pos-terminal .pos-terminal-price-check kbd,
+.billflow-checkout kbd {
+  padding: 3px 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font: 700 8px/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-terminal-scanner-badge {
+  flex: 0 0 auto;
+  padding: 8px;
+  border: 1px solid #334155;
+  background: #111d31;
+  color: #bfdbfe;
+  font: 700 9px/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-search-wrap {
+  flex: 1 1 auto;
+  min-width: 150px;
+}
+
+.billflow-pos-terminal .pos-exact-search-input {
+  height: 38px;
+  border: 1px solid #475569;
+  border-radius: 3px;
+  background: #fff;
+  color: var(--terminal-navy);
+  font: 12px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-inv-badge {
+  padding: 7px 9px;
+  background: #1e40af;
+  color: #fff;
+  font: 700 10px/1.2 "JetBrains Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+
+.billflow-pos-terminal .pos-terminal-meta-block {
+  display: grid;
+  gap: 3px;
+  min-width: 54px;
+}
+
+.billflow-pos-terminal .pos-terminal-meta-label {
+  color: #94a3b8;
+  font: 700 8px/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-terminal-meta-block strong {
+  color: #f8fafc;
+  font: 700 9px/1.15 "JetBrains Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+
+.billflow-pos-terminal .pos-exact-topbar-btn--shift.active {
+  border-color: #059669;
+  background: #064e3b;
+  color: #d1fae5;
+}
+
+.billflow-pos-terminal .pos-exact-topbar-btn--hold {
+  border-color: #3b82f6;
+}
+
+.billflow-pos-terminal .pos-exact-container {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(286px, 322px);
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.billflow-pos-terminal .pos-exact-left-col,
+.billflow-pos-terminal .pos-exact-right-col {
+  min-width: 0;
+  min-height: 0;
+}
+
+.billflow-pos-terminal .pos-exact-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  overflow: hidden;
+}
+
+.billflow-pos-terminal .pos-exact-cards-row {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.billflow-pos-terminal .pos-exact-card {
+  overflow: hidden;
+  border: 1px solid var(--terminal-border);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.billflow-pos-terminal .pos-exact-card--customer {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.billflow-pos-terminal .pos-exact-card--customer .pos-exact-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-right: 1px solid var(--terminal-border);
+  background: #f8fafc;
+  color: var(--terminal-navy);
+  font: 800 10px/1.3 "Chivo", "Arial", sans-serif;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-exact-card__icon {
+  color: var(--terminal-blue);
+}
+
+.billflow-pos-terminal .pos-exact-card--customer .pos-exact-card__body {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.15fr) minmax(180px, 1fr);
+  align-items: end;
+  gap: 8px;
+  padding: 8px;
+}
+
+.billflow-pos-terminal .pos-exact-form-group {
+  min-width: 0;
+  gap: 4px;
+}
+
+.billflow-pos-terminal .pos-exact-form-group label {
+  color: var(--terminal-muted);
+  font: 700 8px/1.2 "JetBrains Mono", Consolas, monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-exact-input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  background: #fff;
+  color: var(--terminal-navy);
+  font: 11px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-input-icon-wrap {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.billflow-pos-terminal .pos-customer-country-code {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid #cbd5e1;
+  border-right: 0;
+  background: #f1f5f9;
+  color: #475569;
+  font: 700 10px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-input-icon-wrap .pos-exact-input {
+  flex: 1 1 auto;
+}
+
+.billflow-pos-terminal .pos-exact-loyalty-row {
+  min-width: 0;
+  min-height: 34px;
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+}
+
+.billflow-pos-terminal .pos-exact-loyalty-label {
+  font: 700 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-loyalty-value {
+  font: 800 13px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-customer-tier {
+  margin-left: auto;
+  padding: 3px 5px;
+  background: #dbeafe;
+  color: #1e40af;
+  font: 700 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-card--order {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.billflow-pos-terminal .pos-exact-card__header {
+  min-height: 38px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--terminal-border);
+  background: #f8fafc;
+}
+
+.billflow-pos-terminal .pos-exact-card__title {
+  color: var(--terminal-navy);
+  font: 800 10px/1.2 "Chivo", "Arial", sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-exact-item-count-badge {
+  padding: 4px 7px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-card--order > .pos-exact-item-sub {
+  padding: 5px 10px !important;
+  border-bottom: 1px solid #edf2f7;
+  color: #64748b;
+  font: 9px/1.4 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-table-wrap {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.billflow-pos-terminal .pos-exact-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font: 10px/1.35 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-table th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  padding: 8px 7px;
+  border-bottom: 1px solid #334155;
+  background: var(--terminal-navy);
+  color: #f8fafc;
+  font: 700 8px/1.2 "JetBrains Mono", Consolas, monospace;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-exact-table td {
+  padding: 7px;
+  border-bottom: 1px solid #e8edf5;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.billflow-pos-terminal .pos-exact-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.billflow-pos-terminal .pos-exact-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.billflow-pos-terminal .pos-exact-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.billflow-pos-terminal .pos-exact-user-card {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid var(--terminal-green);
+  background: #fff;
+}
+
+.billflow-pos-terminal .pos-exact-user-name {
+  color: var(--terminal-navy);
+  font: 800 12px "Chivo", "Arial", sans-serif;
+}
+
+.billflow-pos-terminal .pos-terminal-user-meta {
+  margin-top: 4px;
+  color: var(--terminal-muted);
+  font: 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-user-shift {
+  margin-top: 8px;
+  padding: 6px 7px;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+  cursor: pointer;
+}
+
+.billflow-pos-terminal .pos-exact-sidebar-actions {
+  gap: 7px;
+}
+
+.billflow-pos-terminal .pos-exact-sidebar-btn {
+  min-height: 34px;
+  border-radius: 2px;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-exact-totals-box {
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-top: 3px solid var(--terminal-blue);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 6%);
+}
+
+.billflow-pos-terminal .pos-exact-summary-row {
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #e2e8f0;
+  color: #475569;
+  font: 9px/1.35 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-summary-val {
+  color: var(--terminal-navy);
+  font: 700 10px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-terminal-savings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #047857;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-grand-total {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid #1e3a8a;
+  background: var(--terminal-navy);
+  color: #fff;
+}
+
+.billflow-pos-terminal .pos-exact-gt-label {
+  color: #bfdbfe;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-gt-val {
+  color: #fff;
+  font: 800 25px/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-exact-pay-btn {
+  min-height: 44px;
+  border-radius: 2px;
+  background: var(--terminal-blue);
+  font: 800 11px "JetBrains Mono", Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.billflow-pos-terminal .pos-terminal-statusbar {
+  min-height: 32px;
+  padding: 4px 10px;
+  border-top: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-terminal-devices {
+  gap: 5px;
+}
+
+.billflow-pos-terminal .pos-terminal-devices span {
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.billflow-pos-terminal .pos-terminal-devices strong {
+  color: #475569;
+}
+
+.billflow-pos-terminal .pos-terminal-shortcuts {
+  color: #475569;
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout {
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: var(--terminal-navy);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 45%);
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+
+.billflow-checkout-header {
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 62px 15px 20px;
+  background: linear-gradient(110deg, #0f172a 0%, #172554 60%, #1e40af 100%);
+  color: #fff;
+}
+
+.billflow-checkout-identity {
+  min-width: 0;
+}
+
+.billflow-checkout-kicker,
+.billflow-checkout-section-title {
+  display: block;
+  color: #64748b;
+  font: 800 9px/1.3 "JetBrains Mono", Consolas, monospace;
+  letter-spacing: .08em;
+}
+
+.billflow-checkout-kicker {
+  margin-bottom: 6px;
+  color: #bfdbfe;
+}
+
+.billflow-checkout-identity > strong {
+  display: block;
+  font: 800 16px "Chivo", "Arial", sans-serif;
+}
+
+.billflow-checkout-terminal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 9px;
+  color: #cbd5e1;
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-terminal-meta b {
+  color: #fff;
+}
+
+.billflow-checkout-payable {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 4px;
+  text-align: right;
+}
+
+.billflow-checkout-payable span {
+  color: #bfdbfe;
+  font: 800 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-payable strong {
+  font: 800 clamp(26px, 4vw, 42px)/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #64748b;
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+  font: 24px/1 "JetBrains Mono", Consolas, monospace;
+  cursor: pointer;
+}
+
+.billflow-checkout-columns {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.billflow-checkout-tender {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.billflow-checkout-customer,
+.billflow-checkout-method-section,
+.billflow-checkout-tender-box,
+.billflow-checkout-fiscal {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.billflow-checkout-customer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.billflow-checkout-customer-grid label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: #64748b;
+  font: 700 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-customer-grid strong {
+  overflow: hidden;
+  color: #0f172a;
+  font: 700 10px "JetBrains Mono", Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.billflow-checkout-methods {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.billflow-checkout-method {
+  display: grid;
+  min-width: 0;
+  min-height: 82px;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.billflow-checkout-method.is-selected {
+  border: 2px solid #1e40af;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.billflow-checkout-method-icon {
+  font: 800 21px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-method strong {
+  font: 800 9px "JetBrains Mono", Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.billflow-checkout-method kbd {
+  color: #64748b;
+}
+
+.billflow-checkout-section-heading,
+.billflow-checkout-fiscal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.billflow-checkout-due,
+.billflow-checkout-fiscal-heading > span:last-child {
+  color: #1e40af;
+  font: 700 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-cash-matrix {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.billflow-checkout-cash-matrix button {
+  min-height: 36px;
+  padding: 4px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font: 800 9px "JetBrains Mono", Consolas, monospace;
+  cursor: pointer;
+}
+
+.billflow-checkout-cash-matrix button:hover {
+  border-color: #1e40af;
+  background: #dbeafe;
+}
+
+.billflow-checkout-received {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font: 700 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-received > div {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  border: 1px solid #94a3b8;
+  background: #fff;
+}
+
+.billflow-checkout-received b {
+  padding: 0 12px;
+  color: #0f172a;
+  font: 800 19px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-received input,
+.billflow-checkout-split-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  color: #0f172a;
+  font: 800 18px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-change {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 9px;
+  background: #ecfdf5;
+  color: #047857;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-change strong {
+  font-size: 13px;
+}
+
+.billflow-checkout-split-fields {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.billflow-checkout-split-fields label {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-split-fields input {
+  height: 36px;
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+}
+
+.billflow-checkout-split-status {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-split-status.is-matched {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.billflow-checkout-fiscal {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  background: #f8fafc;
+}
+
+.billflow-checkout-fiscal-heading {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.billflow-checkout-fiscal-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font: 10px/1.3 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-fiscal-row strong {
+  color: #0f172a;
+  text-align: right;
+}
+
+.billflow-checkout-fiscal-row.is-discount {
+  color: #b91c1c;
+}
+
+.billflow-checkout-fiscal-row.is-discount strong {
+  color: #b91c1c;
+}
+
+.billflow-checkout-fiscal-row.is-credit {
+  color: #047857;
+}
+
+.billflow-checkout-fiscal-row.is-credit strong {
+  color: #047857;
+}
+
+.billflow-checkout-fiscal-note {
+  margin-top: -7px;
+  color: #64748b;
+  font: 8px/1.4 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-savings {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font: 700 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-grand-total {
+  display: grid;
+  gap: 6px;
+  margin-top: auto;
+  padding: 14px;
+  border: 1px solid #1e3a8a;
+  background: #0f172a;
+  color: #bfdbfe;
+  font: 800 9px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-grand-total strong {
+  color: #fff;
+  font: 800 27px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.billflow-checkout-device-status {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  color: #64748b;
+  font: 8px "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-checkout-device-status span {
+  display: flex;
+  gap: 4px;
+}
+
+.billflow-checkout-device-status b {
+  color: #334155;
+}
+
+.billflow-checkout-back,
+.billflow-checkout-confirm {
+  min-height: 40px;
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  font: 800 9px "JetBrains Mono", Consolas, monospace;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.billflow-checkout-back {
+  background: #f8fafc;
+  color: #334155;
+}
+
+.billflow-checkout-confirm {
+  border-color: #1e40af;
+  background: #1e40af;
+  color: #fff;
+}
+
+.billflow-checkout-confirm:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.billflow-pos-terminal .pos-terminal-dialog {
+  width: min(880px, 100%);
+}
+
+.billflow-pos-terminal .pos-shift-open-dialog {
+  border-top: 4px solid #059669;
+}
+
+.billflow-pos-terminal .pos-shift-close-dialog {
+  border-top: 4px solid #dc2626;
+}
+
+.billflow-pos-terminal .pos-shift-close-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.billflow-pos-terminal .pos-shift-close-body > .pos-shift-audit-summary,
+.billflow-pos-terminal .pos-shift-close-body > .pos-shift-payment-breakdown,
+.billflow-pos-terminal .pos-shift-close-body > .pos-shift-expected-cash,
+.billflow-pos-terminal .pos-shift-close-body > .pos-shift-variance,
+.billflow-pos-terminal .pos-shift-close-body > .pos-shift-confirm {
+  grid-column: 1 / -1;
+}
+
+.billflow-pos-terminal .pos-shift-close-body .pos-denomination-counter {
+  grid-column: 1 / -1;
+}
+
+.billflow-pos-terminal .pos-shift-audit-summary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.billflow-pos-terminal .pos-shift-audit-card {
+  min-width: 0;
+  padding: 9px;
+}
+
+.billflow-pos-terminal .pos-shift-audit-card strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
+.billflow-pos-terminal .pos-shift-payment-card small {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font: 8px/1.3 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-shift-close-dialog .pos-shift-payment-breakdown {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.billflow-pos-terminal .pos-terminal-operator {
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+.billflow-pos-terminal .pos-terminal-operator > div {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.billflow-pos-terminal .pos-terminal-operator > div > span {
+  color: #64748b;
+  font: 700 8px/1 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-terminal-operator > div > strong,
+.billflow-pos-terminal .pos-terminal-operator > div > code {
+  margin: 0;
+  color: #0f172a;
+  font: 700 9px/1.2 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-shift-presets button:disabled {
+  border-style: dashed;
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.billflow-pos-terminal .pos-shift-opening-total,
+.billflow-pos-terminal .pos-shift-actual-cash {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font: 700 9px/1.3 "JetBrains Mono", Consolas, monospace;
+}
+
+.billflow-pos-terminal .pos-shift-opening-total strong,
+.billflow-pos-terminal .pos-shift-actual-cash strong {
+  font: 800 17px/1.1 "JetBrains Mono", Consolas, monospace;
+  text-align: right;
+}
+
+.billflow-pos-terminal .pos-shift-opening-total b {
+  padding: 4px 6px;
+  background: #d1fae5;
+  color: #047857;
+  font: 800 8px "JetBrains Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+
+.billflow-pos-terminal .pos-shift-actual-cash {
+  grid-column: 1 / -1;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.billflow-pos-terminal .pos-shift-expected-cash {
+  grid-column: 1 / -1;
+}
+
+.billflow-pos-terminal .pos-shift-variance {
+  grid-column: 1 / -1;
+}
+
+.billflow-pos-terminal .pos-shift-close-dialog .pos-terminal-dialog-header {
+  min-height: 110px;
+}
+
+.billflow-pos-terminal .pos-shift-close-dialog .pos-denomination-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.billflow-pos-terminal .pos-shift-open-dialog .pos-denomination-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.billflow-pos-terminal .pos-terminal-dialog-header--green {
+  background: linear-gradient(105deg, #064e3b, #059669);
+}
+
+.billflow-pos-terminal .pos-terminal-dialog-header--red {
+  background: linear-gradient(105deg, #450a0a, #b91c1c);
+}
+
+.billflow-pos-terminal .pos-terminal-dialog-body {
+  padding: 14px;
+}
+
+.billflow-pos-terminal .pos-terminal-operator {
+  min-height: 44px;
+  border: 1px solid #dbe3ee;
+}
+
+.billflow-pos-terminal .pos-terminal-dialog-footer {
+  padding: 9px 14px;
+}
+
+.billflow-pos-terminal .pos-shift-audit-card {
+  min-height: 70px;
+}
+
+@media (max-width: 1100px) {
+  .billflow-pos-terminal .pos-exact-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .billflow-pos-terminal .pos-exact-topbar__meta {
+    justify-content: flex-start;
+  }
+
+  .billflow-pos-terminal .pos-exact-container {
+    grid-template-columns: minmax(0, 1fr) 286px;
+  }
+}
+
+@media (max-width: 760px) {
+  .billflow-pos-terminal {
+    height: 100dvh;
+  }
+
+  .billflow-pos-terminal .pos-exact-topbar__search,
+  .billflow-pos-terminal .pos-exact-topbar__meta {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .billflow-pos-terminal .pos-exact-container {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .billflow-pos-terminal .pos-exact-left-col {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .billflow-pos-terminal .pos-exact-card--order {
+    min-height: 360px;
+  }
+
+  .billflow-pos-terminal .pos-exact-right-col {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .billflow-pos-terminal .pos-terminal-statusbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .billflow-pos-terminal .pos-terminal-devices {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .billflow-checkout-header {
+    min-height: 126px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 52px 12px 12px;
+  }
+
+  .billflow-checkout-payable {
+    text-align: left;
+  }
+
+  .billflow-checkout-columns {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .billflow-checkout-footer {
+    flex-wrap: wrap;
+  }
+
+  .billflow-checkout-device-status {
+    flex-basis: 100%;
+  }
+
+  .billflow-pos-terminal .pos-shift-close-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .billflow-pos-terminal .pos-shift-close-body > * {
+    width: 100%;
+  }
+
+  .billflow-pos-terminal .pos-shift-audit-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .billflow-pos-terminal .pos-exact-card--customer {
+    display: block;
+  }
+
+  .billflow-pos-terminal .pos-exact-card--customer .pos-exact-card__title {
+    min-height: 34px;
+    border-right: 0;
+    border-bottom: 1px solid var(--terminal-border);
+  }
+
+  .billflow-pos-terminal .pos-exact-card--customer .pos-exact-card__body {
+    grid-template-columns: 1fr;
+  }
+
+  .billflow-pos-terminal .pos-exact-topbar__search {
+    flex-wrap: wrap;
+  }
+
+  .billflow-pos-terminal .pos-exact-search-wrap {
+    flex-basis: 100%;
+    order: 4;
+  }
+
+  .billflow-checkout-customer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billflow-checkout-cash-matrix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .billflow-checkout-footer > button {
+    flex: 1 1 auto;
+  }
+
+  .billflow-pos-terminal .pos-shift-open-dialog .pos-denomination-grid,
+  .billflow-pos-terminal .pos-shift-close-dialog .pos-denomination-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -403,6 +403,49 @@
   padding-right: 32px;
 }
 
+/* Price textbox + GST mode dropdown combined in ONE control
+   (product Purchase / Selling price, and the rate cell of sales / purchase bill lines).
+   The textbox keeps its normal look; the dropdown sits flush against it. */
+.price-input-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.price-input-group > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.price-input-group > select.price-input-group__mode {
+  flex: 0 0 124px;
+  width: 124px;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background-color: var(--bg-input);
+  cursor: pointer;
+}
+
+.price-input-group > select.form-select.price-input-group__mode {
+  height: 38px;
+}
+
+.price-input-group > select.invoice-select.price-input-group__mode {
+  flex-basis: 112px;
+  width: 112px;
+  border-left: 1px solid var(--border);
+}
+
+.price-input-group > input:focus,
+.price-input-group > select:focus {
+  position: relative;
+  z-index: 1;
+}
+
 .form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,0 +1,3980 @@
+diff -ruN orig/src/components/pos/POSCloseShiftModal.js /home/claude/app/src/components/pos/POSCloseShiftModal.js
+--- orig/src/components/pos/POSCloseShiftModal.js	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/components/pos/POSCloseShiftModal.js	2026-11-17 03:20:32.679936621 +0000
+@@ -0,0 +1,330 @@
++/* ===== CLOSE SHIFT — cash drawer audit terminal =====
++ * All figures come from the shift record the existing workflow already loads.
++ * Expected cash mirrors the documented close-shift formula
++ *   opening float + cash sales + cash in - cash out - cash refunds
++ * and only `closingCashActual` is submitted, exactly as before.
++ */
++import React, { useEffect, useMemo, useState } from "react";
++import {
++  FiLock,
++  FiCheckCircle,
++  FiAlertTriangle,
++  FiGrid,
++  FiDollarSign,
++  FiCreditCard,
++  FiSmartphone,
++  FiMoreHorizontal,
++} from "react-icons/fi";
++import {
++  TerminalModal,
++  ModalClose,
++  Kbd,
++  DenominationGrid,
++  emptyCounts,
++  sumDenominations,
++  sameAmount,
++  rupees,
++} from "./posTerminal";
++
++const n = (v) => Number(v) || 0;
++
++function formatTime(value) {
++  if (!value) return "—";
++  const d = new Date(value);
++  if (Number.isNaN(d.getTime())) return "—";
++  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
++}
++
++export function getExpectedCash(shift) {
++  return (
++    n(shift?.openingFloat) +
++    n(shift?.cashSalesTotal) +
++    n(shift?.cashInTotal) -
++    n(shift?.cashOutTotal) -
++    n(shift?.cashRefundsTotal)
++  );
++}
++
++export default function POSCloseShiftModal({
++  open,
++  shift,
++  refreshing = false,
++  closingCash,
++  onCashChange,
++  onClose,
++  onConfirm,
++  submitting = false,
++  operatorName,
++  operatorId,
++}) {
++  const [assistant, setAssistant] = useState(false);
++  const [counts, setCounts] = useState(emptyCounts);
++  const [coins, setCoins] = useState("");
++  const [confirmed, setConfirmed] = useState(false);
++  const [touched, setTouched] = useState(false);
++
++  useEffect(() => {
++    if (!open) return;
++    setAssistant(false);
++    setCounts(emptyCounts());
++    setCoins("");
++    setConfirmed(false);
++    setTouched(false);
++  }, [open]);
++
++  const expected = useMemo(() => getExpectedCash(shift), [shift]);
++  const cash = n(shift?.cashSalesTotal);
++  const card = n(shift?.cardSalesTotal);
++  const upi = n(shift?.upiSalesTotal);
++  const other = n(shift?.otherSalesTotal);
++  const gross = cash + card + upi + other;
++  const bills = n(shift?.totalSalesCount);
++  const avg = bills > 0 ? gross / bills : 0;
++
++  const entered = parseFloat(closingCash);
++  const hasEntry = closingCash !== "" && Number.isFinite(entered) && entered >= 0;
++  const variance = hasEntry ? entered - expected : 0;
++  const state = !hasEntry ? "pending" : sameAmount(entered, expected) ? "match" : variance < 0 ? "short" : "surplus";
++  const denomSum = useMemo(() => sumDenominations(counts, coins), [counts, coins]);
++  const denomUsed = denomSum > 0;
++  const denomMatches = hasEntry && sameAmount(denomSum, entered);
++
++  if (!open || !shift) return null;
++
++  const canSubmit = hasEntry && confirmed && !submitting && !refreshing;
++  const submit = () => {
++    setTouched(true);
++    if (canSubmit) onConfirm();
++  };
++
++  const statusLabel = {
++    pending: "AWAITING COUNT",
++    match: "PERFECT MATCH",
++    short: "SHORTAGE DETECTED",
++    surplus: "SURPLUS DETECTED",
++  }[state];
++
++  const channels = [
++    { label: "CASH SALES", amount: cash, icon: <FiDollarSign /> },
++    { label: "CARD / POS", amount: card, icon: <FiCreditCard /> },
++    { label: "UPI / QR", amount: upi, icon: <FiSmartphone /> },
++    { label: "OTHER TENDER", amount: other, icon: <FiMoreHorizontal /> },
++  ];
++
++  return (
++    <TerminalModal
++      tone="red"
++      label="Close shift"
++      width={860}
++      onOverlayClick={onClose}
++      onKeyDown={(e) => {
++        if (e.key === "F10") {
++          e.preventDefault();
++          e.stopPropagation();
++          submit();
++        }
++      }}
++    >
++      <header className="bf-modal__header">
++        <div className="bf-modal__headtext">
++          <div className="bf-modal__eyebrow">
++            <span className="bf-tag">DRAWER AUDIT</span>
++            <span>CASH DRAWER RECONCILIATION • END OF SHIFT</span>
++          </div>
++          <h2 className="bf-modal__title">
++            CLOSE SHIFT #{shift.id}{" "}
++            <span className="bf-tag bf-tag--light">READY TO SETTLE</span>
++          </h2>
++        </div>
++        <div className="bf-modal__headright">
++          <div className="bf-chip">
++            {operatorName || "—"}
++            {operatorId ? ` (#${operatorId})` : ""} · {formatTime(shift.openedAt)} –{" "}
++            {formatTime(new Date())}
++          </div>
++          <ModalClose onClick={onClose} disabled={submitting} />
++        </div>
++      </header>
++
++      <div className="bf-modal__body">
++        <div className="bf-split2">
++          <div className="bf-card bf-card--green">
++            <span className="bf-label">OPENING DRAWER FLOAT</span>
++            <div className="bf-card__big">{rupees(shift.openingFloat)}</div>
++            <div className="bf-card__sub">Opened {formatTime(shift.openedAt)}</div>
++          </div>
++          <div className="bf-card bf-card--blue">
++            <span className="bf-label">TOTAL REGISTER SALES (TENDERED)</span>
++            <div className="bf-card__big">
++              {rupees(gross)} <small>/ {bills} Bills</small>
++            </div>
++            <div className="bf-card__sub">Avg Bill Value: {rupees(avg)}</div>
++          </div>
++        </div>
++
++        <div className="bf-sectionhead">
++          <span className="bf-label">PAYMENT CHANNEL BREAKDOWN</span>
++          {refreshing && <span className="bf-label">REFRESHING LEDGER…</span>}
++        </div>
++        <div className="bf-channels">
++          {channels.map((c) => (
++            <div className="bf-channel" key={c.label}>
++              <div className="bf-channel__head">
++                <span className="bf-label">{c.label}</span>
++                {c.icon}
++              </div>
++              <div className="bf-channel__amt">{rupees(c.amount)}</div>
++            </div>
++          ))}
++        </div>
++
++        <section className="bf-section bf-section--panel">
++          <div className="bf-panelhead">
++            <div>
++              <span className="bf-label bf-label--lg">
++                ACTUAL PHYSICAL CASH IN DRAWER{" "}
++                <span className="bf-tag bf-tag--dark">MANDATORY</span>
++              </span>
++              <div className="bf-hint">Count the physical currency in the drawer before closing.</div>
++            </div>
++            <button
++              type="button"
++              className="bf-link"
++              onClick={() => setAssistant((v) => !v)}
++              aria-expanded={assistant}
++            >
++              <FiGrid /> {assistant ? "HIDE" : "SHOW"} DENOMINATION ASSISTANT
++            </button>
++          </div>
++
++          <div className={`bf-bigamount bf-bigamount--wide ${touched && !hasEntry ? "is-error" : ""}`}>
++            <span className="bf-bigamount__sym bf-bigamount__sym--dark">₹</span>
++            <input
++              autoFocus
++              inputMode="decimal"
++              placeholder="0.00"
++              aria-label="Actual physical cash in drawer"
++              aria-invalid={touched && !hasEntry}
++              value={closingCash}
++              onChange={(e) => {
++                const v = e.target.value;
++                if (v === "" || /^\d{0,8}(\.\d{0,2})?$/.test(v)) onCashChange(v);
++              }}
++              onFocus={(e) => e.target.select()}
++            />
++            <span className={`bf-statuspill is-${state}`}>
++              {state === "match" ? <FiCheckCircle /> : state === "pending" ? null : <FiAlertTriangle />}
++              {state === "match" ? "MATCHED" : state === "pending" ? "ENTER COUNT" : "MISMATCH"}
++            </span>
++          </div>
++          {touched && !hasEntry && (
++            <div className="bf-error" role="alert">Enter the counted cash amount to close the shift.</div>
++          )}
++
++          {assistant && (
++            <div className="bf-assistant">
++              <div className="bf-panelhead">
++                <span className="bf-label">DENOMINATION BREAKDOWN SHEET</span>
++                <span className="bf-label">SUM: {rupees(denomSum)}</span>
++              </div>
++              <DenominationGrid
++                idPrefix="close-den"
++                counts={counts}
++                onCountChange={(d, v) => setCounts((c) => ({ ...c, [d]: v }))}
++                coinAmount={coins}
++                onCoinChange={setCoins}
++                coinLabel="Coins"
++              />
++              {denomUsed && (
++                <div className={`bf-warnrow ${denomMatches ? "is-ok" : ""}`} role="status">
++                  {denomMatches ? (
++                    <><FiCheckCircle /> Denomination sheet matches the entered cash.</>
++                  ) : (
++                    <>
++                      <FiAlertTriangle /> Sheet total {rupees(denomSum)} differs from entered cash
++                      {hasEntry ? ` by ${rupees(denomSum - entered)}` : ""}.
++                    </>
++                  )}
++                  {!denomMatches && (
++                    <button
++                      type="button"
++                      className="bf-link"
++                      onClick={() => onCashChange(String(Number(denomSum.toFixed(2))))}
++                    >
++                      USE SHEET TOTAL
++                    </button>
++                  )}
++                </div>
++              )}
++            </div>
++          )}
++        </section>
++
++        <section className="bf-section bf-section--panel">
++          <div className="bf-panelhead">
++            <span className="bf-label">DRAWER VARIANCE AUDIT CALCULATION</span>
++            <span className="bf-label">
++              FORMULA: COUNTED − (FLOAT + CASH SALES
++              {n(shift.cashInTotal) ? " + CASH IN" : ""}
++              {n(shift.cashOutTotal) ? " − CASH OUT" : ""}
++              {n(shift.cashRefundsTotal) ? " − REFUNDS" : ""})
++            </span>
++          </div>
++          <div className="bf-split3">
++            <div className="bf-card">
++              <span className="bf-label">EXPECTED CASH IN DRAWER</span>
++              <div className="bf-card__big">{rupees(expected)}</div>
++              <div className="bf-card__sub">
++                Float {rupees(shift.openingFloat)} + Cash {rupees(cash)}
++              </div>
++            </div>
++            <div className="bf-card">
++              <span className="bf-label">ACTUAL CASH COUNTED</span>
++              <div className="bf-card__big">{hasEntry ? rupees(entered) : "—"}</div>
++              <div className="bf-card__sub">Declared by {operatorName || "operator"}</div>
++            </div>
++            <div className={`bf-card bf-variance is-${state}`}>
++              <span className="bf-label">CASH VARIANCE</span>
++              <div className="bf-card__big">
++                {hasEntry ? `${variance > 0 ? "+" : ""}${rupees(variance)}` : "—"}
++              </div>
++              <div className="bf-card__sub">
++                <strong>{statusLabel}</strong>
++              </div>
++            </div>
++          </div>
++        </section>
++
++        <label className={`bf-confirm ${touched && !confirmed ? "is-error" : ""}`}>
++          <input
++            type="checkbox"
++            checked={confirmed}
++            onChange={(e) => setConfirmed(e.target.checked)}
++          />
++          <span>
++            <strong>I CONFIRM PHYSICAL CASH COUNT ACCURATELY MATCHES DECLARED FIGURES ABOVE.</strong>
++            <em>This shift will be closed and its ledger locked on submission.</em>
++          </span>
++        </label>
++        {touched && !confirmed && (
++          <div className="bf-error" role="alert">Tick the confirmation to close the shift.</div>
++        )}
++      </div>
++
++      <footer className="bf-modal__footer">
++        <button type="button" className="bf-btn bf-btn--ghost" onClick={onClose} disabled={submitting}>
++          CANCEL <Kbd>ESC</Kbd>
++        </button>
++        <span className="bf-spacer" />
++        <button
++          type="button"
++          className="bf-btn bf-btn--red bf-btn--lg"
++          onClick={submit}
++          disabled={submitting || refreshing}
++        >
++          <FiLock /> {submitting ? "CLOSING…" : "CLOSE SHIFT"} <Kbd>F10</Kbd>
++        </button>
++      </footer>
++    </TerminalModal>
++  );
++}
+diff -ruN orig/src/components/pos/POSModals.test.js /home/claude/app/src/components/pos/POSModals.test.js
+--- orig/src/components/pos/POSModals.test.js	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/components/pos/POSModals.test.js	2026-11-17 03:22:25.359428346 +0000
+@@ -0,0 +1,149 @@
++import React, { useState } from "react";
++import { render, screen, fireEvent, within } from "@testing-library/react";
++import POSStartShiftModal from "./POSStartShiftModal";
++import POSCloseShiftModal, { getExpectedCash } from "./POSCloseShiftModal";
++import POSPaymentModal from "./POSPaymentModal";
++
++const shift = {
++  id: 7,
++  openingFloat: 1000,
++  cashSalesTotal: 18450,
++  cardSalesTotal: 19230.5,
++  upiSalesTotal: 11240,
++  otherSalesTotal: 0,
++  cashInTotal: 0,
++  cashOutTotal: 0,
++  cashRefundsTotal: 0,
++  totalSalesCount: 142,
++  openedAt: "2026-11-16T08:30:00",
++};
++
++function StartHarness({ onStart }) {
++  const [v, setV] = useState("");
++  return (
++    <POSStartShiftModal open floatValue={v} onFloatChange={setV} onClose={() => {}} onStart={() => onStart(v)} operatorName="Alex" operatorId={4089} terminalId="T-1" />
++  );
++}
++
++describe("Start shift modal", () => {
++  test("requires an opening float before starting", () => {
++    const onStart = jest.fn();
++    render(<StartHarness onStart={onStart} />);
++    fireEvent.click(screen.getByText(/START SHIFT/));
++    expect(onStart).not.toHaveBeenCalled();
++    expect(screen.getByRole("alert")).toBeTruthy();
++  });
++
++  test("presets fill the float and submit the entered value only", () => {
++    const onStart = jest.fn();
++    render(<StartHarness onStart={onStart} />);
++    fireEvent.click(screen.getByText("₹1,000"));
++    expect(screen.getByLabelText(/opening cash float/i).value).toBe("1000");
++    fireEvent.click(screen.getByText(/START SHIFT/));
++    expect(onStart).toHaveBeenCalledWith("1000");
++  });
++
++  test("denomination sheet reports MATCHED / MISMATCH against the float", () => {
++    render(<StartHarness onStart={() => {}} />);
++    fireEvent.change(screen.getByLabelText(/opening cash float/i), { target: { value: "700" } });
++    fireEvent.change(screen.getByLabelText("Number of ₹500 notes"), { target: { value: "1" } });
++    fireEvent.change(screen.getByLabelText("Number of ₹200 notes"), { target: { value: "1" } });
++    expect(screen.getByText(/MATCHED/)).toBeTruthy();
++    fireEvent.change(screen.getByLabelText("Number of ₹200 notes"), { target: { value: "2" } });
++    expect(screen.getByText(/MISMATCH/)).toBeTruthy();
++    expect(screen.getByText(/differs from the opening float by/)).toBeTruthy();
++  });
++});
++
++describe("Close shift modal", () => {
++  const setup = (cash, props = {}) => {
++    const onConfirm = jest.fn();
++    function H() {
++      const [c, setC] = useState(cash);
++      return <POSCloseShiftModal open shift={shift} closingCash={c} onCashChange={setC} onClose={() => {}} onConfirm={onConfirm} operatorName="Alex" operatorId={8} {...props} />;
++    }
++    render(<H />);
++    return onConfirm;
++  };
++
++  test("expected cash follows the documented backend formula", () => {
++    expect(getExpectedCash(shift)).toBe(19450);
++    expect(getExpectedCash({ ...shift, cashInTotal: 100, cashOutTotal: 50, cashRefundsTotal: 25 })).toBe(19475);
++  });
++
++  test("shows perfect match / shortage / surplus", () => {
++    setup("19450");
++    expect(screen.getByText("PERFECT MATCH")).toBeTruthy();
++    fireEvent.change(screen.getByLabelText(/actual physical cash/i), { target: { value: "19000" } });
++    expect(screen.getByText("SHORTAGE DETECTED")).toBeTruthy();
++    fireEvent.change(screen.getByLabelText(/actual physical cash/i), { target: { value: "19500" } });
++    expect(screen.getByText("SURPLUS DETECTED")).toBeTruthy();
++  });
++
++  test("blocks closing until cash is entered and the checkbox is ticked", () => {
++    const onConfirm = setup("");
++    fireEvent.click(screen.getByText(/CLOSE SHIFT$/, { selector: "button" }));
++    expect(onConfirm).not.toHaveBeenCalled();
++    fireEvent.change(screen.getByLabelText(/actual physical cash/i), { target: { value: "19450" } });
++    fireEvent.click(screen.getByText(/CLOSE SHIFT$/, { selector: "button" }));
++    expect(onConfirm).not.toHaveBeenCalled();
++    fireEvent.click(screen.getByRole("checkbox"));
++    fireEvent.click(screen.getByText(/CLOSE SHIFT$/, { selector: "button" }));
++    expect(onConfirm).toHaveBeenCalledTimes(1);
++  });
++
++  test("denomination assistant sums and can feed the cash field explicitly", () => {
++    setup("0");
++    fireEvent.click(screen.getByText(/SHOW DENOMINATION ASSISTANT/));
++    fireEvent.change(screen.getByLabelText("Number of ₹500 notes"), { target: { value: "35" } });
++    fireEvent.click(screen.getByText("USE SHEET TOTAL"));
++    expect(screen.getByLabelText(/actual physical cash/i).value).toBe("17500");
++  });
++});
++
++describe("Payment modal", () => {
++  const totals = { subtotal: 1000, totalTax: 50, grandTotal: 1050, roundOff: 0, itemDiscount: 20 };
++  const base = { open: true, totals, paymentMethod: "Cash", onPaymentMethodChange: () => {}, customerInfo: { name: "Rajesh", phone: "9820144812" }, invoiceNo: "INV-1", onClose: () => {} };
++
++  test("quick tender buttons drive the tendered amount and change", () => {
++    render(<POSPaymentModal {...base} onConfirm={() => {}} />);
++    fireEvent.click(screen.getByText("₹2,000"));
++    expect(screen.getByLabelText("Tendered amount").value).toBe("2000");
++    expect(within(screen.getByText("CHANGE TO RETURN").parentElement).getByText("₹950.00")).toBeTruthy();
++    fireEvent.click(screen.getByText(/EXACT/));
++    expect(screen.getByLabelText("Tendered amount").value).toBe("1050");
++  });
++
++  test("cash confirm sends the same payload shape as before", () => {
++    const onConfirm = jest.fn();
++    render(<POSPaymentModal {...base} onConfirm={onConfirm} />);
++    fireEvent.click(screen.getByText("₹2,000"));
++    fireEvent.click(screen.getByText(/CONFIRM & PRINT BILL/));
++    expect(onConfirm).toHaveBeenCalledWith({ cash: 1050 }, { amountReceived: 2000, amountReturned: 950 });
++  });
++
++  test("underpaying cash disables confirm; split must sum to payable", () => {
++    const { rerender } = render(<POSPaymentModal {...base} onConfirm={() => {}} />);
++    fireEvent.change(screen.getByLabelText("Tendered amount"), { target: { value: "500" } });
++    expect(screen.getByText(/CONFIRM & PRINT BILL/).closest("button").disabled).toBe(true);
++    const onConfirm = jest.fn();
++    rerender(<POSPaymentModal {...base} paymentMethod="Split" onConfirm={onConfirm} />);
++    expect(screen.getByText(/CONFIRM & PRINT BILL/).closest("button").disabled).toBe(true);
++    fireEvent.change(screen.getByLabelText("CASH amount"), { target: { value: "500" } });
++    fireEvent.change(screen.getByLabelText("UPI amount"), { target: { value: "550" } });
++    fireEvent.click(screen.getByText(/CONFIRM & PRINT BILL/));
++    expect(onConfirm).toHaveBeenCalledWith({ cash: 500, card: 0, upi: 550 }, { amountReceived: 1050, amountReturned: 0 });
++  });
++
++  test("keyboard: Alt+2 selects UPI, F8 confirms, Esc closes", () => {
++    const onChange = jest.fn(), onConfirm = jest.fn(), onClose = jest.fn();
++    render(<POSPaymentModal {...base} onPaymentMethodChange={onChange} onConfirm={onConfirm} onClose={onClose} />);
++    const dialog = screen.getByRole("dialog");
++    fireEvent.keyDown(dialog, { key: "2", altKey: true });
++    expect(onChange).toHaveBeenCalledWith("UPI");
++    fireEvent.keyDown(dialog, { key: "F8" });
++    expect(onConfirm).toHaveBeenCalledTimes(1);
++    fireEvent.keyDown(dialog, { key: "Escape" });
++    expect(onClose).toHaveBeenCalled();
++  });
++});
+diff -ruN orig/src/components/pos/POSPaymentModal.js /home/claude/app/src/components/pos/POSPaymentModal.js
+--- orig/src/components/pos/POSPaymentModal.js	2026-11-10 12:45:17.000000000 +0000
++++ /home/claude/app/src/components/pos/POSPaymentModal.js	2026-11-17 03:13:39.951835158 +0000
+@@ -1,490 +1,343 @@
+-/* ===== POS PAYMENT MODAL — Checkout flow ===== */
+-import React, { useEffect, useRef, useState } from 'react';
+-import { formatCurrency } from '../../utils/currency';
+-
+-const PAYMENT_METHODS = [
+-  { key: 'Cash', icon: '💵', label: 'Cash' },
+-  { key: 'UPI', icon: '📱', label: 'UPI' },
+-  { key: 'Card', icon: '💳', label: 'Card' },
+-  { key: 'Split', icon: '⚡', label: 'Split' },
+-];
+-
+-/**
+- * POSPaymentModal
+- * Shown when user clicks "Checkout".
+- * Collects payment method, shows grand total, confirms save.
+- */
+-export default function POSPaymentModal({
+-  open,
+-  totals,
+-  paymentMethod,
+-  onPaymentMethodChange,
+-  customerInfo,
+-  onCustomerChange,
+-  invoiceNo,
+-  saleDate,
+-  onConfirm,
+-  onClose,
+-  saving,
+-}) {
+-  const [cashGiven, setCashGiven] = useState('');
+-  const [splitCash, setSplitCash] = useState('');
+-  const [splitCard, setSplitCard] = useState('');
+-  const [splitUPI, setSplitUPI] = useState('');
+-  const firstPaymentMethodRef = useRef(null);
+-  const previousFocusRef = useRef(null);
+-
+-  useEffect(() => {
+-    if (!open) return undefined;
+-
+-    previousFocusRef.current = document.activeElement;
+-    firstPaymentMethodRef.current?.focus();
+-    return () => {
+-      if (previousFocusRef.current instanceof HTMLElement) {
+-        previousFocusRef.current.focus();
+-      }
+-    };
+-  }, [open]);
+-
+-  const change = Math.max(0, (parseFloat(cashGiven) || 0) - (totals?.grandTotal || 0));
+-  const splitTotal = (parseFloat(splitCash) || 0) + (parseFloat(splitCard) || 0) + (parseFloat(splitUPI) || 0);
+-  const confirmDisabled =
+-    saving ||
+-    (paymentMethod === 'Cash' && cashGiven && parseFloat(cashGiven) < totals.grandTotal) ||
+-    (paymentMethod === 'Split' && Math.abs(splitTotal - totals.grandTotal) > 0.01);
+-
+-  const handleConfirmClick = () => {
+-    let paymentDetails = null;
+-    let amountReceived = totals.grandTotal;
+-    if (paymentMethod === 'Split') {
+-      amountReceived = splitTotal;
+-      paymentDetails = {
+-        cash: parseFloat(splitCash) || 0,
+-        card: parseFloat(splitCard) || 0,
+-        upi: parseFloat(splitUPI) || 0,
+-      };
+-    } else if (paymentMethod === 'Cash') {
+-      amountReceived = parseFloat(cashGiven) || totals.grandTotal;
+-      paymentDetails = { cash: totals.grandTotal };
+-    } else if (paymentMethod === 'Card') {
+-      paymentDetails = { card: totals.grandTotal };
+-    } else if (paymentMethod === 'UPI') {
+-      paymentDetails = { upi: totals.grandTotal };
+-    }
+-
+-    onConfirm(paymentDetails, {
+-      amountReceived,
+-      amountReturned: paymentMethod === 'Cash' ? change : 0,
+-    });
+-  };
+-
+-  if (!open) return null;
+-
+-  const quickAmounts = [
+-    Math.ceil(totals.grandTotal / 50) * 50,
+-    Math.ceil(totals.grandTotal / 100) * 100,
+-    Math.ceil(totals.grandTotal / 500) * 500,
+-  ].filter((v, i, arr) => arr.indexOf(v) === i && v >= totals.grandTotal);
+-
+-  return (
+-    <div
+-      style={{
+-        position: 'fixed',
+-        inset: 0,
+-        background: 'rgba(15,23,42,0.7)',
+-        zIndex: 'var(--z-modal)',
+-        display: 'flex',
+-        alignItems: 'center',
+-        justifyContent: 'center',
+-        padding: 16,
+-        backdropFilter: 'blur(4px)',
+-        animation: 'fadeIn 0.2s ease',
+-      }}
+-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+-      onKeyDown={(e) => {
+-        if (e.key === 'Escape') {
+-          e.preventDefault();
+-          e.stopPropagation();
+-          onClose();
+-        } else if (e.key === 'Enter' && e.ctrlKey) {
+-          e.preventDefault();
+-          if (!confirmDisabled) handleConfirmClick();
+-        } else if (e.altKey && /^[1-4]$/.test(e.key)) {
+-          e.preventDefault();
+-          onPaymentMethodChange(PAYMENT_METHODS[Number(e.key) - 1].key);
+-        }
+-      }}
+-    >
+-      <div
+-        role="dialog"
+-        aria-modal="true"
+-        aria-label="Checkout"
+-        style={{
+-          background: '#fff',
+-          borderRadius: 20,
+-          width: '100%',
+-          maxWidth: 480,
+-          overflow: 'hidden',
+-          boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
+-        }}
+-      >
+-        {/* Header */}
+-        <div
+-          style={{
+-            background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+-            padding: '20px 24px',
+-            display: 'flex',
+-            justifyContent: 'space-between',
+-            alignItems: 'center',
+-          }}
+-        >
+-          <div>
+-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>
+-              Checkout
+-            </div>
+-            <div style={{ color: '#fff', fontSize: 28, fontWeight: 800 }}>
+-              {formatCurrency(totals.grandTotal)}
+-            </div>
+-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>
+-              Invoice {invoiceNo}
+-            </div>
+-          </div>
+-          <button
+-            onClick={onClose}
+-            style={{
+-              background: 'rgba(255,255,255,0.15)',
+-              border: 'none',
+-              borderRadius: 10,
+-              color: '#fff',
+-              width: 36,
+-              height: 36,
+-              cursor: 'pointer',
+-              fontSize: 18,
+-              display: 'flex',
+-              alignItems: 'center',
+-              justifyContent: 'center',
+-            }}
+-          >
+-            ✕
+-          </button>
+-        </div>
+-
+-        {/* Body */}
+-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+-          {/* Customer */}
+-          <div>
+-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+-              Customer Details
+-            </div>
+-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+-              <div style={{ position: 'relative' }}>
+-                <input
+-                  value={customerInfo.name}
+-                  onChange={(e) => onCustomerChange({ name: e.target.value })}
+-                  placeholder="Name"
+-                  style={{
+-                    width: '100%',
+-                    padding: '10px 12px',
+-                    border: '1.5px solid #e2e8f0',
+-                    borderRadius: 10,
+-                    fontSize: 14,
+-                    outline: 'none',
+-                    boxSizing: 'border-box',
+-                    fontFamily: 'inherit',
+-                  }}
+-                  readOnly
+-                />
+-              </div>
+-              <div style={{ position: 'relative' }}>
+-                <input
+-                  value={customerInfo.phone}
+-                  onChange={(e) => onCustomerChange({ phone: e.target.value })}
+-                  placeholder="Phone"
+-                  type="tel"
+-                  style={{
+-                    // width: '100%',
+-                    padding: '10px 12px',
+-                    border: '1.5px solid #e2e8f0',
+-                    borderRadius: 10,
+-                    fontSize: 14,
+-                    outline: 'none',
+-                    boxSizing: 'border-box',
+-                    fontFamily: 'inherit',
+-                  }}
+-                  readOnly
+-                />
+-              </div>
+-            </div>
+-          </div>
+-
+-          {/* Payment Method */}
+-          <div>
+-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+-              Payment Method
+-            </div>
+-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+-              {PAYMENT_METHODS.map((pm) => (
+-                <button
+-                  key={pm.key}
+-                  ref={pm.key === 'Cash' ? firstPaymentMethodRef : undefined}
+-                  onClick={() => onPaymentMethodChange(pm.key)}
+-                  aria-pressed={paymentMethod === pm.key}
+-                  style={{
+-                    padding: '12px 8px',
+-                    borderRadius: 12,
+-                    border: paymentMethod === pm.key ? '2px solid #2563eb' : '2px solid #e2e8f0',
+-                    background: paymentMethod === pm.key ? '#eff6ff' : '#f8fafc',
+-                    cursor: 'pointer',
+-                    display: 'flex',
+-                    flexDirection: 'column',
+-                    alignItems: 'center',
+-                    gap: 4,
+-                    transition: 'all 0.15s ease',
+-                    transform: paymentMethod === pm.key ? 'scale(1.03)' : 'scale(1)',
+-                  }}
+-                >
+-                  <span style={{ fontSize: 22 }}>{pm.icon}</span>
+-                  <span style={{
+-                    fontSize: 11,
+-                    fontWeight: 700,
+-                    color: paymentMethod === pm.key ? '#2563eb' : '#64748b',
+-                  }}>
+-                    {pm.label}
+-                  </span>
+-                </button>
+-              ))}
+-            </div>
+-          </div>
+-
+-          {/* Cash quick amounts */}
+-          {paymentMethod === 'Cash' && (
+-            <div>
+-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+-                Cash Received
+-              </div>
+-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+-                {quickAmounts.slice(0, 3).map((amt) => (
+-                  <button
+-                    key={amt}
+-                    onClick={() => setCashGiven(String(amt))}
+-                    style={{
+-                      flex: 1,
+-                      padding: '8px',
+-                      borderRadius: 8,
+-                      border: cashGiven === String(amt) ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+-                      background: cashGiven === String(amt) ? '#eff6ff' : '#f8fafc',
+-                      cursor: 'pointer',
+-                      fontSize: 13,
+-                      fontWeight: 700,
+-                      color: cashGiven === String(amt) ? '#2563eb' : '#374151',
+-                    }}
+-                  >
+-                    ₹{amt}
+-                  </button>
+-                ))}
+-              </div>
+-              <input
+-                type="number"
+-                value={cashGiven}
+-                onChange={(e) => setCashGiven(e.target.value)}
+-                placeholder={`Enter amount (≥ ₹${totals.grandTotal})`}
+-                style={{
+-                  width: '100%',
+-                  padding: '10px 12px',
+-                  border: '1.5px solid #e2e8f0',
+-                  borderRadius: 10,
+-                  fontSize: 14,
+-                  outline: 'none',
+-                  boxSizing: 'border-box',
+-                  fontFamily: 'inherit',
+-                }}
+-              />
+-              {parseFloat(cashGiven) > 0 && (
+-                <div style={{
+-                  marginTop: 8,
+-                  padding: '10px 14px',
+-                  background: change >= 0 ? '#f0fdf4' : '#fef2f2',
+-                  borderRadius: 8,
+-                  display: 'flex',
+-                  justifyContent: 'space-between',
+-                  alignItems: 'center',
+-                }}>
+-                  <span style={{ fontSize: 13, fontWeight: 600, color: change >= 0 ? '#15803d' : '#dc2626' }}>
+-                    {change >= 0 ? '✓ Change to Return' : '⚠ Insufficient'}
+-                  </span>
+-                  <span style={{ fontSize: 16, fontWeight: 800, color: change >= 0 ? '#15803d' : '#dc2626' }}>
+-                    {change >= 0 ? formatCurrency(change) : ''}
+-                  </span>
+-                </div>
+-              )}
+-            </div>
+-          )}
+-
+-          {/* Split Payment inputs */}
+-          {paymentMethod === 'Split' && (
+-            <div>
+-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+-                Split Payment Breakdown
+-              </div>
+-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💵 Cash</span>
+-                  <input
+-                    type="number"
+-                    value={splitCash}
+-                    onChange={(e) => setSplitCash(e.target.value)}
+-                    placeholder="Cash ₹"
+-                    style={{
+-                      flex: 1,
+-                      padding: '8px 12px',
+-                      border: '1.5px solid #e2e8f0',
+-                      borderRadius: 8,
+-                      fontSize: 14,
+-                      outline: 'none',
+-                    }}
+-                  />
+-                </div>
+-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>💳 Card</span>
+-                  <input
+-                    type="number"
+-                    value={splitCard}
+-                    onChange={(e) => setSplitCard(e.target.value)}
+-                    placeholder="Card ₹"
+-                    style={{
+-                      flex: 1,
+-                      padding: '8px 12px',
+-                      border: '1.5px solid #e2e8f0',
+-                      borderRadius: 8,
+-                      fontSize: 14,
+-                      outline: 'none',
+-                    }}
+-                  />
+-                </div>
+-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+-                  <span style={{ width: 70, fontSize: 13, fontWeight: 600, color: '#374151' }}>📱 UPI</span>
+-                  <input
+-                    type="number"
+-                    value={splitUPI}
+-                    onChange={(e) => setSplitUPI(e.target.value)}
+-                    placeholder="UPI ₹"
+-                    style={{
+-                      flex: 1,
+-                      padding: '8px 12px',
+-                      border: '1.5px solid #e2e8f0',
+-                      borderRadius: 8,
+-                      fontSize: 14,
+-                      outline: 'none',
+-                    }}
+-                  />
+-                </div>
+-
+-                <div style={{
+-                  padding: '10px 14px',
+-                  background: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#f0fdf4' : '#fff7ed',
+-                  border: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+-                  borderRadius: 8,
+-                  display: 'flex',
+-                  justifyContent: 'space-between',
+-                  fontSize: 13,
+-                  fontWeight: 600,
+-                  color: Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '#15803d' : '#c2410c',
+-                }}>
+-                  <span>
+-                    {Math.abs(splitTotal - totals.grandTotal) < 0.01 ? '✓ Exact Split Amount' : `Remaining: ${formatCurrency(totals.grandTotal - splitTotal)}`}
+-                  </span>
+-                  <span>Sum: {formatCurrency(splitTotal)}</span>
+-                </div>
+-              </div>
+-            </div>
+-          )}
+-
+-          {/* Bill Summary */}
+-          <div style={{
+-            background: '#f8fafc',
+-            borderRadius: 12,
+-            padding: '14px 16px',
+-            display: 'flex',
+-            flexDirection: 'column',
+-            gap: 8,
+-          }}>
+-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#64748b' }}>
+-              <span>Subtotal</span>
+-              <span>{formatCurrency(totals.subtotal)}</span>
+-            </div>
+-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#64748b' }}>
+-              <span>GST</span>
+-              <span>{formatCurrency(totals.totalTax)}</span>
+-            </div>
+-            {totals.rawTotal !== (totals.preCreditGrandTotal ?? totals.grandTotal) && (
+-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#dc2626' }}>
+-                <span>Discount</span>
+-                <span>−{formatCurrency(totals.rawTotal - (totals.preCreditGrandTotal ?? totals.grandTotal) - totals.roundOff)}</span>
+-              </div>
+-            )}
+-            {totals.returnCreditAmount > 0 && (
+-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#15803d' }}>
+-                <span>Return credit</span>
+-                <span>−{formatCurrency(totals.returnCreditAmount)}</span>
+-              </div>
+-            )}
+-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+-              <span>TOTAL</span>
+-              <span>{formatCurrency(totals.grandTotal)}</span>
+-            </div>
+-          </div>
+-        </div>
+-
+-        {/* Footer */}
+-        <div style={{ padding: '0 24px 24px', display: 'flex', gap: 10 }}>
+-          <button
+-            onClick={onClose}
+-            style={{
+-              flex: 1,
+-              padding: '14px',
+-              borderRadius: 12,
+-              border: '1.5px solid #e2e8f0',
+-              background: '#f8fafc',
+-              color: '#374151',
+-              fontSize: 14,
+-              fontWeight: 600,
+-              cursor: 'pointer',
+-            }}
+-          >
+-            Back
+-          </button>
+-          <button
+-            onClick={handleConfirmClick}
+-            disabled={confirmDisabled}
+-            style={{
+-              flex: 2,
+-              padding: '14px',
+-              borderRadius: 12,
+-              border: 'none',
+-              background: saving ? '#93c5fd' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+-              color: '#fff',
+-              fontSize: 15,
+-              fontWeight: 700,
+-              cursor: saving ? 'wait' : 'pointer',
+-              display: 'flex',
+-              alignItems: 'center',
+-              justifyContent: 'center',
+-              gap: 8,
+-              boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
+-              transition: 'all 0.2s',
+-            }}
+-          >
+-            {saving ? (
+-              <>
+-                <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+-                Saving…
+-              </>
+-            ) : (
+-              <>🖨 Confirm & Print</>
+-            )}
+-          </button>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-}
++/* ===== POS PAYMENT MODAL — fiscal checkout terminal =====
++ * Presentation redesign. Payment collection, validation, the payload sent to
++ * onConfirm and the Alt+1..4 / Ctrl+Enter shortcuts are unchanged.
++ */
++import React, { useEffect, useRef, useState } from "react";
++import {
++  FiUser,
++  FiPhone,
++  FiDollarSign,
++  FiSmartphone,
++  FiCreditCard,
++  FiShuffle,
++  FiPrinter,
++  FiPauseCircle,
++  FiArrowLeft,
++  FiFileText,
++  FiTag,
++  FiStar,
++  FiCheckCircle,
++} from "react-icons/fi";
++import { TerminalModal, ModalClose, Kbd, money, rupees } from "./posTerminal";
++
++const PAYMENT_METHODS = [
++  { key: "Cash", icon: <FiDollarSign />, label: "CASH", sub: "Drawer Direct" },
++  { key: "UPI", icon: <FiSmartphone />, label: "UPI QR", sub: "GPay / PhonePe" },
++  { key: "Card", icon: <FiCreditCard />, label: "CARD", sub: "Debit / Credit" },
++  { key: "Split", icon: <FiShuffle />, label: "SPLIT", sub: "Multi-Tender" },
++];
++
++const ADD_STEPS = [50, 100, 500];
++const num = (v) => parseFloat(v) || 0;
++
++export default function POSPaymentModal({
++  open,
++  totals,
++  paymentMethod,
++  onPaymentMethodChange,
++  customerInfo,
++  invoiceNo,
++  onConfirm,
++  onClose,
++  onHold,
++  saving,
++  operatorName,
++  operatorId,
++  terminalId,
++  tierLabel,
++  printerLabel,
++}) {
++  const [cashGiven, setCashGiven] = useState("");
++  const [splitCash, setSplitCash] = useState("");
++  const [splitCard, setSplitCard] = useState("");
++  const [splitUPI, setSplitUPI] = useState("");
++  const firstPaymentMethodRef = useRef(null);
++  const previousFocusRef = useRef(null);
++
++  useEffect(() => {
++    if (!open) return undefined;
++    previousFocusRef.current = document.activeElement;
++    firstPaymentMethodRef.current?.focus();
++    return () => {
++      if (previousFocusRef.current instanceof HTMLElement) {
++        previousFocusRef.current.focus();
++      }
++    };
++  }, [open]);
++
++  const payable = totals?.grandTotal || 0;
++  const given = num(cashGiven);
++  const change = Math.max(0, given - payable);
++  const balanceDue = cashGiven ? Math.max(0, payable - given) : 0;
++  const splitTotal = num(splitCash) + num(splitCard) + num(splitUPI);
++  const splitRemaining = payable - splitTotal;
++  const splitExact = Math.abs(splitRemaining) < 0.01;
++  const confirmDisabled =
++    saving ||
++    (paymentMethod === "Cash" && cashGiven && given < payable) ||
++    (paymentMethod === "Split" && Math.abs(splitTotal - payable) > 0.01);
++
++  const handleConfirmClick = () => {
++    let paymentDetails = null;
++    let amountReceived = payable;
++    if (paymentMethod === "Split") {
++      amountReceived = splitTotal;
++      paymentDetails = { cash: num(splitCash), card: num(splitCard), upi: num(splitUPI) };
++    } else if (paymentMethod === "Cash") {
++      amountReceived = given || payable;
++      paymentDetails = { cash: payable };
++    } else if (paymentMethod === "Card") {
++      paymentDetails = { card: payable };
++    } else if (paymentMethod === "UPI") {
++      paymentDetails = { upi: payable };
++    }
++    onConfirm(paymentDetails, {
++      amountReceived,
++      amountReturned: paymentMethod === "Cash" ? change : 0,
++    });
++  };
++
++  if (!open) return null;
++
++  const tax = Number(totals.totalTax) || 0;
++  const cgst = Number((tax / 2).toFixed(2));
++  const sgst = Number((tax - cgst).toFixed(2));
++  const itemDiscount = Number(totals.itemDiscount) || 0;
++  const globalDiscount = Number(totals.globalDiscountAmount) || 0;
++  const roundOff = Number(totals.roundOff) || 0;
++  const returnCredit = Number(totals.returnCreditAmount) || 0;
++
++  const setAmount = (v) => setCashGiven(v === "" ? "" : String(Number(v.toFixed(2))));
++
++  return (
++    <TerminalModal
++      tone="blue"
++      label="Checkout"
++      width={1040}
++      onOverlayClick={onClose}
++      onKeyDown={(e) => {
++        if (e.key === "Escape") {
++          e.preventDefault();
++          e.stopPropagation();
++          onClose();
++        } else if ((e.key === "Enter" && e.ctrlKey) || e.key === "F8") {
++          e.preventDefault();
++          e.stopPropagation();
++          if (!confirmDisabled) handleConfirmClick();
++        } else if (e.key === "F10" && onHold) {
++          e.preventDefault();
++          e.stopPropagation();
++          onHold();
++        } else if (e.altKey && /^[1-4]$/.test(e.key)) {
++          e.preventDefault();
++          onPaymentMethodChange(PAYMENT_METHODS[Number(e.key) - 1].key);
++        }
++      }}
++    >
++      <header className="bf-modal__header bf-modal__header--checkout">
++        <div className="bf-modal__logo"><FiFileText /></div>
++        <div className="bf-modal__headtext">
++          <h2 className="bf-modal__title bf-modal__title--sm">
++            CHECKOUT • BILLFLOW POS <span className="bf-tag">{invoiceNo || "—"}</span>
++          </h2>
++          <div className="bf-modal__meta">
++            {terminalId ? `TERMINAL ${terminalId}` : ""}
++            {operatorName ? ` • OPERATOR ${operatorName}` : ""}
++            {operatorId ? ` (#${operatorId})` : ""}
++          </div>
++        </div>
++        <div className="bf-modal__amount">
++          <span>NET AMOUNT PAYABLE</span>
++          <strong>{rupees(payable)}</strong>
++        </div>
++        <ModalClose onClick={onClose} />
++      </header>
++
++      <div className="bf-modal__body bf-checkout">
++        <div className="bf-checkout__left">
++          <section className="bf-section bf-section--panel">
++            <div className="bf-panelhead">
++              <span className="bf-label"><FiUser /> CUSTOMER IDENTIFICATION</span>
++              {tierLabel && <span className="bf-tag bf-tag--soft">{tierLabel.toUpperCase()} TIER</span>}
++            </div>
++            <div className="bf-split2 bf-split2--tight">
++              <div>
++                <span className="bf-label">CUSTOMER NAME</span>
++                <div className="bf-readfield"><FiUser /> {customerInfo?.name || "—"}</div>
++              </div>
++              <div>
++                <span className="bf-label">PHONE NUMBER</span>
++                <div className="bf-readfield"><FiPhone /> {customerInfo?.phone ? `+91 ${customerInfo.phone}` : "—"}</div>
++              </div>
++            </div>
++          </section>
++
++          <section>
++            <span className="bf-label">PAYMENT METHOD [ALT+1 – ALT+4]</span>
++            <div className="bf-methods" role="group" aria-label="Payment method">
++              {PAYMENT_METHODS.map((pm, i) => (
++                <button
++                  key={pm.key}
++                  type="button"
++                  ref={pm.key === "Cash" ? firstPaymentMethodRef : undefined}
++                  className={`bf-method ${paymentMethod === pm.key ? "is-selected" : ""}`}
++                  aria-pressed={paymentMethod === pm.key}
++                  onClick={() => onPaymentMethodChange(pm.key)}
++                >
++                  <span className="bf-method__top">{pm.icon}<Kbd>ALT+{i + 1}</Kbd></span>
++                  <strong>{pm.label}</strong>
++                  <small>{pm.sub}</small>
++                </button>
++              ))}
++            </div>
++          </section>
++
++          {paymentMethod === "Cash" && (
++            <section className="bf-section bf-section--panel">
++              <div className="bf-panelhead">
++                <span className="bf-label">CURRENCY RECEIVED MATRIX</span>
++                <span className="bf-label bf-label--blue">DENOMINATION SHORTCUTS</span>
++              </div>
++              <div className="bf-quick">
++                {ADD_STEPS.map((a) => (
++                  <button key={a} type="button" onClick={() => setAmount(given + a)}>+₹{a}</button>
++                ))}
++                <button type="button" className="is-exact" onClick={() => setAmount(payable)}>
++                  EXACT (₹{money(payable).replace(".00", "")})
++                </button>
++                <button type="button" onClick={() => setAmount(2000)}>₹2,000</button>
++              </div>
++              <div className="bf-tendered">
++                <span className="bf-tag bf-tag--dark">TENDERED</span> <span className="bf-label">INR (₹)</span>
++                <div className="bf-tendered__row">
++                  <span>₹</span>
++                  <input
++                    inputMode="decimal"
++                    aria-label="Tendered amount"
++                    placeholder={money(payable)}
++                    value={cashGiven}
++                    onChange={(e) => {
++                      const v = e.target.value;
++                      if (v === "" || /^\d{0,8}(\.\d{0,2})?$/.test(v)) setCashGiven(v);
++                    }}
++                    onFocus={(e) => e.target.select()}
++                  />
++                </div>
++              </div>
++              <div className="bf-split2 bf-split2--tight">
++                <div className="bf-result bf-result--ok">
++                  <span className="bf-label">CHANGE TO RETURN</span>
++                  <strong>{rupees(change)}</strong>
++                </div>
++                <div className={`bf-result ${balanceDue > 0 ? "bf-result--bad" : ""}`}>
++                  <span className="bf-label">BALANCE DUE</span>
++                  <strong>{rupees(balanceDue)}</strong>
++                </div>
++              </div>
++            </section>
++          )}
++
++          {(paymentMethod === "UPI" || paymentMethod === "Card") && (
++            <section className="bf-section bf-section--panel">
++              <span className="bf-label">
++                {paymentMethod === "UPI" ? "UPI COLLECTION" : "CARD COLLECTION"}
++              </span>
++              <div className="bf-collect">
++                <strong>{rupees(payable)}</strong>
++                <span>
++                  Collect the full amount by {paymentMethod === "UPI" ? "UPI" : "card"}, then confirm.
++                  The sale is recorded as a single {paymentMethod === "UPI" ? "UPI" : "card"} tender.
++                </span>
++              </div>
++            </section>
++          )}
++
++          {paymentMethod === "Split" && (
++            <section className="bf-section bf-section--panel">
++              <span className="bf-label">SPLIT PAYMENT BREAKDOWN</span>
++              {[
++                ["CASH", splitCash, setSplitCash],
++                ["CARD", splitCard, setSplitCard],
++                ["UPI", splitUPI, setSplitUPI],
++              ].map(([label, value, setter]) => (
++                <div className="bf-splitrow" key={label}>
++                  <span className="bf-label">{label}</span>
++                  <div className="bf-input">
++                    <span>₹</span>
++                    <input
++                      inputMode="decimal"
++                      aria-label={`${label} amount`}
++                      placeholder="0.00"
++                      value={value}
++                      onChange={(e) => {
++                        const v = e.target.value;
++                        if (v === "" || /^\d{0,8}(\.\d{0,2})?$/.test(v)) setter(v);
++                      }}
++                      onFocus={(e) => e.target.select()}
++                    />
++                  </div>
++                </div>
++              ))}
++              <div className={`bf-warnrow ${splitExact ? "is-ok" : ""}`}>
++                {splitExact ? <><FiCheckCircle /> Exact split amount</> : <>Remaining: <strong>{rupees(splitRemaining)}</strong></>}
++                <span className="bf-spacer" />
++                SUM: {rupees(splitTotal)}
++              </div>
++            </section>
++          )}
++        </div>
++
++        <div className="bf-checkout__right">
++          <section className="bf-section bf-section--panel bf-ledger">
++            <div className="bf-panelhead">
++              <span className="bf-label"><FiFileText /> FISCAL LEDGER BREAKDOWN</span>
++            </div>
++            <div className="bf-ledger__row"><span>BASKET TAXABLE VALUE</span><strong>{rupees(totals.subtotal)}</strong></div>
++            {itemDiscount > 0 && (
++              <div className="bf-ledger__row is-green">
++                <span><FiTag /> ITEM DISCOUNT (INCLUDED)</span><strong>{rupees(itemDiscount)}</strong>
++              </div>
++            )}
++            <div className="bf-ledger__row bf-ledger__row--stack">
++              <span>GST REVENUE SPLIT</span><strong>{rupees(tax)}</strong>
++              <small>CGST {rupees(cgst)} + SGST {rupees(sgst)}</small>
++            </div>
++            {globalDiscount > 0 && (
++              <div className="bf-ledger__row is-green"><span>BILL DISCOUNT (-)</span><strong>-{rupees(globalDiscount)}</strong></div>
++            )}
++            {returnCredit > 0 && (
++              <div className="bf-ledger__row is-green"><span><FiStar /> RETURN CREDIT (-)</span><strong>-{rupees(returnCredit)}</strong></div>
++            )}
++            <div className="bf-ledger__row"><span>ROUND OFF ADJUSTMENT</span><strong>{roundOff > 0 ? "+" : roundOff < 0 ? "-" : ""}{rupees(Math.abs(roundOff))}</strong></div>
++          </section>
++
++          <div className="bf-grand">
++            <div className="bf-grand__top"><span>TOTAL PAYABLE NET DUE</span><span>CURRENCY: INR</span></div>
++            <div className="bf-grand__row"><span>GRAND TOTAL:</span><strong>{rupees(payable)}</strong></div>
++          </div>
++        </div>
++      </div>
++
++      <footer className="bf-modal__footer">
++        <button type="button" className="bf-btn bf-btn--ghost" onClick={onClose}>
++          <FiArrowLeft /> BACK <Kbd>ESC</Kbd>
++        </button>
++        {onHold && (
++          <button type="button" className="bf-btn bf-btn--ghost" onClick={onHold} disabled={saving}>
++            <FiPauseCircle /> HOLD <Kbd>F10</Kbd>
++          </button>
++        )}
++        <span className="bf-spacer" />
++        {printerLabel && <span className="bf-footnote">PRINTER: {printerLabel}</span>}
++        <button
++          type="button"
++          className="bf-btn bf-btn--blue bf-btn--lg"
++          onClick={handleConfirmClick}
++          disabled={confirmDisabled}
++        >
++          <FiPrinter /> {saving ? "SAVING…" : "CONFIRM & PRINT BILL"} <Kbd>F8</Kbd>
++        </button>
++      </footer>
++    </TerminalModal>
++  );
++}
+diff -ruN orig/src/components/pos/POSStartShiftModal.js /home/claude/app/src/components/pos/POSStartShiftModal.js
+--- orig/src/components/pos/POSStartShiftModal.js	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/components/pos/POSStartShiftModal.js	2026-11-17 03:12:36.671832895 +0000
+@@ -0,0 +1,242 @@
++/* ===== START SHIFT — cash register activation terminal =====
++ * Presentation only. The opening float stays the single value sent to the
++ * existing startShift workflow; the denomination sheet is a counting aid that
++ * is compared against it (no denomination data is sent to the backend).
++ */
++import React, { useEffect, useMemo, useState } from "react";
++import { FiUnlock, FiCheckCircle, FiAlertTriangle, FiInfo } from "react-icons/fi";
++import {
++  TerminalModal,
++  ModalClose,
++  Kbd,
++  DenominationGrid,
++  emptyCounts,
++  sumDenominations,
++  sameAmount,
++  money,
++  rupees,
++} from "./posTerminal";
++
++const PRESETS = [500, 1000, 2000];
++
++export default function POSStartShiftModal({
++  open,
++  floatValue,
++  onFloatChange,
++  onClose,
++  onStart,
++  submitting = false,
++  operatorName,
++  operatorId,
++  terminalId,
++}) {
++  const [counts, setCounts] = useState(emptyCounts);
++  const [coins, setCoins] = useState("");
++  const [touched, setTouched] = useState(false);
++  const [now, setNow] = useState(() => new Date());
++
++  useEffect(() => {
++    if (!open) return undefined;
++    setCounts(emptyCounts());
++    setCoins("");
++    setTouched(false);
++    const t = setInterval(() => setNow(new Date()), 1000);
++    return () => clearInterval(t);
++  }, [open]);
++
++  const counted = useMemo(() => sumDenominations(counts, coins), [counts, coins]);
++  const hasCount = counted > 0;
++  const entered = parseFloat(floatValue);
++  const floatMissing = floatValue === "" || !Number.isFinite(entered) || entered < 0;
++  const matched = hasCount && !floatMissing && sameAmount(counted, entered);
++  const diff = hasCount && !floatMissing ? counted - entered : 0;
++
++  if (!open) return null;
++
++  const submit = () => {
++    setTouched(true);
++    if (floatMissing || submitting) return;
++    onStart();
++  };
++
++  const stamp = now.toLocaleString("en-IN", {
++    day: "2-digit",
++    month: "short",
++    year: "numeric",
++    hour: "2-digit",
++    minute: "2-digit",
++    second: "2-digit",
++    hour12: true,
++  });
++
++  return (
++    <TerminalModal
++      tone="green"
++      label="Open new shift"
++      width={720}
++      onOverlayClick={onClose}
++      onKeyDown={(e) => {
++        if (e.key === "Enter" && !e.shiftKey && e.target.tagName !== "BUTTON") {
++          e.preventDefault();
++          submit();
++        }
++      }}
++    >
++      <header className="bf-modal__header">
++        <div className="bf-modal__headtext">
++          <div className="bf-modal__eyebrow">
++            <span className="bf-tag">POS SHIFT MANAGEMENT</span>
++            <span>Terminal arming</span>
++          </div>
++          <h2 className="bf-modal__title">OPEN NEW SHIFT</h2>
++          <div className="bf-modal__meta">SYS-TIME: {stamp}</div>
++        </div>
++        <ModalClose onClick={onClose} disabled={submitting} />
++      </header>
++
++      <div className="bf-modal__body">
++        <div className="bf-infobar">
++          <div>
++            <span className="bf-infobar__k">OPERATOR</span>
++            <strong>
++              {operatorName || "—"}
++              {operatorId ? <em> (#{operatorId})</em> : null}
++            </strong>
++          </div>
++          <div>
++            <span className="bf-infobar__k">TERMINAL</span>
++            <strong>{terminalId || "—"}</strong>
++          </div>
++        </div>
++
++        <section className="bf-section">
++          <label className="bf-label" htmlFor="bf-float-input">
++            OPENING CASH FLOAT (₹) <span className="bf-req">*</span>
++          </label>
++          <div className={`bf-bigamount ${touched && floatMissing ? "is-error" : ""}`}>
++            <span className="bf-bigamount__sym">₹</span>
++            <input
++              id="bf-float-input"
++              autoFocus
++              inputMode="decimal"
++              placeholder="0.00"
++              aria-invalid={touched && floatMissing}
++              value={floatValue}
++              onChange={(e) => {
++                const v = e.target.value;
++                if (v === "" || /^\d{0,7}(\.\d{0,2})?$/.test(v)) onFloatChange(v);
++              }}
++              onFocus={(e) => e.target.select()}
++            />
++          </div>
++          {touched && floatMissing && (
++            <div className="bf-error" role="alert">
++              Enter the opening float (enter 0 if the drawer starts empty).
++            </div>
++          )}
++
++          <div className="bf-presets-head">
++            <span className="bf-label">FLOAT PRESET SHORTCUTS</span>
++            <button type="button" className="bf-link" onClick={() => onFloatChange("0")}>
++              RESET TO ZERO
++            </button>
++          </div>
++          <div className="bf-presets">
++            {PRESETS.map((p) => (
++              <button
++                key={p}
++                type="button"
++                className="bf-preset"
++                onClick={() => onFloatChange(String(p))}
++              >
++                ₹{money(p).replace(".00", "")}
++              </button>
++            ))}
++          </div>
++        </section>
++
++        <section className="bf-section bf-section--panel">
++          <div className="bf-panelhead">
++            <span className="bf-label">
++              PHYSICAL COUNT BREAKDOWN <span className="bf-tag bf-tag--dark">AUDIT</span>
++            </span>
++            <span
++              className={`bf-status ${
++                !hasCount ? "" : matched ? "is-ok" : "is-bad"
++              }`}
++            >
++              COUNTED: {rupees(counted)}
++              {hasCount && !floatMissing &&
++                (matched ? (
++                  <>
++                    {" "}
++                    <FiCheckCircle /> MATCHED
++                  </>
++                ) : (
++                  <>
++                    {" "}
++                    <FiAlertTriangle /> MISMATCH
++                  </>
++                ))}
++            </span>
++          </div>
++          <DenominationGrid
++            idPrefix="open-den"
++            counts={counts}
++            onCountChange={(d, v) => setCounts((c) => ({ ...c, [d]: v }))}
++            coinAmount={coins}
++            onCoinChange={setCoins}
++          />
++          {hasCount && !floatMissing && !matched && (
++            <div className="bf-warnrow" role="status">
++              <FiAlertTriangle /> Counted cash differs from the opening float by{" "}
++              <strong>{rupees(diff)}</strong>.
++              <button
++                type="button"
++                className="bf-link"
++                onClick={() => onFloatChange(String(Number(counted.toFixed(2))))}
++              >
++                USE COUNTED AMOUNT AS FLOAT
++              </button>
++            </div>
++          )}
++          {hasCount && floatMissing && (
++            <div className="bf-warnrow">
++              <button
++                type="button"
++                className="bf-link"
++                onClick={() => onFloatChange(String(Number(counted.toFixed(2))))}
++              >
++                USE COUNTED AMOUNT AS FLOAT
++              </button>
++            </div>
++          )}
++        </section>
++
++        <div className="bf-policy">
++          <FiInfo />
++          <p>
++            <strong>PHYSICAL FLOAT POLICY:</strong> Count and verify cash in the
++            register drawer before confirming shift opening. This establishes the
++            terminal's baseline for reconciliation and shift-end float variances.
++          </p>
++        </div>
++      </div>
++
++      <footer className="bf-modal__footer">
++        <button type="button" className="bf-btn bf-btn--ghost" onClick={onClose} disabled={submitting}>
++          CANCEL <Kbd>ESC</Kbd>
++        </button>
++        <span className="bf-spacer" />
++        <button
++          type="button"
++          className="bf-btn bf-btn--green bf-btn--lg"
++          onClick={submit}
++          disabled={submitting}
++        >
++          <FiUnlock /> {submitting ? "STARTING…" : "START SHIFT"} <Kbd>ENTER</Kbd>
++        </button>
++      </footer>
++    </TerminalModal>
++  );
++}
+diff -ruN orig/src/components/pos/posTerminal.js /home/claude/app/src/components/pos/posTerminal.js
+--- orig/src/components/pos/posTerminal.js	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/components/pos/posTerminal.js	2026-11-16 18:19:51.267861608 +0000
+@@ -0,0 +1,182 @@
++/* ===== POS TERMINAL — shared primitives for the BillFlow POS design system =====
++ * Used by the B2C billing screen, checkout, start-shift and close-shift modals
++ * so every POS surface shares one visual language and one money format.
++ */
++import React from "react";
++import { FiX, FiMinus, FiPlus } from "react-icons/fi";
++import "../../styles/pos-terminal.css";
++
++/** Amount without currency symbol, Indian grouping: 1,23,456.00 */
++export function money(value) {
++  const n = Number(value);
++  return (Number.isFinite(n) ? n : 0).toLocaleString("en-IN", {
++    minimumFractionDigits: 2,
++    maximumFractionDigits: 2,
++  });
++}
++
++/** ₹ + money(), with a leading minus for negatives: -₹50.00 */
++export function rupees(value) {
++  const n = Number(value) || 0;
++  return `${n < 0 ? "-" : ""}₹${money(Math.abs(n))}`;
++}
++
++/** Currency-safe comparison to the paisa */
++export const sameAmount = (a, b) =>
++  Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.005;
++
++/** Counted-note denominations used by the cash-count assistants */
++export const NOTE_DENOMINATIONS = [500, 200, 100, 50, 20, 10];
++
++export const emptyCounts = () =>
++  NOTE_DENOMINATIONS.reduce((acc, d) => ({ ...acc, [d]: "" }), {});
++
++/** Sum of notes + loose coin amount. Blank/invalid entries count as 0. */
++export function sumDenominations(counts, coinAmount) {
++  const notes = NOTE_DENOMINATIONS.reduce(
++    (sum, d) => sum + d * (Math.max(0, parseInt(counts[d], 10)) || 0),
++    0,
++  );
++  return notes + (Math.max(0, parseFloat(coinAmount)) || 0);
++}
++
++/**
++ * Modal frame shared by every POS dialog: overlay, fixed header height,
++ * scrolling body, pinned footer. `tone` colours the header
++ * (navy | blue | green | red).
++ */
++export function TerminalModal({
++  tone = "navy",
++  label,
++  ariaLabel,
++  children,
++  onOverlayClick,
++  onKeyDown,
++  width = 760,
++}) {
++  return (
++    <div
++      className="bf-overlay"
++      onMouseDown={(e) => {
++        if (e.target === e.currentTarget) onOverlayClick?.();
++      }}
++      onKeyDown={onKeyDown}
++    >
++      <div
++        className={`bf-modal bf-modal--${tone}`}
++        role="dialog"
++        aria-modal="true"
++        aria-label={ariaLabel || label}
++        style={{ "--bf-modal-w": `${width}px` }}
++      >
++        {children}
++      </div>
++    </div>
++  );
++}
++
++export function ModalClose({ onClick, disabled }) {
++  return (
++    <button
++      type="button"
++      className="bf-modal__close"
++      onClick={onClick}
++      disabled={disabled}
++      aria-label="Close"
++    >
++      <FiX />
++    </button>
++  );
++}
++
++/** [KEY] hint chip used on buttons */
++export function Kbd({ children }) {
++  return <span className="bf-kbd">{children}</span>;
++}
++
++/**
++ * Denomination counter grid. Counts are held by the parent so the sheet can be
++ * compared against whatever amount the existing workflow collects.
++ */
++export function DenominationGrid({
++  counts,
++  onCountChange,
++  coinAmount,
++  onCoinChange,
++  coinLabel = "Coins / Loose Misc",
++  idPrefix = "den",
++}) {
++  const step = (d, delta) => {
++    const next = Math.max(0, (parseInt(counts[d], 10) || 0) + delta);
++    onCountChange(d, next === 0 ? "" : String(next));
++  };
++
++  return (
++    <div className="bf-den-grid">
++      {NOTE_DENOMINATIONS.map((d) => {
++        const qty = Math.max(0, parseInt(counts[d], 10)) || 0;
++        return (
++          <div className="bf-den" key={d}>
++            <div className="bf-den__head">
++              <span className="bf-den__value">₹{d}</span>
++              <span className="bf-den__unit">NOTES</span>
++            </div>
++            <div className="bf-den__stepper">
++              <button
++                type="button"
++                tabIndex={-1}
++                aria-label={`Decrease ₹${d} notes`}
++                onClick={() => step(d, -1)}
++              >
++                <FiMinus />
++              </button>
++              <input
++                id={`${idPrefix}-${d}`}
++                inputMode="numeric"
++                aria-label={`Number of ₹${d} notes`}
++                value={counts[d]}
++                placeholder="0"
++                onChange={(e) => {
++                  const v = e.target.value;
++                  if (v === "" || /^\d{1,5}$/.test(v)) onCountChange(d, v);
++                }}
++                onFocus={(e) => e.target.select()}
++              />
++              <button
++                type="button"
++                tabIndex={-1}
++                aria-label={`Increase ₹${d} notes`}
++                onClick={() => step(d, 1)}
++              >
++                <FiPlus />
++              </button>
++            </div>
++            <div className="bf-den__sub">= ₹{money(qty * d)}</div>
++          </div>
++        );
++      })}
++      <div className="bf-den bf-den--coins">
++        <div className="bf-den__head">
++          <span className="bf-den__value">{coinLabel}</span>
++          <span className="bf-den__unit">AMOUNT</span>
++        </div>
++        <div className="bf-den__stepper bf-den__stepper--amount">
++          <span className="bf-den__rs">₹</span>
++          <input
++            id={`${idPrefix}-coins`}
++            inputMode="decimal"
++            aria-label="Coins and loose amount"
++            value={coinAmount}
++            placeholder="0"
++            onChange={(e) => {
++              const v = e.target.value;
++              if (v === "" || /^\d{0,6}(\.\d{0,2})?$/.test(v)) onCoinChange(v);
++            }}
++            onFocus={(e) => e.target.select()}
++          />
++        </div>
++        <div className="bf-den__sub">= ₹{money(parseFloat(coinAmount) || 0)}</div>
++      </div>
++    </div>
++  );
++}
+diff -ruN orig/src/features/customers/Customers.js /home/claude/app/src/features/customers/Customers.js
+--- orig/src/features/customers/Customers.js	2026-11-05 19:10:11.000000000 +0000
++++ /home/claude/app/src/features/customers/Customers.js	2026-11-16 18:19:34.142769852 +0000
+@@ -5,13 +5,8 @@
+ import { FiGift } from 'react-icons/fi';
+ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+ import LoyaltyRedemptionModal from './LoyaltyRedemptionModal';
++import { loyaltyTier } from '../../utils/loyaltyTier';
+ 
+-function loyaltyTier(points) {
+-  const p = Number(points) || 0;
+-  if (p >= 1000) return { label: 'Gold', variant: 'success' };
+-  if (p >= 300) return { label: 'Silver', variant: 'info' };
+-  return { label: 'Bronze', variant: 'neutral' };
+-}
+ 
+ export default function Customers() {
+   const customers = useAppStore((s) => s.customers);
+diff -ruN orig/src/features/sales/POSScreen.js /home/claude/app/src/features/sales/POSScreen.js
+--- orig/src/features/sales/POSScreen.js	2026-11-13 10:29:14.000000000 +0000
++++ /home/claude/app/src/features/sales/POSScreen.js	2026-11-17 03:20:32.679621077 +0000
+@@ -1,18 +1,19 @@
+ /* ===== POS SCREEN — Main B2C POS Layout ===== */
+ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+ import {
+-  FiUser,
+-  FiFileText,
+   FiPauseCircle,
+   FiXCircle,
+   FiTrash2,
+-  FiSearch,
+-  FiCreditCard,
+-  FiUserCheck,
+-  FiPrinter,
+   FiClock,
+   FiLayers,
+   FiStar,
++  FiArrowLeft,
++  FiCalendar,
++  FiCornerDownLeft,
++  FiMaximize,
++  FiArrowRight,
++  FiMonitor,
++  FiTag,
+ } from "react-icons/fi";
+ import useAppStore from "../../store/appStore";
+ import useSalesStore from "../../store/salesStore";
+@@ -48,9 +49,15 @@
+ import POSCartItem from "../../components/pos/POSCartItem";
+ import POSPaymentModal from "../../components/pos/POSPaymentModal";
+ import ThermalBill from "../../components/pos/ThermalBill";
++import POSStartShiftModal from "../../components/pos/POSStartShiftModal";
++import POSCloseShiftModal from "../../components/pos/POSCloseShiftModal";
++import { money, rupees, Kbd } from "../../components/pos/posTerminal";
++import { loyaltyTier } from "../../utils/loyaltyTier";
++import { fetchCurrentShiftAPI } from "../../api/pos";
+ import BatchSelector from "../../components/shared/BatchSelector";
+ import { invalidateBatchCache } from "../../components/shared/BatchSelector";
+ import "../../styles/pos-b2c.css";
++import "../../styles/pos-terminal.css";
+ // import '../../styles/thermal.css';
+ import {
+   fetchCompanyUsersAPI,
+@@ -89,7 +96,7 @@
+       type="text"
+       inputMode="decimal"
+       step={step}
+-      className="pos-exact-qty-val pos-exact-qty-input"
++      className="pos-exact-qty-input"
+       aria-label={ariaLabel}
+       value={draft}
+       onChange={(e) => {
+@@ -117,19 +124,21 @@
+   );
+ }
+ 
+-function POSDiscountInput({ value, ariaLabel }) {
++/* Shift terminal id that the existing start-shift workflow sends */
++const POS_TERMINAL_ID = "POS-TERMINAL-1";
++
++/* Ticking date/time kept in its own component so the whole POS doesn't re-render each second */
++function LiveClock({ date }) {
++  const [now, setNow] = useState(() => new Date());
++  useEffect(() => {
++    const t = setInterval(() => setNow(new Date()), 1000);
++    return () => clearInterval(t);
++  }, []);
++  const time = now.toLocaleTimeString("en-GB", { hour12: false });
+   return (
+-    <div className="pos-exact-discount-control">
+-      <input
+-        type="text"
+-        className="pos-exact-discount-input"
+-        aria-label={ariaLabel}
+-        value={Number(value) || 0}
+-        readOnly
+-        aria-readonly="true"
+-      />
+-      <span>%</span>
+-    </div>
++    <span className="bf-pill">
++      <FiCalendar /> {date || now.toLocaleDateString("en-GB")} | {time}
++    </span>
+   );
+ }
+ 
+@@ -146,6 +155,7 @@
+     ? companyRecord[0] || {}
+     : companyRecord || {};
+   const companyId = companyInfo.id;
++  const brands = useAppStore((s) => s.brands);
+   const billingUser = useAuthStore((s) => s.user);
+   const shiftCompanyId = billingUser?.companyId || companyId;
+   const settings = useSettingsStore();
+@@ -260,6 +270,9 @@
+   const [shiftFloat, setShiftFloat] = useState("");
+   const [shiftCloseModal, setShiftCloseModal] = useState(false);
+   const [closingCash, setClosingCash] = useState("");
++  const [closeSnapshot, setCloseSnapshot] = useState(null);
++  const [closeRefreshing, setCloseRefreshing] = useState(false);
++  const [shiftSubmitting, setShiftSubmitting] = useState(false);
+   const [holdDrawerOpen, setHoldDrawerOpen] = useState(false);
+   const [holdNote, setHoldNote] = useState("");
+   const [printReady, setPrintReady] = useState(false);
+@@ -643,6 +656,31 @@
+     toastError,
+   ]);
+ 
++  // Close-shift audit: read a fresh copy of the shift (read-only, store untouched)
++  // so the ledger figures reflect every bill saved so far.
++  useEffect(() => {
++    if (!shiftCloseModal || !billingUser?.id) {
++      setCloseSnapshot(null);
++      return undefined;
++    }
++    let cancelled = false;
++    setCloseRefreshing(true);
++    fetchCurrentShiftAPI(billingUser.id, shiftCompanyId)
++      .then((fresh) => {
++        if (!cancelled && fresh && Number(fresh.id) === Number(activeShift?.id)) {
++          setCloseSnapshot(fresh);
++        }
++      })
++      .catch(() => {})
++      .finally(() => {
++        if (!cancelled) setCloseRefreshing(false);
++      });
++    return () => {
++      cancelled = true;
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [shiftCloseModal]);
++
+   useEffect(() => {
+     loadHoldCarts();
+     // Load held carts once when POS mounts; their behavior is independent of shifts.
+@@ -931,23 +969,27 @@
+       toast.error("An authenticated user is required to start a shift");
+       return;
+     }
++    setShiftSubmitting(true);
+     try {
+       await startShift({
+         userId: billingUser.id,
+         companyId: shiftCompanyId,
+         openingFloat: parseFloat(shiftFloat) || 0,
+-        terminalId: "POS-TERMINAL-1",
++        terminalId: POS_TERMINAL_ID,
+       });
+       toast.success("Shift started ✓");
+       setShiftModalOpen(false);
+       setShiftFloat("");
+     } catch (err) {
+       toast.error(typeof err === "string" ? err : "Failed to start shift");
++    } finally {
++      setShiftSubmitting(false);
+     }
+   }
+ 
+   async function handleEndShift() {
+     if (!activeShift) return;
++    setShiftSubmitting(true);
+     try {
+       const res = await endShift({
+         shiftId: activeShift.id,
+@@ -960,6 +1002,8 @@
+       setClosingCash("");
+     } catch (err) {
+       toast.error(typeof err === "string" ? err : "Failed to close shift");
++    } finally {
++      setShiftSubmitting(false);
+     }
+   }
+ 
+@@ -1639,6 +1683,42 @@
+     hour12: true,
+   });
+ 
++  const brandNameFor = (product) => {
++    if (!product) return "";
++    const direct = product.brandName || product.brand?.name;
++    if (direct) return direct;
++    const id = product.brandId;
++    if (id == null || id === "") return "";
++    const found = (brands || []).find((b) => String(b.id ?? b._id) === String(id));
++    return found?.name || "";
++  };
++
++  // MRP saving per line (display only): MRP above the selling rate, per unit sold
++  const mrpSavings = displayCart.reduce((sum, item) => {
++    const mrp = Number(item.mrp) || 0;
++    const rate = Number(item.price) || 0;
++    if (mrp <= rate) return sum;
++    const qty =
++      item.unitType === "WEIGHT" && item.quantityUnit === "GRAM"
++        ? normalizeWeightQuantity(item.quantity, item.quantityUnit)
++        : Number(item.quantity) || 0;
++    return sum + (mrp - rate) * qty;
++  }, 0);
++  const totalSavings = mrpSavings + totalDiscount;
++  const gstTotal = Number(totals.totalTax) || 0;
++  const cgstHalf = Number((gstTotal / 2).toFixed(2));
++  const sgstHalf = Number((gstTotal - cgstHalf).toFixed(2));
++  const totalPieces = displayCart.reduce(
++    (sum, item) => sum + (Number(item.quantity) || 0),
++    0,
++  );
++  const cashierName = billingUser?.name || billingUser?.username || "";
++  const terminalId = activeShift?.terminalId || POS_TERMINAL_ID;
++  const customerTier =
++    customerInfo.phone && (loyaltyPoints > 0 || customerInfo.name)
++      ? loyaltyTier(loyaltyPoints)
++      : null;
++
+   return (
+     <>
+       {/* ── Thermal Bill (print-only) ── */}
+@@ -1659,7 +1739,7 @@
+         />
+       )}
+ 
+-      <div className="pos-b2c-root pos-exact-layout">
++      <div className="pos-b2c-root bf-pos">
+         <ToastContainer toasts={toast.toasts} />
+ 
+         {/* ── Camera Scanner Modal ── */}
+@@ -1678,301 +1758,255 @@
+             preCreditGrandTotal: roundedTotal,
+             roundOff: roundOff,
+             returnCreditAmount: returnCreditApplied,
++            itemDiscount,
+           }}
+           paymentMethod={paymentMethod}
+           onPaymentMethodChange={setPaymentMethod}
+           customerInfo={customerInfo}
+-          onCustomerChange={setCustomerInfo}
+           invoiceNo={invoiceNo}
+-          saleDate={saleDate}
+           onConfirm={handleSave}
+           onClose={() => setPaymentOpen(false)}
++          onHold={async () => {
++            await handleHoldCart();
++            setPaymentOpen(false);
++          }}
+           saving={saving}
++          operatorName={cashierName}
++          operatorId={billingUser?.id}
++          terminalId={terminalId}
++          tierLabel={customerTier?.label}
++          printerLabel={`THERMAL ${printerWidth || "80"}MM · AUTO-PRINT ${autoPrint ? "ON" : "OFF"}`}
+         />
+ 
+-        {/* ═══ TOP NAVBAR ═══ */}
+-        <div className="pos-exact-topbar">
+-          <div className="pos-exact-topbar__search">
+-            {onBack && (
+-              <button
+-                className="pos-exact-back-btn"
+-                onClick={() => {
+-                  onBack();
+-                  setCustomerInfo({
+-                    name: "",
+-                    phone: "",
+-                    userId: "",
+-                  });
+-                  setLoyaltyPoints(0);
+-                  clearCart();
+-                  setReturnCredit(null);
+-                }}
+-                title="Back (Esc)"
+-              >
+-                ‹ Back
+-              </button>
+-            )}
+-            <div className="pos-exact-search-wrap">
+-              <FiSearch className="pos-exact-search-icon" />
+-              <input
+-                type="text"
+-                placeholder="Scan product or return-credit barcode, then press Enter..."
+-                className="pos-exact-search-input"
+-                ref={searchInputRef}
+-                autoFocus
+-                role="combobox"
+-                aria-label="Scan barcode or search products"
+-                aria-autocomplete="list"
+-                aria-expanded={addItemDropdownOpen && addItemSuggestions.length > 0}
+-                aria-controls="pos-product-suggestions"
+-                aria-activedescendant={
+-                  addItemHighlightedIndex >= 0
+-                    ? `pos-product-suggestion-${addItemHighlightedIndex}`
+-                    : undefined
+-                }
+-                value={addItemSearch}
+-                onChange={handleAddItemSearchChange}
+-                onKeyDown={handleAddItemSearchKeyDown}
+-                onFocus={() => {
+-                  if (addItemSuggestions.length > 0) {
+-                    setAddItemDropdownOpen(true);
+-
+-                    if (addItemHighlightedIndex === -1) {
+-                      setAddItemHighlightedIndex(0);
+-                    }
+-                  }
+-                }}
+-              />
+-              {addItemDropdownOpen && addItemSuggestions.length > 0 && (
+-                <div
+-                  className="pos-exact-dropdown"
+-                  id="pos-product-suggestions"
+-                  role="listbox"
+-                  ref={formDropdownRef}
+-                >
+-                  {addItemSuggestions.map((item, index) => (
+-                    <div
+-                      key={item.id || item._id}
+-                      id={`pos-product-suggestion-${index}`}
+-                      className={`pos-exact-dropdown-item ${
+-                        index === addItemHighlightedIndex
+-                          ? "pos-exact-dropdown-item--highlighted"
+-                          : ""
+-                      }`}
+-                      role="option"
+-                      aria-selected={index === addItemHighlightedIndex}
+-                      onMouseEnter={() => setAddItemHighlightedIndex(index)}
+-                      onClick={() => handleSelectFormProduct(item)}
+-                    >
+-                      <span className="pos-exact-dropdown-name">
+-                        {item.name}
+-                      </span>
+-
+-                      <span style={{ textAlign: "right" }}>
+-                        <span className="pos-exact-dropdown-price">
+-                          {formatCurrency(item.salesPrice || item.price || 0)}
+-                        </span>
+-                        {getProductStockLabel(item) && (
+-                          <span
+-                            className="pos-exact-item-sub"
+-                            style={{ display: "block" }}
+-                          >
+-                            Total stock: {getProductStockLabel(item)}
+-                          </span>
+-                        )}
+-                      </span>
+-                    </div>
+-                  ))}
+-                </div>
+-              )}
+-            </div>
+-
++        {/* ═══ TOP TOOLBAR ═══ */}
++        <div className="bf-toolbar">
++          {onBack && (
+             <button
+-              className="pos-exact-scan-btn"
+-              onClick={() => setCameraOpen(true)}
+-              title="Scan Barcode with Camera"
++              type="button"
++              className="bf-iconbtn"
++              onClick={() => {
++                onBack();
++                setCustomerInfo({ name: "", phone: "", userId: "" });
++                setLoyaltyPoints(0);
++                clearCart();
++                setReturnCredit(null);
++              }}
++              title="Back (Esc)"
++              aria-label="Back"
+             >
+-              <span className="scan-icon-box">📷</span>
+-              <span>Scan</span>
++              <FiArrowLeft />
+             </button>
+-          </div>
+-
+-          <div className="pos-exact-topbar__meta">
+-            <span className="pos-exact-inv-badge">
+-              {invoiceNo || "INV-2024-001"}
+-            </span>
+-            <div className="pos-exact-date-pill">
+-              📅 {saleDate || formattedDateTimeStr}
+-            </div>
+-
+-            {/* ── Shift Button ── */}
+-            <button
+-              className={`pos-exact-topbar-btn pos-exact-topbar-btn--shift ${activeShift ? "active" : ""}`}
+-              onClick={() =>
+-                activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)
+-              }
+-              title={
+-                activeShift
+-                  ? `Shift #${activeShift.id} Active — Click to Close`
+-                  : "Start New Shift"
++          )}
++          <button
++            type="button"
++            className={`bf-scanbadge ${scannerEnabled ? "" : "is-off"}`}
++            onClick={() => cameraEnabled && setCameraOpen(true)}
++            title={cameraEnabled ? "Scan barcode with camera" : "Camera scanning is disabled in settings"}
++          >
++            <FiMaximize />
++            <span>EAN-13</span>
++          </button>
++          <div className="bf-searchwrap">
++            <input
++              type="text"
++              placeholder="Scan barcode [EAN-13] or search product by name / SKU…"
++              className="bf-searchinput"
++              ref={searchInputRef}
++              autoFocus
++              role="combobox"
++              aria-label="Scan barcode or search products"
++              aria-autocomplete="list"
++              aria-expanded={addItemDropdownOpen && addItemSuggestions.length > 0}
++              aria-controls="pos-product-suggestions"
++              aria-activedescendant={
++                addItemHighlightedIndex >= 0
++                  ? `pos-product-suggestion-${addItemHighlightedIndex}`
++                  : undefined
+               }
+-            >
+-              <FiClock />
+-              <span>
+-                {activeShift ? `Shift #${activeShift.id}` : "Start Shift"}
+-              </span>
+-              {activeShift && (
+-                <span className="pos-exact-topbar-dot pos-exact-topbar-dot--green" />
+-              )}
+-            </button>
+-
+-            {/* ── Hold Bill Button ── */}
+-            <button
+-              className="pos-exact-topbar-btn pos-exact-topbar-btn--hold"
+-              onClick={() => {
+-                if (cart.length > 0) {
+-                  handleHoldCart();
+-                } else {
+-                  setHoldDrawerOpen(true);
++              value={addItemSearch}
++              onChange={handleAddItemSearchChange}
++              onKeyDown={handleAddItemSearchKeyDown}
++              onFocus={() => {
++                if (addItemSuggestions.length > 0) {
++                  setAddItemDropdownOpen(true);
++                  if (addItemHighlightedIndex === -1) setAddItemHighlightedIndex(0);
+                 }
+               }}
+-              title={
+-                cart.length > 0 ? "Hold Current Bill (F10)" : "View Held Bills"
++            />
++            <button
++              type="button"
++              className="bf-enterbtn"
++              onClick={() =>
++                handleAddItemSearchKeyDown({
++                  key: "Enter",
++                  preventDefault: () => {},
++                  stopPropagation: () => {},
++                  target: searchInputRef.current,
++                  currentTarget: searchInputRef.current,
++                })
+               }
+             >
+-              <FiLayers />
+-              <span>{cart.length > 0 ? "Hold Bill" : "Held Bills"}</span>
+-              {holdCarts.length > 0 && (
+-                <span className="pos-exact-topbar-badge">
+-                  {holdCarts.length}
+-                </span>
+-              )}
++              <FiCornerDownLeft /> ENTER
+             </button>
+-          </div>
+-        </div>
+-
+-        {/* ═══ MAIN LAYOUT GRID ═══ */}
+-        <div className="pos-exact-container">
+-          {/* LEFT COLUMN: Customer + Add Item + Cart Table */}
+-          <div className="pos-exact-left-col">
+-            {/* Top Row: Two Cards */}
+-            <div className="pos-exact-cards-row">
+-              {/* Card 1: Customer Details */}
+-              <div className="pos-exact-card pos-exact-card--customer">
+-                <div className="pos-exact-card__title">
+-                  <FiUser className="pos-exact-card__icon" />
+-                  <span>Customer Details</span>
+-                </div>
+-                <div className="pos-exact-card__body">
+-                  <div className="pos-exact-form-group">
+-                    <label>
+-                      Phone Number <span style={{ color: "red" }}>*</span>
+-                    </label>
+-                    <div className="pos-exact-input-icon-wrap">
+-                      <span className="pos-exact-input-icon">📞</span>
+-                      {/* <input
+-                        type="tel"
+-                        className="pos-exact-input pos-cust-phone-input"
+-                        ref={customerPhoneInputRef}
+-                        placeholder="Enter phone..."
+-                        value={customerInfo.phone || ""}
+-                        onChange={handlePhoneChange}
+-                        maxLength={10}
+-                      /> */}
+-                      <input
+-                        type="tel"
+-                        name="phone"
+-                        className="pos-exact-input pos-cust-phone-input"
+-                        placeholder="Enter phone number"
+-                        value={customerInfo.phone || ""}
+-                        onChange={handlePhoneChange}
+-                        maxLength={10}
+-                        inputMode="numeric"
+-                        autoComplete="tel"
+-                      />
+-                    </div>
+-                  </div>
+-                  <div className="pos-exact-form-group">
+-                    <label>
+-                      Customer Name <span style={{ color: "red" }}>*</span>
+-                    </label>
+-                    <input
+-                      type="text"
+-                      name="name"
+-                      className="pos-exact-input"
+-                      ref={customerNameInputRef}
+-                      value={customerInfo.name}
+-                      onChange={handleCustomerNameChange}
+-                      placeholder="Enter customer name"
+-                    />
+-                  </div>
+-                  {/* ── Loyalty Points ── */}
+-                  <div className="pos-exact-loyalty-row">
+-                    <FiStar className="pos-exact-loyalty-icon" />
+-                    <span className="pos-exact-loyalty-label">
+-                      Loyalty Points
++            {addItemDropdownOpen && addItemSuggestions.length > 0 && (
++              <div
++                className="bf-dropdown"
++                id="pos-product-suggestions"
++                role="listbox"
++                ref={formDropdownRef}
++              >
++                {addItemSuggestions.map((item, index) => (
++                  <div
++                    key={item.id || item._id}
++                    id={`pos-product-suggestion-${index}`}
++                    className={`bf-dropdown__item ${index === addItemHighlightedIndex ? "is-active" : ""}`}
++                    role="option"
++                    aria-selected={index === addItemHighlightedIndex}
++                    onMouseEnter={() => setAddItemHighlightedIndex(index)}
++                    onClick={() => handleSelectFormProduct(item)}
++                  >
++                    <span>
++                      <strong>{item.name}</strong>
++                      {(item.sku || item.barcode) && (
++                        <span className="bf-dropdown__sub" style={{ textAlign: "left" }}>
++                          {item.sku || ""}
++                          {item.sku && item.barcode ? " · " : ""}
++                          {item.barcode || ""}
++                        </span>
++                      )}
+                     </span>
+-                    <span className="pos-exact-loyalty-value">
+-                      {loyaltyPoints || 0}
++                    <span style={{ textAlign: "right" }}>
++                      <strong>{formatCurrency(item.salesPrice || item.price || 0)}</strong>
++                      {getProductStockLabel(item) && (
++                        <span className="bf-dropdown__sub">
++                          Stock: {getProductStockLabel(item)}
++                        </span>
++                      )}
+                     </span>
+                   </div>
+-                </div>
++                ))}
+               </div>
+-            </div>
++            )}
++          </div>
+ 
+-            {/* Bottom Row: Current Order Table */}
+-            <div className="pos-exact-card pos-exact-card--order">
+-              <div className="pos-exact-card__header">
+-                <div className="pos-exact-card__title">
+-                  <FiFileText className="pos-exact-card__icon" />
+-                  <span>Current Order</span>
+-                </div>
+-                <span className="pos-exact-item-count-badge">
+-                  {cart.length} Items
+-                </span>
+-              </div>
+-              <div
+-                className="pos-exact-item-sub"
+-                style={{ padding: "0 16px 10px" }}
+-              >
+-                Promotional free quantities are checked by the backend at checkout
+-                and shown on the saved invoice.
+-              </div>
++          <span className="bf-pill">INV: {invoiceNo || "—"}</span>
++          <LiveClock date={saleDate} />
++          <button
++            type="button"
++            className={`bf-pill ${activeShift ? "is-live" : ""}`}
++            onClick={() => (activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true))}
++            title={activeShift ? `Shift #${activeShift.id} active — click to close` : "Start new shift"}
++          >
++            <FiClock /> {activeShift ? `Shift #${activeShift.id}` : "Start Shift"}
++          </button>
++          <button
++            type="button"
++            className="bf-pill"
++            onClick={() => (cart.length > 0 ? handleHoldCart() : setHoldDrawerOpen(true))}
++            title={cart.length > 0 ? "Hold current bill (F10)" : "View held bills (F10)"}
++          >
++            <FiLayers /> {cart.length > 0 ? "Hold Bill" : "Held Bills"}
++            <span className="bf-count">{holdCarts.length}</span>
++          </button>
++        </div>
++
++        {/* ═══ CUSTOMER IDENTIFICATION ═══ */}
++        <div className="bf-custrow">
++          <div className="bf-phone">
++            <span>+91</span>
++            <input
++              type="tel"
++              name="phone"
++              ref={customerPhoneInputRef}
++              placeholder="Customer phone"
++              aria-label="Customer phone number"
++              value={customerInfo.phone || ""}
++              onChange={handlePhoneChange}
++              maxLength={10}
++              inputMode="numeric"
++              autoComplete="tel"
++            />
++          </div>
++          <div className="bf-namefield">
++            <input
++              type="text"
++              name="name"
++              className="bf-custname"
++              ref={customerNameInputRef}
++              aria-label="Customer name"
++              placeholder="Customer name"
++              value={customerInfo.name}
++              onChange={handleCustomerNameChange}
++            />
++          </div>
++          <span className="bf-loyal" title="Loyalty points balance (points are awarded when the bill is saved)">
++            <FiStar />
++            {customerTier && <span className="bf-loyal__tier">{customerTier.label.toUpperCase()}</span>}
++            <span>{Number(loyaltyPoints) || 0} pts</span>
++          </span>
++          <div className="bf-shortcuts" aria-label="Keyboard shortcuts">
++            <span><b>F2</b>Search</span>
++            <span><b>F4</b>Phone</span>
++            <span><b>F5</b>Qty</span>
++            <span><b>F6</b>Name</span>
++            <span><b>F8</b>Pay</span>
++            <span><b>F9</b>New</span>
++            <span><b>F10</b>Hold</span>
++          </div>
++        </div>
+ 
+-              <div className="pos-exact-table-wrap" ref={cartTableRef}>
+-                <table className="pos-exact-table">
+-                  <thead>
++        {/* ═══ MAIN: LEDGER + CHECKOUT PANEL ═══ */}
++        <div className="bf-main">
++          <section className="bf-cart" aria-label="Active cart ledger">
++            <div className="bf-cart__head">
++              <h2 className="bf-cart__title">ACTIVE CART LEDGER</h2>
++              <span className="bf-tag bf-tag--dark">{cart.length} Items</span>
++              <span className="bf-cart__sub">Auto-calculated with GST / HSN</span>
++              <span className="bf-spacer" />
++              <span className="bf-cart__sub">
++                Scanner: <b style={{ color: scannerEnabled ? "#059669" : "#64748b" }}>{scannerEnabled ? "ONLINE" : "OFF"}</b>
++              </span>
++            </div>
++            <div className="bf-cart__scroll" ref={cartTableRef}>
++              <table className="bf-table">
++                <colgroup>
++                  <col style={{ width: 42 }} />
++                  <col />
++                  <col style={{ width: 130 }} />
++                  <col style={{ width: 150 }} />
++                  <col style={{ width: 92 }} />
++                  <col style={{ width: 82 }} />
++                  <col style={{ width: 90 }} />
++                  <col style={{ width: 64 }} />
++                  <col style={{ width: 108 }} />
++                  <col style={{ width: 48 }} />
++                </colgroup>
++                <thead>
++                  <tr>
++                    <th className="c">#</th>
++                    <th>Item Description &amp; Brand</th>
++                    <th>SKU / EAN</th>
++                    <th className="c">Quantity</th>
++                    <th className="r">Rate (₹)</th>
++                    <th className="r">MRP (₹)</th>
++                    <th className="r">Discount</th>
++                    <th className="r">GST</th>
++                    <th className="r">Net Total (₹)</th>
++                    <th className="c">Act</th>
++                  </tr>
++                </thead>
++                <tbody>
++                  {cart.length === 0 ? (
+                     <tr>
+-                      <th style={{ width: 40, textAlign: "center" }}>#</th>
+-                      <th>Item Name</th>
+-                      <th style={{ width: 80, textAlign: "center" }}>Qty</th>
+-                      <th style={{ width: 100, textAlign: "right" }}>Rate</th>
+-                      <th style={{ width: 100, textAlign: "right" }}>
+-                        Discount %
+-                      </th>
+-                      <th style={{ width: 90, textAlign: "right" }}>GST</th>
+-                      <th style={{ width: 110, textAlign: "right" }}>Amount</th>
+-                      <th style={{ width: 60, textAlign: "center" }}>Act</th>
++                      <td colSpan="10">
++                        <div className="bf-empty">
++                          <strong>No items in order</strong>
++                          Scan a barcode or search in the toolbar and press Enter to add products.
++                        </div>
++                      </td>
+                     </tr>
+-                  </thead>
+-                  <tbody>
+-                    {cart.length === 0 ? (
+-                      <tr>
+-                        <td colSpan="8">
+-                          <div className="pos-exact-empty-cart">
+-                            <div className="pos-exact-empty-icon">🛒</div>
+-                            <div className="pos-exact-empty-title">
+-                              No Items in Order
+-                            </div>
+-                            <div className="pos-exact-empty-sub">
+-                              Scan a barcode or search in the top bar and press
+-                              Enter to add products to this sale
+-                            </div>
+-                          </div>
+-                        </td>
+-                      </tr>
+-                    ) : (
+-                      displayCart.map((item, idx) => {
++                  ) : (
++                    displayCart.map((item, idx) => {
+                         const displayItem = item;
+                         const productStock = findProduct(products, item.productId);
+                         const totalStockLabel = getProductStockLabel(productStock);
+@@ -2093,34 +2127,35 @@
+                             (isWeightProduct(productStock) ? "KG" : "PCS"),
+                           productStock || item,
+                         );
++                        const mrpValue = Number(item.mrp) || 0;
++                        const brandName = brandNameFor(productStock);
++                        const batchLabel = item.batchNumber || item.batchNo || "";
++                        const unitLabel = isWeightLine
++                          ? item.quantityUnit === "GRAM" ? "g" : "kg"
++                          : item.unit || "pcs";
++                        const lowStock = (() => {
++                          const avail = Number(item.batchAvailableQuantity);
++                          return Number.isFinite(avail) && avail >= 0 && avail <= 5 && !isWeightLine;
++                        })();
+ 
+                         return (
+                           <tr key={item.cartLineId || item.productId || idx}>
+-                            <td
+-                              style={{
+-                                textAlign: "center",
+-                                color: "#64748b",
+-                                fontWeight: 600,
+-                              }}
+-                            >
+-                              {idx + 1}
+-                            </td>
++                            <td className="c serial">{String(idx + 1).padStart(2, "0")}</td>
+                             <td>
+-                              <div className="pos-exact-item-name">
+-                                {item.productName}
++                              <div className="bf-item__name">{item.productName}</div>
++                              <div className="bf-item__meta">
++                                {brandName && <>Brand: {brandName}</>}
++                                {batchLabel && <>{brandName ? " | " : ""}Batch: {batchLabel}</>}
++                                {item.hsnCode && <>{brandName || batchLabel ? " | " : ""}HSN: {item.hsnCode}</>}
+                               </div>
+-                              {item.hsnCode && (
+-                                <div className="pos-exact-item-sub">
+-                                  HSN: {item.hsnCode}
+-                                </div>
+-                              )}
+                               {totalStockLabel && (
+-                                <div className="pos-exact-item-sub">
+-                                  Total product stock: {totalStockLabel}
+-                                </div>
++                                <div className="bf-item__meta">Stock: {totalStockLabel}</div>
++                              )}
++                              {lowStock && (
++                                <span className="bf-stock-low">LOW: {formatQuantity(item.batchAvailableQuantity)} LEFT IN BATCH</span>
+                               )}
+                               {productStock && (
+-                                <div style={{ marginTop: 6, maxWidth: 320 }}>
++                                <div className="bf-item__batch">
+                                   <BatchSelector
+                                     productId={item.productId}
+                                     side="sales"
+@@ -2182,19 +2217,19 @@
+                                 </div>
+                               )}
+                               {promotionPreview?.loading && isFirstProductLine && (
+-                                <div className="pos-promotion-preview is-loading">Checking offers…</div>
++                                <div className="bf-offer is-loading">Checking offers…</div>
+                               )}
+                               {promotionPreview?.error && isFirstProductLine && (
+-                                <div className="pos-promotion-preview is-warning" role="status">
++                                <div className="bf-offer is-warning" role="status">
+                                   Promotion preview failed: {promotionPreview.error}
+                                 </div>
+                               )}
+                               {previewPromotion && isFirstProductLine && (
+-                                <div className="pos-promotion-preview">
+-                                  <strong>{previewPromotion.name}</strong>
++                                <div className="bf-offer">
++                                  <strong><FiTag /> OFFER APPLIED: {previewPromotion.name}</strong>
+                                   {(Number(previewPromotion.discountPercentage) > 0 || Number(previewPromotion.discountAmount) > 0) && (
+                                     <span>
+-                                      Discount{' '}
++                                      Discount{" "}
+                                       {Number(previewPromotion.discountPercentage) > 0
+                                         ? `${Number(previewPromotion.discountPercentage)}%`
+                                         : formatCurrency(previewPromotion.discountAmount)}
+@@ -2204,18 +2239,20 @@
+                                     <span>FREE GIFT: {previewPromotion.giftProduct.name}</span>
+                                   )}
+                                   {previewData.pricing?.payableAmount !== undefined && (
+-                                    <span>
+-                                      Offer total: {formatCurrency(previewData.pricing.payableAmount)}
+-                                    </span>
++                                    <span>Offer total: {formatCurrency(previewData.pricing.payableAmount)}</span>
+                                   )}
+                                   <small>Final offer and amount are rechecked at checkout.</small>
+                                 </div>
+                               )}
+                             </td>
+-                            <td style={{ textAlign: "center" }}>
+-                              <div className="pos-exact-qty-controls">
++                            <td>
++                              <div>{item.sku || "—"}</div>
++                              {item.barcode && <div className="bf-item__meta">{item.barcode}</div>}
++                            </td>
++                            <td className="c">
++                              <div className="bf-qty">
+                                 <button
+-                                  className="pos-exact-qty-btn"
++                                  type="button"
+                                   aria-label={`Decrease ${item.productName} quantity`}
+                                   onClick={() =>
+                                     updateProductQuantity(
+@@ -2270,7 +2307,7 @@
+                                   }}
+                                 />
+                                 <button
+-                                  className="pos-exact-qty-btn"
++                                  type="button"
+                                   aria-label={`Increase ${item.productName} quantity`}
+                                   onClick={() =>
+                                     updateProductQuantity(
+@@ -2286,18 +2323,14 @@
+                                   +
+                                 </button>
+                               </div>
+-                              {freeQuantityForDisplay > 0 && (
+-                                <div
+-                                  className="pos-exact-item-sub"
+-                                  style={{ fontWeight: 700, textAlign: "center" }}
+-                                >
+-                                  {formatQuantity(paidQuantityForDisplay)}+
+-                                  {formatQuantity(freeQuantityForDisplay * unitMultiplier)}
+-                                </div>
+-                              )}
++                              <span className="bf-unit">
++                                {unitLabel}
++                                {freeQuantityForDisplay > 0 &&
++                                  ` · ${formatQuantity(paidQuantityForDisplay)}+${formatQuantity(freeQuantityForDisplay * unitMultiplier)} free`}
++                              </span>
+                               {isWeightProduct(item) && (
+                                 <select
+-                                  className="form-select"
++                                  className="bf-unitselect"
+                                   aria-label={`Quantity unit for ${item.productName}`}
+                                   value={item.quantityUnit || "KG"}
+                                   onChange={(event) => {
+@@ -2314,56 +2347,35 @@
+                                           : Number(baseQuantity.toFixed(3)),
+                                     });
+                                   }}
+-                                  style={{ marginTop: 4, minWidth: 72 }}
++                                  
+                                 >
+                                   <option value="GRAM">GRAM</option>
+                                   <option value="KG">KG</option>
+                                 </select>
+                               )}
+                             </td>
+-                            <td
+-                              style={{
+-                                textAlign: "right",
+-                                fontWeight: 600,
+-                                color: "#334155",
+-                              }}
+-                            >
+-                              {formatCurrency(rate)}
+-                              {isWeightProduct(item) ? " / KG" : ""}
++                            <td className="r">
++                              <strong>{money(rate)}</strong>
++                              {isWeightProduct(item) && <span className="bf-unit">/ KG</span>}
+                             </td>
+-                            <td
+-                              style={{
+-                                textAlign: "right",
+-                              }}
+-                            >
+-                              <POSDiscountInput
+-                                value={item.discountPercent}
+-                                aria-label={`Discount percentage for ${item.productName}`}
+-                              />
+-                              {item.discountAmount > 0 && (
+-                                <div className="pos-exact-discount-amount">
+-                                  −{formatCurrency(item.discountAmount)}
+-                                </div>
+-                              )}
++                            <td className="r">
++                              {mrpValue > 0 ? <span className="bf-mrp">{money(mrpValue)}</span> : "—"}
+                             </td>
+-                            <td style={{ textAlign: "right" }}>
+-                              <div>{Number(item.taxRate) || 0}%</div>
+-                              <div className="pos-exact-gst-amount">
+-                                {formatCurrency(item.taxAmount || 0)}
+-                              </div>
++                            <td className="r">
++                              <span className="bf-disc">
++                                {Number(item.discountPercent) > 0 ? `${Number(item.discountPercent)}%` : "—"}
++                                {item.discountAmount > 0 && <small>(-{money(item.discountAmount)})</small>}
++                              </span>
+                             </td>
+-                            <td
+-                              style={{
+-                                textAlign: "right",
+-                                fontWeight: 800,
+-                                color: "#0f172a",
+-                              }}
+-                            >
+-                              {formatCurrency(itemTotal)}
++                            <td className="r">
++                              <div>{Number(item.taxRate) || 0}%</div>
++                              <div className="bf-item__meta">{money(item.taxAmount || 0)}</div>
+                             </td>
+-                            <td style={{ textAlign: "center" }}>
++                            <td className="r"><span className="bf-total">{money(itemTotal)}</span></td>
++                            <td className="c">
+                               <button
+-                                className="pos-exact-remove-btn"
++                                type="button"
++                                className="bf-remove"
+                                 onClick={() => removeFromCart(item.cartLineId || item.productId)}
+                                 title="Remove item"
+                                 aria-label={`Remove ${item.productName}`}
+@@ -2374,603 +2386,175 @@
+                           </tr>
+                         );
+                       })
+-                    )}
+-                  </tbody>
+-                </table>
+-              </div>
++                  )}
++                </tbody>
++              </table>
+             </div>
+-          </div>
+-
+-          {/* RIGHT COLUMN: Sidebar (User + Shift + Hold/Void + Totals) */}
+-          <div className="pos-exact-right-col">
+-            {/* Store User & Shift Card */}
+-            <div className="pos-exact-user-card">
+-              <div className="pos-exact-user-avatar">
+-                <FiUser />
+-              </div>
+-              <div className="pos-exact-user-info">
+-                <div className="pos-exact-user-name">
+-                  {activeShift?.user?.name || "Store Manager"}
+-                </div>
+-                <div
+-                  className="pos-exact-user-shift"
+-                  onClick={() =>
+-                    activeShift
+-                      ? setShiftCloseModal(true)
+-                      : setShiftModalOpen(true)
+-                  }
+-                  title="Click to manage shift"
+-                >
+-                  <span className="pos-exact-shift-dot"></span>
+-                  <span>
+-                    {activeShift
+-                      ? `Active Shift (#${activeShift.id})`
+-                      : "Start Shift"}
+-                  </span>
+-                </div>
+-              </div>
++            <div className="bf-cart__foot">
++              <span>Rows: {cart.length} &nbsp; Total pieces: {formatQuantity(totalPieces)}</span>
++              <span>[F5] Edit qty · [Tab] Move between controls · [F9] New bill</span>
+             </div>
++          </section>
+ 
+-            {/* Actions: Hold Sale & Void Sale */}
+-            <div className="pos-exact-sidebar-actions">
++          <aside className="bf-side" aria-label="Checkout summary">
++            <div className="bf-term">
++              <div className="bf-term__icon"><FiMonitor /></div>
++              <div className="bf-term__body">
++                <strong>TERMINAL {terminalId}</strong>
++                <span>
++                  Cashier: {cashierName || "—"}
++                  {billingUser?.id ? ` (ID #${billingUser.id})` : ""}
++                </span>
++              </div>
+               <button
+-                className="pos-exact-sidebar-btn pos-exact-sidebar-btn--hold"
+-                onClick={handleHoldCart}
+-                disabled={cart.length === 0}
++                type="button"
++                className={`bf-badge ${activeShift ? "" : "is-off"}`}
++                onClick={() => (activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true))}
++                title="Manage shift"
+               >
+-                <FiPauseCircle />
+-                <span>Hold Sale</span>
++                {activeShift ? `SHIFT #${activeShift.id}` : "NO SHIFT"}
+               </button>
++            </div>
+ 
+-              <button
+-                className="pos-exact-sidebar-btn pos-exact-sidebar-btn--void"
+-                onClick={handleNewBill}
+-              >
+-                <FiXCircle />
+-                <span>Void Sale</span>
++            <div className="bf-actions">
++              <button type="button" className="bf-action" onClick={handleHoldCart} disabled={cart.length === 0}>
++                <span><FiPauseCircle /> HOLD</span>
++                <small>[F10]</small>
++              </button>
++              <button type="button" className="bf-action bf-action--void" onClick={handleNewBill}>
++                <span><FiXCircle /> VOID / NEW</span>
++                <small>[F9]</small>
+               </button>
+             </div>
+ 
+-            {/* Totals & Payment Section */}
+-            <div className="pos-exact-totals-box">
++            <div className="bf-summary">
+               {returnCredit && (
+-                <div
+-                  className="pos-exact-summary-row"
+-                  style={{ color: "#15803d", alignItems: "flex-start" }}
+-                >
++                <div className="bf-sum bf-sum--green">
+                   <span>
+                     Return credit
+-                    <span style={{ display: "block", fontSize: 11, color: "#64748b" }}>
++                    <small>
+                       {returnCredit.code}
+                       {Number(returnCredit.remainingAmount) > returnCreditApplied &&
+                         ` · ${formatCurrency(Number(returnCredit.remainingAmount) - returnCreditApplied)} remains`}
+-                    </span>
++                    </small>
+                   </span>
+-                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+-                    −{formatCurrency(returnCreditApplied)}
++                  <span>
++                    <strong>-{rupees(returnCreditApplied)}</strong>{" "}
+                     <button
+                       type="button"
+-                      className="btn btn--ghost btn--sm"
++                      className="bf-link"
+                       onClick={() => setReturnCredit(null)}
+                       disabled={loadingReturnCredit}
+                       aria-label="Remove return credit"
+                     >
+-                      Remove
++                      REMOVE
+                     </button>
+                   </span>
+                 </div>
+               )}
+-              {/* Total Discount */}
+-              {totalDiscount > 0 && (
+-                <div
+-                  className="pos-exact-summary-row"
+-                  style={{ color: "#ef4444" }}
+-                >
+-                  <span>Total Discount</span>
+-                  <span className="pos-exact-summary-val">
+-                    −{formatCurrency(totalDiscount)}
+-                  </span>
+-                </div>
++              <div className="bf-sum"><span>Subtotal (taxable):</span><strong>{rupees(totals.subtotal)}</strong></div>
++              {itemDiscount > 0 && (
++                <div className="bf-sum bf-sum--green"><span>Item discounts (applied):</span><strong>{rupees(itemDiscount)}</strong></div>
+               )}
+-
+-              <div className="pos-exact-summary-row">
+-                <span>Subtotal</span>
+-                <span className="pos-exact-summary-val">
+-                  {formatCurrency(totals.subtotal)}
+-                </span>
+-              </div>
+-
+-              <div className="pos-exact-summary-row">
+-                <span>GST Total</span>
+-                <span className="pos-exact-summary-val">
+-                  {formatCurrency(totals.totalTax)}
+-                </span>
+-              </div>
+-
+-              {/* Round Off */}
+-              <div className="pos-exact-summary-row">
+-                <span>Round Off</span>
+-                <span>
+-                  {roundOff > 0 ? "+" : ""}
+-                  {formatCurrency(roundOff)}
+-                </span>
+-              </div>
+-
+               {globalDiscount > 0 && (
+-                <div
+-                  className="pos-exact-summary-row"
+-                  style={{ color: "#ef4444" }}
+-                >
+-                  <span>Global Discount</span>
+-                  <span className="pos-exact-summary-val">
+-                    −{formatCurrency(globalDiscount)}
+-                  </span>
+-                </div>
++                <div className="bf-sum bf-sum--green"><span>Bill discount:</span><strong>-{rupees(globalDiscount)}</strong></div>
+               )}
+-
+-              <div className="pos-exact-grand-total">
+-                <span className="pos-exact-gt-label">
+-                  {returnCreditApplied > 0 ? "AMOUNT DUE" : "GRAND TOTAL"}
+-                </span>
+-                <span className="pos-exact-gt-val">
+-                  {/* {formatCurrency(totals.grandTotal)} */}
+-                  {formatCurrency(payableTotal)}
++              <div className="bf-sum bf-sum--tint">
++                <span>
++                  GST
++                  <small>CGST {rupees(cgstHalf)} + SGST {rupees(sgstHalf)}</small>
+                 </span>
++                <strong>{rupees(gstTotal)}</strong>
+               </div>
+-
+-              <button
+-                className="pos-exact-pay-btn"
+-                onClick={() => setPaymentOpen(true)}
+-                disabled={
+-                  cart.length === 0 ||
+-                  loadingReturnCredit ||
+-                  promotionPreviewLoading
+-                }
+-              >
+-                <FiCreditCard />
+-                <span>Pay Now</span>
+-              </button>
+-            </div>
+-          </div>
+-        </div>
+-
+-        {shiftModalOpen && (
+-          <div
+-            style={{
+-              position: "fixed",
+-              inset: 0,
+-              background: "rgba(15,23,42,0.6)",
+-              zIndex: 9999,
+-              display: "flex",
+-              alignItems: "center",
+-              justifyContent: "center",
+-              backdropFilter: "blur(4px)",
+-            }}
+-            onClick={(e) => {
+-              if (e.target === e.currentTarget) setShiftModalOpen(false);
+-            }}
+-          >
+-            <div
+-              style={{
+-                background: "#fff",
+-                borderRadius: 20,
+-                width: "100%",
+-                maxWidth: 400,
+-                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
+-                overflow: "hidden",
+-              }}
+-            >
+-              <div
+-                style={{
+-                  background: "linear-gradient(135deg, #16a34a, #22c55e)",
+-                  padding: "20px 24px",
+-                  color: "#fff",
+-                }}
+-              >
+-                <div
+-                  style={{
+-                    fontSize: 12,
+-                    fontWeight: 600,
+-                    textTransform: "uppercase",
+-                    letterSpacing: "0.8px",
+-                    opacity: 0.8,
+-                  }}
+-                >
+-                  POS Shift Management
+-                </div>
+-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
+-                  Open New Shift
+-                </div>
++              <div className="bf-sum">
++                <span>Round-off:</span>
++                <strong>{roundOff > 0 ? "+" : roundOff < 0 ? "-" : ""}{rupees(Math.abs(roundOff))}</strong>
+               </div>
+-              <div
+-                style={{
+-                  padding: "20px 24px",
+-                  display: "flex",
+-                  flexDirection: "column",
+-                  gap: 16,
+-                }}
+-              >
+-                <div>
+-                  <label
+-                    style={{
+-                      fontSize: 12,
+-                      fontWeight: 700,
+-                      color: "#64748b",
+-                      textTransform: "uppercase",
+-                      letterSpacing: "0.5px",
+-                      marginBottom: 6,
+-                      display: "block",
+-                    }}
+-                  >
+-                    Opening Cash Float (₹)
+-                  </label>
+-                  <input
+-                    type="number"
+-                    value={shiftFloat}
+-                    onChange={(e) => setShiftFloat(e.target.value)}
+-                    placeholder="Enter opening cash amount"
+-                    style={{
+-                      width: "100%",
+-                      padding: "12px 14px",
+-                      border: "1.5px solid #e2e8f0",
+-                      borderRadius: 10,
+-                      fontSize: 15,
+-                      fontWeight: 600,
+-                      outline: "none",
+-                      boxSizing: "border-box",
+-                    }}
+-                    autoFocus
+-                  />
+-                </div>
+-                <div style={{ display: "flex", gap: 10 }}>
+-                  <button
+-                    onClick={() => setShiftModalOpen(false)}
+-                    style={{
+-                      flex: 1,
+-                      padding: 12,
+-                      borderRadius: 10,
+-                      border: "1.5px solid #e2e8f0",
+-                      background: "#f8fafc",
+-                      color: "#374151",
+-                      fontSize: 14,
+-                      fontWeight: 600,
+-                      cursor: "pointer",
+-                    }}
+-                  >
+-                    Cancel
+-                  </button>
+-                  <button
+-                    onClick={handleStartShift}
+-                    style={{
+-                      flex: 2,
+-                      padding: 12,
+-                      borderRadius: 10,
+-                      border: "none",
+-                      background: "linear-gradient(135deg, #16a34a, #15803d)",
+-                      color: "#fff",
+-                      fontSize: 14,
+-                      fontWeight: 700,
+-                      cursor: "pointer",
+-                      boxShadow: "0 4px 12px rgba(22,163,74,0.4)",
+-                    }}
+-                  >
+-                    🟢 Start Shift
+-                  </button>
+-                </div>
++              <div className="bf-savings">
++                <span>TOTAL BILL SAVINGS</span>
++                <span>{rupees(totalSavings)}</span>
+               </div>
+             </div>
+-          </div>
+-        )}
+ 
+-        {/* ═══ SHIFT CLOSE MODAL ═══ */}
+-        {shiftCloseModal && activeShift && (
+-          <div
+-            style={{
+-              position: "fixed",
+-              inset: 0,
+-              background: "rgba(15,23,42,0.6)",
+-              zIndex: 9999,
+-              display: "flex",
+-              alignItems: "center",
+-              justifyContent: "center",
+-              backdropFilter: "blur(4px)",
+-            }}
+-            onClick={(e) => {
+-              if (e.target === e.currentTarget) setShiftCloseModal(false);
+-            }}
+-          >
+-            <div
+-              style={{
+-                background: "#fff",
+-                borderRadius: 20,
+-                width: "100%",
+-                maxWidth: 440,
+-                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
+-                overflow: "hidden",
+-              }}
+-            >
+-              <div
+-                style={{
+-                  background: "linear-gradient(135deg, #dc2626, #ef4444)",
+-                  padding: "20px 24px",
+-                  color: "#fff",
+-                }}
+-              >
+-                <div
+-                  style={{
+-                    fontSize: 12,
+-                    fontWeight: 600,
+-                    textTransform: "uppercase",
+-                    letterSpacing: "0.8px",
+-                    opacity: 0.8,
+-                  }}
+-                >
+-                  Cash Drawer Reconciliation
+-                </div>
+-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
+-                  Close Shift #{activeShift.id}
+-                </div>
+-              </div>
+-              <div
+-                style={{
+-                  padding: "20px 24px",
+-                  display: "flex",
+-                  flexDirection: "column",
+-                  gap: 14,
+-                }}
+-              >
+-                <div
+-                  style={{
+-                    display: "grid",
+-                    gridTemplateColumns: "1fr 1fr",
+-                    gap: 10,
+-                  }}
+-                >
+-                  <div
+-                    style={{
+-                      background: "#f0fdf4",
+-                      borderRadius: 10,
+-                      padding: "12px 14px",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#15803d",
+-                        textTransform: "uppercase",
+-                      }}
+-                    >
+-                      Opening Float
+-                    </div>
+-                    <div
+-                      style={{
+-                        fontSize: 18,
+-                        fontWeight: 800,
+-                        color: "#15803d",
+-                        marginTop: 2,
+-                      }}
+-                    >
+-                      {formatCurrency(activeShift.openingFloat || 0)}
+-                    </div>
+-                  </div>
+-                  <div
+-                    style={{
+-                      background: "#eff6ff",
+-                      borderRadius: 10,
+-                      padding: "12px 14px",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#2563eb",
+-                        textTransform: "uppercase",
+-                      }}
+-                    >
+-                      Total Sales
+-                    </div>
+-                    <div
+-                      style={{
+-                        fontSize: 18,
+-                        fontWeight: 800,
+-                        color: "#2563eb",
+-                        marginTop: 2,
+-                      }}
+-                    >
+-                      {activeShift.totalSalesCount || 0} bills
+-                    </div>
+-                  </div>
+-                </div>
+-                <div
+-                  style={{
+-                    display: "grid",
+-                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+-                    gap: 8,
+-                  }}
+-                >
+-                  <div
+-                    style={{
+-                      background: "#f8fafc",
+-                      borderRadius: 8,
+-                      padding: "10px 12px",
+-                      textAlign: "center",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#64748b",
+-                      }}
+-                    >
+-                      CASH
+-                    </div>
+-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+-                      {formatCurrency(activeShift.cashSalesTotal || 0)}
+-                    </div>
+-                  </div>
+-                  <div
+-                    style={{
+-                      background: "#f8fafc",
+-                      borderRadius: 8,
+-                      padding: "10px 12px",
+-                      textAlign: "center",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#64748b",
+-                      }}
+-                    >
+-                      CARD
+-                    </div>
+-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+-                      {formatCurrency(activeShift.cardSalesTotal || 0)}
+-                    </div>
+-                  </div>
+-                  <div
+-                    style={{
+-                      background: "#f8fafc",
+-                      borderRadius: 8,
+-                      padding: "10px 12px",
+-                      textAlign: "center",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#64748b",
+-                      }}
+-                    >
+-                      UPI
+-                    </div>
+-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+-                      {formatCurrency(activeShift.upiSalesTotal || 0)}
+-                    </div>
+-                  </div>
+-                  <div
+-                    style={{
+-                      background: "#f8fafc",
+-                      borderRadius: 8,
+-                      padding: "10px 12px",
+-                      textAlign: "center",
+-                    }}
+-                  >
+-                    <div
+-                      style={{
+-                        fontSize: 10,
+-                        fontWeight: 700,
+-                        color: "#64748b",
+-                      }}
+-                    >
+-                      OTHER
+-                    </div>
+-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+-                      {formatCurrency(activeShift.otherSalesTotal || 0)}
+-                    </div>
+-                  </div>
+-                </div>
+-                <div>
+-                  <label
+-                    style={{
+-                      fontSize: 12,
+-                      fontWeight: 700,
+-                      color: "#64748b",
+-                      textTransform: "uppercase",
+-                      letterSpacing: "0.5px",
+-                      marginBottom: 6,
+-                      display: "block",
+-                    }}
+-                  >
+-                    Actual Cash in Drawer (₹)
+-                  </label>
+-                  <input
+-                    type="number"
+-                    value={closingCash}
+-                    onChange={(e) => setClosingCash(e.target.value)}
+-                    placeholder="Count and enter actual cash"
+-                    style={{
+-                      width: "100%",
+-                      padding: "12px 14px",
+-                      border: "1.5px solid #e2e8f0",
+-                      borderRadius: 10,
+-                      fontSize: 15,
+-                      fontWeight: 600,
+-                      outline: "none",
+-                      boxSizing: "border-box",
+-                    }}
+-                    autoFocus
+-                  />
+-                </div>
+-                <div style={{ display: "flex", gap: 10 }}>
+-                  <button
+-                    onClick={() => setShiftCloseModal(false)}
+-                    style={{
+-                      flex: 1,
+-                      padding: 12,
+-                      borderRadius: 10,
+-                      border: "1.5px solid #e2e8f0",
+-                      background: "#f8fafc",
+-                      color: "#374151",
+-                      fontSize: 14,
+-                      fontWeight: 600,
+-                      cursor: "pointer",
+-                    }}
+-                  >
+-                    Cancel
+-                  </button>
+-                  <button
+-                    onClick={handleEndShift}
+-                    style={{
+-                      flex: 2,
+-                      padding: 12,
+-                      borderRadius: 10,
+-                      border: "none",
+-                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+-                      color: "#fff",
+-                      fontSize: 14,
+-                      fontWeight: 700,
+-                      cursor: "pointer",
+-                      boxShadow: "0 4px 12px rgba(220,38,38,0.4)",
+-                    }}
+-                  >
+-                    🔴 Close Shift
+-                  </button>
+-                </div>
++            <div className="bf-net">
++              <div className="bf-net__top">
++                <span>{returnCreditApplied > 0 ? "AMOUNT DUE" : "NET PAYABLE AMOUNT"}</span>
++                <span>{promotionPreviewLoading ? "CHECKING OFFERS…" : cart.length ? "AWAITING SETTLEMENT" : "EMPTY CART"}</span>
+               </div>
++              <div className="bf-net__amt">{rupees(payableTotal)}</div>
++              <div className="bf-net__foot">INCLUSIVE OF ALL STATE &amp; FEDERAL TAXES</div>
+             </div>
+-          </div>
+-        )}
++            <button
++              type="button"
++              className="bf-paybtn"
++              onClick={() => setPaymentOpen(true)}
++              disabled={cart.length === 0 || loadingReturnCredit || promotionPreviewLoading}
++            >
++              PROCEED TO PAY <Kbd>F8</Kbd> <FiArrowRight />
++            </button>
++          </aside>
++        </div>
++
++        {/* ═══ BOTTOM STATUS BAR ═══ */}
++        <div className="bf-statusbar">
++          <div className={`bf-dev ${scannerEnabled ? "" : "is-off"}`}><b>SCANNER</b><span>{scannerEnabled ? "Enabled" : "Disabled"}</span></div>
++          <div className={`bf-dev ${cameraEnabled ? "" : "is-off"}`}><b>CAMERA</b><span>{cameraEnabled ? "Enabled" : "Disabled"}</span></div>
++          <div className="bf-dev"><b>PRINTER</b><span>Thermal {printerWidth || "80"}mm{autoPrint ? " · auto" : ""}</span></div>
++          <span className="bf-spacer" />
++          <span className="bf-cart__sub">Status reflects POS settings</span>
++        </div>
++
++        {/* ═══ START SHIFT ═══ */}
++        <POSStartShiftModal
++          open={shiftModalOpen}
++          floatValue={shiftFloat}
++          onFloatChange={setShiftFloat}
++          onClose={() => setShiftModalOpen(false)}
++          onStart={handleStartShift}
++          submitting={shiftSubmitting}
++          operatorName={cashierName}
++          operatorId={billingUser?.id}
++          terminalId={POS_TERMINAL_ID}
++        />
++
++        {/* ═══ CLOSE SHIFT ═══ */}
++        <POSCloseShiftModal
++          open={shiftCloseModal && !!activeShift}
++          shift={closeSnapshot || activeShift}
++          refreshing={closeRefreshing}
++          closingCash={closingCash}
++          onCashChange={setClosingCash}
++          onClose={() => setShiftCloseModal(false)}
++          onConfirm={handleEndShift}
++          submitting={shiftSubmitting}
++          operatorName={activeShift?.user?.name || cashierName}
++          operatorId={activeShift?.userId ?? billingUser?.id}
++        />
+ 
+         {/* ═══ HELD CARTS DRAWER ═══ */}
+         {holdDrawerOpen && (
+           <div
+-            className="pos-exact-drawer-overlay"
++            className="bf-drawer"
+             onClick={(e) => {
+               if (e.target === e.currentTarget) setHoldDrawerOpen(false);
+             }}
+           >
+-            <div className="pos-exact-drawer">
+-              <div className="pos-exact-drawer-header">
+-                <h3>📋 Held Carts ({holdCarts.length})</h3>
++            <div className="bf-drawer__panel">
++              <div className="bf-drawer__head">
++                <h3>HELD CARTS ({holdCarts.length})</h3>
+                 <button onClick={() => setHoldDrawerOpen(false)}>✕</button>
+               </div>
+-              <div className="pos-exact-drawer-body">
++              <div className="bf-drawer__body">
+                 {holdCarts.length === 0 ? (
+-                  <div className="pos-exact-empty-drawer">
++                  <div className="bf-empty">
+                     No held sales found
+                   </div>
+                 ) : (
+                   holdCarts.map((h) => {
+                     const items = Array.isArray(h.cartData) ? h.cartData : [];
+                     return (
+-                      <div key={h.id} className="pos-exact-held-item">
+-                        <div className="pos-exact-held-top">
++                      <div key={h.id} className="bf-held">
++                        <div className="bf-held__top">
+                           <div>
+                             <strong>
+                               {h.customerName || "Walk-in Customer"}
+@@ -2979,19 +2563,19 @@
+                               {h.holdNumber} · {items.length} items
+                             </div>
+                           </div>
+-                          <div className="pos-exact-held-total">
++                          <div className="bf-total">
+                             {formatCurrency(h.totalAmount || 0)}
+                           </div>
+                         </div>
+-                        <div className="pos-exact-held-actions">
++                        <div className="bf-held__row">
+                           <button
+-                            className="pos-exact-btn-primary"
++                            className="bf-btn bf-btn--blue"
+                             onClick={() => handleResumeCart(h.id)}
+                           >
+                             Resume
+                           </button>
+                           <button
+-                            className="pos-exact-btn-subtle"
++                            className="bf-btn"
+                             onClick={() => {
+                               cancelHoldCart(h.id);
+                               toast.success("Held cart cancelled");
+diff -ruN orig/src/styles/pos-terminal.css /home/claude/app/src/styles/pos-terminal.css
+--- orig/src/styles/pos-terminal.css	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/styles/pos-terminal.css	2026-11-17 03:16:02.367840251 +0000
+@@ -0,0 +1,469 @@
++/* ===== BILLFLOW POS — TERMINAL DESIGN SYSTEM =====
++ * Scoped under .bf-pos / .bf-overlay so nothing leaks into the rest of the app.
++ * Palette + type follow the BillFlow design-system reference.
++ */
++.bf-pos,
++.bf-overlay {
++  --bf-primary: #0f172a;
++  --bf-secondary: #1e40af;
++  --bf-tertiary: #059669;
++  --bf-neutral: #64748b;
++  --bf-bg: #f1f5f9;
++  --bf-surface: #ffffff;
++  --bf-border: #e2e8f0;
++  --bf-success: #059669;
++  --bf-danger: #dc2626;
++  --bf-amber: #b45309;
++  --bf-blue-tint: #dbeafe;
++  --bf-blue-wash: #eff6ff;
++  --bf-green-tint: #d1fae5;
++  --bf-red-tint: #fee2e2;
++  --bf-amber-tint: #fef3c7;
++  --bf-head: "Chivo", "Inter", system-ui, sans-serif;
++  --bf-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++  --bf-h: 34px; /* shared control height */
++  font-family: var(--bf-mono);
++  font-size: 12px;
++  color: var(--bf-primary);
++  box-sizing: border-box;
++}
++.bf-pos *,
++.bf-pos *::before,
++.bf-pos *::after,
++.bf-overlay *,
++.bf-overlay *::before,
++.bf-overlay *::after {
++  box-sizing: border-box;
++}
++.bf-pos button,
++.bf-pos input,
++.bf-pos select,
++.bf-overlay button,
++.bf-overlay input {
++  font-family: var(--bf-mono);
++}
++
++/* ───────── Shared atoms ───────── */
++.bf-label {
++  display: inline-flex;
++  align-items: center;
++  gap: 5px;
++  font-size: 10px;
++  font-weight: 600;
++  letter-spacing: 0.06em;
++  color: var(--bf-neutral);
++  text-transform: uppercase;
++}
++.bf-label--lg { font-size: 11px; color: var(--bf-primary); font-weight: 700; }
++.bf-label--blue { color: var(--bf-secondary); }
++.bf-req { color: var(--bf-danger); }
++.bf-hint { font-size: 11px; color: var(--bf-neutral); margin-top: 2px; }
++.bf-spacer { flex: 1; }
++.bf-tag {
++  display: inline-block;
++  background: var(--bf-primary);
++  color: #fff;
++  padding: 1px 6px;
++  font-size: 10px;
++  font-weight: 700;
++  letter-spacing: 0.05em;
++}
++.bf-tag--dark { background: #000; }
++.bf-tag--soft { background: var(--bf-blue-tint); color: var(--bf-secondary); }
++.bf-tag--light { background: #fff; color: var(--bf-danger); }
++.bf-kbd {
++  display: inline-block;
++  padding: 0 5px;
++  margin-left: 6px;
++  font-size: 10px;
++  font-weight: 700;
++  line-height: 16px;
++  background: rgba(15, 23, 42, 0.1);
++  border: 1px solid rgba(15, 23, 42, 0.12);
++}
++.bf-btn--blue .bf-kbd,
++.bf-btn--green .bf-kbd,
++.bf-btn--red .bf-kbd {
++  background: rgba(0, 0, 0, 0.28);
++  border-color: rgba(255, 255, 255, 0.25);
++  color: #fff;
++}
++.bf-link {
++  display: inline-flex;
++  align-items: center;
++  gap: 5px;
++  background: none;
++  border: 0;
++  padding: 2px 0;
++  cursor: pointer;
++  font-size: 10px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++  color: var(--bf-secondary);
++}
++.bf-link:hover { text-decoration: underline; }
++.bf-error { color: var(--bf-danger); font-size: 11px; font-weight: 600; margin-top: 4px; }
++
++.bf-btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 7px;
++  height: var(--bf-h);
++  padding: 0 14px;
++  border: 1px solid var(--bf-border);
++  background: var(--bf-surface);
++  color: var(--bf-primary);
++  font-size: 11px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++  text-transform: uppercase;
++  cursor: pointer;
++  border-radius: 2px;
++  transition: filter 0.12s, background 0.12s;
++}
++.bf-btn:hover:not(:disabled) { filter: brightness(0.96); }
++.bf-btn:disabled { opacity: 0.55; cursor: not-allowed; }
++.bf-btn:focus-visible,
++.bf-method:focus-visible,
++.bf-quick button:focus-visible,
++.bf-preset:focus-visible { outline: 2px solid var(--bf-secondary); outline-offset: 1px; }
++.bf-btn--lg { height: 46px; padding: 0 22px; font-size: 12px; }
++.bf-btn--blue { background: var(--bf-secondary); border-color: var(--bf-secondary); color: #fff; }
++.bf-btn--green { background: var(--bf-tertiary); border-color: var(--bf-tertiary); color: #fff; }
++.bf-btn--red { background: var(--bf-danger); border-color: var(--bf-danger); color: #fff; }
++.bf-btn--ghost { background: var(--bf-surface); }
++
++/* ───────── Modal frame ───────── */
++.bf-overlay {
++  position: fixed;
++  inset: 0;
++  z-index: 9999;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 12px;
++  background: rgba(15, 23, 42, 0.62);
++}
++.bf-modal {
++  --bf-head-bg: var(--bf-primary);
++  width: min(var(--bf-modal-w, 760px), 100%);
++  max-height: calc(100vh - 24px);
++  display: flex;
++  flex-direction: column;
++  background: var(--bf-bg);
++  border: 1px solid #000;
++  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
++  overflow: hidden;
++}
++.bf-modal--green { --bf-head-bg: var(--bf-tertiary); }
++.bf-modal--red { --bf-head-bg: #991b1b; }
++.bf-modal--blue { --bf-head-bg: linear-gradient(90deg, var(--bf-primary), var(--bf-secondary)); }
++.bf-modal__header {
++  display: flex;
++  align-items: center;
++  gap: 14px;
++  min-height: 84px;
++  padding: 12px 18px;
++  background: var(--bf-head-bg);
++  color: #fff;
++  flex-shrink: 0;
++}
++.bf-modal--red .bf-modal__header { background: linear-gradient(90deg, #7f1d1d, var(--bf-danger)); }
++.bf-modal__headtext { flex: 1; min-width: 0; }
++.bf-modal__headright { display: flex; align-items: center; gap: 10px; }
++.bf-modal__eyebrow { display: flex; gap: 8px; align-items: center; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.95; }
++.bf-modal__eyebrow .bf-tag { background: rgba(0, 0, 0, 0.35); }
++.bf-modal__title { margin: 4px 0 0; font-family: var(--bf-head); font-weight: 900; font-size: 26px; letter-spacing: 0.01em; line-height: 1.1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
++.bf-modal__title--sm { font-size: 18px; margin-top: 0; }
++.bf-modal__meta { margin-top: 4px; font-size: 10px; letter-spacing: 0.05em; opacity: 0.85; text-transform: uppercase; }
++.bf-modal__logo { width: 44px; height: 44px; background: #fff; color: var(--bf-primary); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
++.bf-modal__amount { text-align: right; }
++.bf-modal__amount span { display: block; font-size: 10px; letter-spacing: 0.08em; opacity: 0.85; }
++.bf-modal__amount strong { font-family: var(--bf-head); font-size: 34px; font-weight: 900; line-height: 1.05; }
++.bf-modal__close {
++  width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
++  background: rgba(0, 0, 0, 0.35); border: 0; color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0;
++}
++.bf-modal__close:hover:not(:disabled) { background: rgba(0, 0, 0, 0.55); }
++.bf-chip { background: rgba(0, 0, 0, 0.28); padding: 6px 10px; font-size: 11px; white-space: nowrap; }
++.bf-modal__body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
++.bf-modal__footer {
++  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
++  background: var(--bf-blue-wash); border-top: 1px solid var(--bf-border); flex-shrink: 0;
++}
++.bf-footnote { font-size: 10px; letter-spacing: 0.04em; color: var(--bf-neutral); text-align: right; text-transform: uppercase; }
++
++/* ───────── Blocks ───────── */
++.bf-infobar { display: flex; gap: 28px; padding: 8px 12px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-infobar > div { display: flex; flex-direction: column; gap: 2px; }
++.bf-infobar__k { font-size: 9px; letter-spacing: 0.08em; color: var(--bf-neutral); }
++.bf-infobar em { font-style: normal; color: var(--bf-neutral); }
++.bf-section { display: flex; flex-direction: column; gap: 8px; }
++.bf-section--panel { background: var(--bf-surface); border: 1px solid var(--bf-border); padding: 10px 12px; }
++.bf-panelhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
++.bf-sectionhead { display: flex; justify-content: space-between; align-items: center; }
++.bf-split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
++.bf-split2--tight { gap: 8px; }
++.bf-split3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
++.bf-card { background: var(--bf-blue-wash); border: 1px solid var(--bf-border); padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
++.bf-card--green { border-left: 4px solid var(--bf-tertiary); }
++.bf-card--blue { border-left: 4px solid var(--bf-secondary); }
++.bf-card__big { font-family: var(--bf-head); font-size: 24px; font-weight: 900; line-height: 1.15; }
++.bf-card__big small { font-family: var(--bf-mono); font-size: 12px; font-weight: 600; color: var(--bf-neutral); }
++.bf-card__sub { font-size: 11px; color: var(--bf-neutral); }
++.bf-channels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
++.bf-channel { background: var(--bf-blue-wash); border: 1px solid var(--bf-border); padding: 8px 10px; }
++.bf-channel__head { display: flex; justify-content: space-between; align-items: center; color: var(--bf-secondary); }
++.bf-channel__amt { font-family: var(--bf-head); font-size: 18px; font-weight: 900; margin-top: 4px; }
++
++.bf-bigamount {
++  display: flex; align-items: stretch; background: var(--bf-surface);
++  border: 1px solid var(--bf-border); min-height: 56px;
++}
++.bf-bigamount:focus-within { border-color: var(--bf-secondary); box-shadow: 0 0 0 2px var(--bf-blue-tint); }
++.bf-bigamount.is-error { border-color: var(--bf-danger); }
++.bf-bigamount__sym { width: 56px; display: flex; align-items: center; justify-content: center; background: var(--bf-primary); color: #fff; font-size: 24px; font-weight: 700; flex-shrink: 0; }
++.bf-bigamount__sym--dark { background: #000; }
++.bf-bigamount input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; text-align: right; padding: 0 16px; font-family: var(--bf-head); font-size: 32px; font-weight: 900; color: var(--bf-primary); }
++.bf-statuspill { display: flex; align-items: center; gap: 6px; padding: 0 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; background: var(--bf-blue-wash); color: var(--bf-neutral); }
++.bf-statuspill.is-match { color: var(--bf-success); background: var(--bf-green-tint); }
++.bf-statuspill.is-short { color: var(--bf-danger); background: var(--bf-red-tint); }
++.bf-statuspill.is-surplus { color: var(--bf-amber); background: var(--bf-amber-tint); }
++
++.bf-presets-head { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
++.bf-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
++.bf-preset { height: 40px; background: var(--bf-blue-tint); border: 1px solid var(--bf-border); font-weight: 700; font-size: 13px; cursor: pointer; color: var(--bf-primary); }
++.bf-preset:hover { background: #bfdbfe; }
++
++.bf-status { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; color: var(--bf-neutral); }
++.bf-status.is-ok { color: var(--bf-success); }
++.bf-status.is-bad { color: var(--bf-danger); }
++.bf-warnrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; background: var(--bf-amber-tint); color: var(--bf-amber); font-size: 11px; font-weight: 600; }
++.bf-warnrow.is-ok { background: var(--bf-green-tint); color: var(--bf-success); }
++.bf-policy { display: flex; gap: 8px; padding: 8px 12px; background: var(--bf-blue-tint); border-left: 3px solid var(--bf-secondary); color: var(--bf-primary); font-size: 11px; line-height: 1.5; }
++.bf-policy p { margin: 0; }
++.bf-policy svg { flex-shrink: 0; margin-top: 2px; color: var(--bf-secondary); }
++
++/* Denominations */
++.bf-den-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
++.bf-den { background: var(--bf-blue-wash); border: 1px solid var(--bf-border); padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
++.bf-den--coins { grid-column: span 2; }
++.bf-den__head { display: flex; justify-content: space-between; font-size: 10px; }
++.bf-den__value { font-weight: 700; }
++.bf-den__unit { color: var(--bf-neutral); letter-spacing: 0.05em; }
++.bf-den__stepper { display: flex; height: 30px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-den__stepper:focus-within { border-color: var(--bf-secondary); }
++.bf-den__stepper button { width: 28px; border: 0; background: transparent; cursor: pointer; color: var(--bf-primary); display: flex; align-items: center; justify-content: center; }
++.bf-den__stepper button:hover { background: var(--bf-blue-tint); }
++.bf-den__stepper input { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; text-align: center; font-weight: 700; font-size: 13px; background: transparent; }
++.bf-den__stepper--amount input { text-align: right; padding-right: 8px; }
++.bf-den__rs { width: 26px; display: flex; align-items: center; justify-content: center; color: var(--bf-neutral); }
++.bf-den__sub { font-size: 10px; font-weight: 700; color: var(--bf-success); }
++.bf-assistant { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--bf-border); }
++
++/* Variance */
++.bf-variance.is-match { background: var(--bf-green-tint); border-color: var(--bf-success); color: var(--bf-success); }
++.bf-variance.is-short { background: var(--bf-red-tint); border-color: var(--bf-danger); color: var(--bf-danger); }
++.bf-variance.is-surplus { background: var(--bf-amber-tint); border-color: var(--bf-amber); color: var(--bf-amber); }
++.bf-variance .bf-card__sub { color: inherit; }
++.bf-confirm { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: var(--bf-surface); border: 1px solid var(--bf-border); cursor: pointer; font-size: 11px; }
++.bf-confirm.is-error { border-color: var(--bf-danger); }
++.bf-confirm input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--bf-secondary); flex-shrink: 0; }
++.bf-confirm span { display: flex; flex-direction: column; gap: 2px; }
++.bf-confirm em { font-style: normal; color: var(--bf-neutral); }
++
++/* Checkout */
++.bf-checkout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; flex-direction: unset; }
++.bf-checkout__left, .bf-checkout__right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
++.bf-readfield { display: flex; align-items: center; gap: 8px; height: var(--bf-h); margin-top: 3px; padding: 0 10px; background: var(--bf-blue-wash); border: 1px solid var(--bf-border); font-weight: 600; color: var(--bf-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
++.bf-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
++.bf-method { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; text-align: left; background: var(--bf-surface); border: 1px solid var(--bf-border); cursor: pointer; color: var(--bf-primary); }
++.bf-method strong { font-family: var(--bf-head); font-size: 15px; font-weight: 900; }
++.bf-method small { font-size: 10px; color: var(--bf-neutral); }
++.bf-method__top { display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: var(--bf-neutral); }
++.bf-method__top .bf-kbd { margin: 0; font-size: 9px; }
++.bf-method.is-selected { background: var(--bf-blue-tint); border-color: var(--bf-secondary); box-shadow: inset 0 0 0 1px var(--bf-secondary); }
++.bf-method.is-selected .bf-method__top { color: var(--bf-secondary); }
++.bf-quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
++.bf-quick button { height: 32px; border: 1px solid var(--bf-border); background: var(--bf-blue-wash); font-weight: 700; font-size: 11px; cursor: pointer; color: var(--bf-primary); }
++.bf-quick button:hover { background: var(--bf-blue-tint); }
++.bf-quick .is-exact { background: var(--bf-blue-tint); color: var(--bf-secondary); border-color: var(--bf-secondary); }
++.bf-tendered { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-tendered:focus-within { border-color: var(--bf-secondary); box-shadow: 0 0 0 2px var(--bf-blue-tint); }
++.bf-tendered__row { display: flex; align-items: center; gap: 8px; font-family: var(--bf-head); font-size: 36px; font-weight: 900; }
++.bf-tendered__row input { flex: 1; min-width: 0; border: 0; outline: 0; text-align: right; background: transparent; font: inherit; color: var(--bf-primary); }
++.bf-result { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-result strong { font-family: var(--bf-head); font-size: 24px; font-weight: 900; }
++.bf-result--ok strong { color: var(--bf-success); }
++.bf-result--bad strong { color: var(--bf-danger); }
++.bf-collect { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--bf-neutral); }
++.bf-collect strong { font-family: var(--bf-head); font-size: 30px; color: var(--bf-primary); }
++.bf-splitrow { display: grid; grid-template-columns: 60px 1fr; align-items: center; gap: 8px; }
++.bf-input { display: flex; align-items: center; height: var(--bf-h); background: var(--bf-surface); border: 1px solid var(--bf-border); padding: 0 8px; gap: 6px; }
++.bf-input:focus-within { border-color: var(--bf-secondary); }
++.bf-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; text-align: right; font-weight: 700; font-size: 13px; }
++.bf-ledger__row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; color: var(--bf-neutral); }
++.bf-ledger__row strong { color: var(--bf-primary); font-size: 13px; }
++.bf-ledger__row + .bf-ledger__row { border-top: 1px solid var(--bf-border); }
++.bf-ledger__row.is-green { color: var(--bf-success); background: var(--bf-green-tint); }
++.bf-ledger__row.is-green strong { color: var(--bf-success); }
++.bf-ledger__row--stack { flex-wrap: wrap; }
++.bf-ledger__row--stack small { width: 100%; font-size: 10px; font-weight: 500; }
++.bf-grand { margin-top: auto; background: var(--bf-primary); color: #fff; padding: 12px 16px; }
++.bf-grand__top { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.08em; opacity: 0.8; }
++.bf-grand__row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; font-weight: 700; }
++.bf-grand__row strong { font-family: var(--bf-head); font-size: 38px; font-weight: 900; }
++
++/* ───────── B2C billing terminal ───────── */
++.bf-pos.pos-b2c-root {
++  height: 100vh;
++  display: flex;
++  flex-direction: column;
++  background: var(--bf-bg);
++  overflow: hidden;
++  font-family: var(--bf-mono);
++  color: var(--bf-primary);
++}
++.bf-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bf-blue-tint); border-bottom: 1px solid var(--bf-border); flex-shrink: 0; }
++.bf-iconbtn { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: var(--bf-surface); border: 1px solid var(--bf-border); cursor: pointer; font-size: 18px; color: var(--bf-primary); flex-shrink: 0; }
++.bf-scanbadge { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 52px; height: 38px; background: var(--bf-primary); color: #fff; font-size: 9px; font-weight: 700; line-height: 1.1; flex-shrink: 0; cursor: pointer; border: 0; }
++.bf-scanbadge.is-off { background: var(--bf-neutral); }
++.bf-searchwrap { position: relative; flex: 1; min-width: 160px; display: flex; gap: 6px; }
++.bf-searchinput { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--bf-border); background: var(--bf-surface); font-size: 13px; outline: 0; color: var(--bf-primary); }
++.bf-searchinput:focus { border-color: var(--bf-secondary); box-shadow: 0 0 0 2px var(--bf-blue-tint); }
++.bf-enterbtn { height: 38px; padding: 0 16px; background: #000; color: #fff; border: 0; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; cursor: pointer; display: flex; align-items: center; gap: 6px; }
++.bf-pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; background: var(--bf-blue-wash); border: 1px solid var(--bf-border); font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--bf-primary); }
++button.bf-pill { cursor: pointer; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
++button.bf-pill:hover { background: var(--bf-blue-tint); }
++.bf-pill.is-live { color: var(--bf-success); }
++.bf-pill .bf-count { background: var(--bf-secondary); color: #fff; padding: 0 6px; font-size: 10px; }
++.bf-dropdown { position: absolute; top: 42px; left: 0; right: 0; z-index: 50; max-height: 320px; overflow-y: auto; background: var(--bf-surface); border: 1px solid var(--bf-primary); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2); }
++.bf-dropdown__item { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--bf-border); font-size: 12px; }
++.bf-dropdown__item.is-active { background: var(--bf-blue-tint); }
++.bf-dropdown__sub { display: block; color: var(--bf-neutral); font-size: 10px; text-align: right; }
++
++.bf-custrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; background: var(--bf-blue-wash); border-bottom: 1px solid var(--bf-border); flex-shrink: 0; }
++.bf-phone { display: flex; align-items: center; height: 34px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-phone span { padding: 0 8px; color: var(--bf-neutral); border-right: 1px solid var(--bf-border); line-height: 32px; font-weight: 600; }
++.bf-phone input, .bf-custname { height: 32px; border: 0; outline: 0; padding: 0 10px; font-size: 13px; background: transparent; color: var(--bf-primary); font-weight: 600; }
++.bf-phone input { width: 140px; }
++.bf-phone:focus-within, .bf-namefield:focus-within { border-color: var(--bf-secondary); box-shadow: 0 0 0 2px var(--bf-blue-tint); }
++.bf-namefield { display: flex; align-items: center; height: 34px; min-width: 200px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-custname { width: 100%; }
++.bf-loyal { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; background: var(--bf-surface); border: 1px solid var(--bf-border); font-weight: 600; }
++.bf-loyal__tier { background: var(--bf-blue-tint); color: var(--bf-secondary); padding: 0 6px; font-size: 10px; font-weight: 700; }
++.bf-shortcuts { margin-left: auto; display: inline-flex; gap: 10px; padding: 0 10px; height: 34px; align-items: center; background: var(--bf-surface); border: 1px solid var(--bf-border); font-size: 10px; color: var(--bf-neutral); white-space: nowrap; }
++.bf-shortcuts b { background: var(--bf-primary); color: #fff; padding: 0 4px; margin-right: 3px; font-weight: 700; }
++
++.bf-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 10px; padding: 8px 10px 0; }
++.bf-cart { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-cart__head { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--bf-blue-wash); border-bottom: 1px solid var(--bf-border); flex-shrink: 0; }
++.bf-cart__title { font-family: var(--bf-head); font-weight: 900; font-size: 17px; letter-spacing: 0.01em; margin: 0; }
++.bf-cart__sub { font-size: 10px; color: var(--bf-neutral); }
++.bf-cart__scroll { flex: 1; min-height: 0; overflow: auto; }
++.bf-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 880px; }
++.bf-table th { position: sticky; top: 0; z-index: 2; background: var(--bf-primary); color: #fff; padding: 8px 8px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
++.bf-table td { padding: 8px 8px; border-bottom: 1px solid var(--bf-border); vertical-align: top; font-size: 12px; }
++.bf-table tbody tr:hover { background: #f8fafc; }
++.bf-table .r { text-align: right; }
++.bf-table .c { text-align: center; }
++.bf-table .serial { color: var(--bf-neutral); font-weight: 700; }
++.bf-item__name { font-family: var(--bf-head); font-weight: 800; font-size: 13px; line-height: 1.25; }
++.bf-item__meta { font-size: 10px; color: var(--bf-neutral); margin-top: 2px; line-height: 1.4; }
++.bf-item__batch { margin-top: 4px; max-width: 280px; }
++.bf-item__batch .form-select { height: 26px; font-size: 11px; padding: 0 6px; font-family: var(--bf-mono); border-radius: 0; }
++.bf-stock-low { display: inline-block; background: var(--bf-red-tint); color: var(--bf-danger); font-weight: 700; padding: 0 5px; font-size: 10px; margin-top: 2px; }
++.bf-offer { margin-top: 4px; padding: 4px 6px; background: var(--bf-green-tint); border-left: 3px solid var(--bf-success); color: #065f46; font-size: 10px; display: flex; flex-direction: column; gap: 1px; }
++.bf-offer.is-loading, .bf-offer.is-warning { background: var(--bf-amber-tint); border-left-color: var(--bf-amber); color: var(--bf-amber); }
++.bf-qty { display: inline-flex; align-items: stretch; height: 28px; border: 1px solid var(--bf-border); background: var(--bf-blue-wash); }
++.bf-qty button { width: 26px; border: 0; background: transparent; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--bf-primary); }
++.bf-qty button:hover { background: var(--bf-blue-tint); }
++.bf-qty input { width: 52px; border: 0; border-left: 1px solid var(--bf-border); border-right: 1px solid var(--bf-border); background: var(--bf-surface); outline: 0; text-align: center; font-weight: 700; font-size: 13px; }
++.bf-qty input:focus { background: var(--bf-blue-tint); }
++.bf-unit { display: block; margin-top: 3px; font-size: 10px; color: var(--bf-neutral); }
++.bf-unitselect { margin-top: 3px; height: 24px; font-size: 10px; font-family: var(--bf-mono); border: 1px solid var(--bf-border); background: var(--bf-surface); }
++.bf-mrp { text-decoration: line-through; color: var(--bf-neutral); }
++.bf-disc { color: var(--bf-success); font-weight: 700; }
++.bf-disc small { display: block; font-weight: 500; }
++.bf-total { font-family: var(--bf-head); font-weight: 900; font-size: 15px; }
++.bf-remove { width: 28px; height: 28px; background: transparent; border: 1px solid transparent; cursor: pointer; color: var(--bf-neutral); display: inline-flex; align-items: center; justify-content: center; }
++.bf-remove:hover { color: var(--bf-danger); border-color: var(--bf-danger); background: var(--bf-red-tint); }
++.bf-empty { padding: 48px 12px; text-align: center; color: var(--bf-neutral); }
++.bf-empty strong { display: block; font-family: var(--bf-head); font-size: 16px; color: var(--bf-primary); margin-bottom: 4px; }
++.bf-cart__foot { display: flex; justify-content: space-between; gap: 10px; padding: 5px 10px; background: var(--bf-blue-wash); border-top: 1px solid var(--bf-border); font-size: 10px; color: var(--bf-neutral); flex-shrink: 0; }
++
++.bf-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
++.bf-term { display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-term__icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: var(--bf-blue-tint); color: var(--bf-secondary); font-size: 18px; flex-shrink: 0; }
++.bf-term__body { flex: 1; min-width: 0; font-size: 11px; line-height: 1.45; }
++.bf-term__body strong { display: block; font-family: var(--bf-head); font-size: 13px; }
++.bf-term__body span { color: var(--bf-neutral); }
++.bf-badge { padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; background: var(--bf-green-tint); color: var(--bf-success); cursor: default; border: 0; }
++button.bf-badge { cursor: pointer; }
++.bf-badge.is-off { background: var(--bf-red-tint); color: var(--bf-danger); }
++.bf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
++.bf-action { height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: var(--bf-blue-tint); border: 1px solid var(--bf-border); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; color: var(--bf-primary); }
++.bf-action:disabled { opacity: 0.5; cursor: not-allowed; }
++.bf-action--void { color: var(--bf-danger); }
++.bf-action small { font-size: 9px; opacity: 0.8; }
++.bf-summary { background: var(--bf-surface); border: 1px solid var(--bf-border); }
++.bf-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 6px 10px; font-size: 12px; color: var(--bf-neutral); }
++.bf-sum strong { color: var(--bf-primary); font-size: 14px; }
++.bf-sum--green { color: var(--bf-success); } .bf-sum--green strong { color: var(--bf-success); }
++.bf-sum--tint { background: var(--bf-blue-wash); }
++.bf-sum small { display: block; font-size: 10px; }
++.bf-savings { display: flex; justify-content: space-between; padding: 7px 10px; background: var(--bf-blue-tint); color: var(--bf-secondary); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
++.bf-net { background: var(--bf-primary); color: #fff; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
++.bf-net__top { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.08em; opacity: 0.85; }
++.bf-net__amt { text-align: right; font-family: var(--bf-head); font-size: 40px; font-weight: 900; line-height: 1.05; }
++.bf-net__foot { text-align: right; font-size: 9px; letter-spacing: 0.08em; opacity: 0.7; }
++.bf-paybtn { height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--bf-secondary); border: 0; color: #fff; font-family: var(--bf-head); font-weight: 900; font-size: 18px; letter-spacing: 0.04em; cursor: pointer; width: 100%; }
++.bf-paybtn:hover:not(:disabled) { filter: brightness(1.1); }
++.bf-paybtn:disabled { background: var(--bf-neutral); cursor: not-allowed; }
++.bf-paybtn .bf-kbd { background: rgba(0, 0, 0, 0.3); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
++
++.bf-statusbar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: var(--bf-surface); border-top: 1px solid var(--bf-border); flex-shrink: 0; }
++.bf-dev { display: flex; flex-direction: column; align-items: center; min-width: 100px; padding: 2px 10px; background: var(--bf-blue-wash); border: 1px solid var(--bf-border); font-size: 10px; }
++.bf-dev b { letter-spacing: 0.06em; }
++.bf-dev span { color: var(--bf-success); font-weight: 600; }
++.bf-dev.is-off span { color: var(--bf-neutral); }
++
++/* Held carts drawer, in the same language */
++.bf-drawer { position: fixed; inset: 0; z-index: 9990; background: rgba(15, 23, 42, 0.5); display: flex; justify-content: flex-end; }
++.bf-drawer__panel { width: min(420px, 100%); height: 100%; background: var(--bf-bg); display: flex; flex-direction: column; border-left: 1px solid #000; }
++.bf-drawer__head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--bf-primary); color: #fff; font-family: var(--bf-head); font-weight: 900; }
++.bf-drawer__head button { background: rgba(0, 0, 0, 0.35); border: 0; color: #fff; width: 30px; height: 30px; cursor: pointer; }
++.bf-drawer__body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
++.bf-held { background: var(--bf-surface); border: 1px solid var(--bf-border); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
++.bf-held__top { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--bf-neutral); }
++.bf-held__top strong { color: var(--bf-primary); font-size: 13px; }
++.bf-held__row { display: flex; gap: 6px; }
++
++/* ───────── Smaller terminals ───────── */
++@media (max-width: 1400px) {
++  .bf-main { grid-template-columns: minmax(0, 1fr) 310px; }
++  .bf-net__amt { font-size: 34px; }
++  .bf-shortcuts { display: none; }
++}
++@media (max-width: 1100px) {
++  .bf-main { grid-template-columns: 1fr; overflow-y: auto; }
++  .bf-side { overflow: visible; }
++  .bf-checkout { grid-template-columns: 1fr; }
++  .bf-den-grid { grid-template-columns: repeat(3, 1fr); }
++  .bf-channels { grid-template-columns: repeat(2, 1fr); }
++  .bf-split3 { grid-template-columns: 1fr; }
++}
++@media (max-height: 800px) {
++  .bf-modal__header { min-height: 68px; padding: 8px 16px; }
++  .bf-modal__title { font-size: 22px; }
++  .bf-modal__body { padding: 8px 12px; gap: 8px; }
++  .bf-net__amt { font-size: 32px; }
++}
++@media print {
++  .bf-overlay, .bf-drawer { display: none !important; }
++}
++
++/* neutralise legacy qty-input rule that is still loaded for other screens */
++.bf-qty input.pos-exact-qty-input { border-radius: 0; padding: 0; box-shadow: none; }
++.bf-qty input.pos-exact-qty-input:focus { border-color: var(--bf-border); box-shadow: none; }
+diff -ruN orig/src/utils/loyaltyTier.js /home/claude/app/src/utils/loyaltyTier.js
+--- orig/src/utils/loyaltyTier.js	1970-01-01 00:00:00.000000000 +0000
++++ /home/claude/app/src/utils/loyaltyTier.js	2026-11-16 18:19:34.142273116 +0000
+@@ -0,0 +1,7 @@
++/* Loyalty tier thresholds — single source shared by Customers and POS */
++export function loyaltyTier(points) {
++  const p = Number(points) || 0;
++  if (p >= 1000) return { label: 'Gold', variant: 'success' };
++  if (p >= 300) return { label: 'Silver', variant: 'info' };
++  return { label: 'Bronze', variant: 'neutral' };
++}
+--- orig/public/index.html	2026-11-12 12:56:43.000000000 +0000
++++ /home/claude/app/public/index.html	2026-11-16 18:19:34.143047566 +0000
+@@ -15,7 +15,7 @@
+   <!-- Google Fonts: Inter -->
+   <link rel="preconnect" href="https://fonts.googleapis.com" />
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
++  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Chivo:wght@700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+ </head>
+ 
+ <body>

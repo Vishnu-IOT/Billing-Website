@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import useAppStore from '../../store/appStore';
 import useSettingsStore from '../../store/settingsStore';
+import useAuthStore from '../../store/authStore';
 import { fetchCompanyUsersAPI } from '../../api';
 
 const idOf = (o) => String(o.id ?? o._id);
@@ -18,19 +19,21 @@ export function useReportLookups({ needUsers = false, seenPaymentModes = [] } = 
   const categories = useAppStore((s) => s.categories);
   const brands = useAppStore((s) => s.brands);
   const accepted = useSettingsStore((s) => s.acceptedPaymentMethods);
+  const companyId = useAuthStore((s) => s.user?.companyId);
 
   const [users, setUsers] = useState([]);
   useEffect(() => {
     if (!needUsers) return undefined;
     let alive = true;
-    fetchCompanyUsersAPI(1)
+    if (!companyId) return undefined;
+    fetchCompanyUsersAPI(companyId)
       .then((res) => {
         const list = Array.isArray(res) ? res : res?.data;
         if (alive && Array.isArray(list)) setUsers(list);
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, [needUsers]);
+  }, [companyId, needUsers]);
 
   return useMemo(() => {
     const byName = (a, b) => a.label.localeCompare(b.label);

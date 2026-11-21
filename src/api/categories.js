@@ -9,7 +9,9 @@ export async function addCategoryAPI(category) {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    throw new Error(
+      err.response?.data?.message || err.message || 'Failed to create category'
+    );
   }
 }
 
@@ -21,7 +23,24 @@ export async function fetchCategoryAPI() {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    throw new Error(
+      err.response?.data?.message || err.message || 'Failed to load categories'
+    );
+  }
+}
+
+export async function updateCategoryAPI(id, category) {
+  try {
+    const response = await axios.put(
+      `${BASE_URL}/category/update-category/${id}`,
+      category,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || error.message || 'Failed to update category'
+    );
   }
 }
 
@@ -33,6 +52,8 @@ export async function deleteCategoryAPI(id) {
     );
     return response.data;
   } catch (err) {
-    alert(err);
+    throw new Error(
+      err.response?.data?.message || err.message || 'Failed to delete category'
+    );
   }
 }

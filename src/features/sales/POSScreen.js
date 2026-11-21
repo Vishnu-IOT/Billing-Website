@@ -1,44 +1,170 @@
 /* ===== POS SCREEN — Main B2C POS Layout ===== */
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  FiUser,
-  FiShoppingCart,
-  FiFileText,
   FiPauseCircle,
   FiXCircle,
-  FiPlus,
   FiTrash2,
-  FiSearch,
-  FiCreditCard,
-  FiUserCheck,
-  FiPrinter,
   FiClock,
   FiLayers,
   FiStar,
+  FiArrowLeft,
+  FiCalendar,
+  FiCornerDownLeft,
+  FiMaximize,
+  FiArrowRight,
+  FiMonitor,
+  FiTag,
+  FiPlus,
 } from "react-icons/fi";
 import useAppStore from "../../store/appStore";
 import useSalesStore from "../../store/salesStore";
 import usePOSStore from "../../hooks/usePOSStore";
+import useAuthStore from "../../store/authStore";
 import useSettingsStore from "../../store/settingsStore-DB";
 import usePosStore from "../../store/posStore";
+import { hasPermission } from "../../utils/permissions";
 import { formatCurrency } from "../../utils/currency";
 import { todayISO } from "../../utils/date";
-import { getNextInvoiceNo, buildSaleBillPayload } from "../../utils/invoice";
+import {
+  getNextInvoiceNo,
+  buildSaleBillPayload,
+  calcBillTotals,
+  calcItemRow,
+  calcQuickSaleItemRow,
+  getNonQuickSaleReceiptItems,
+  applyPromotionPreviewPricing,
+  getPromotionBatchAllocationKey,
+} from "../../utils/invoice";
+import {
+  findProduct,
+  normalizePriceType,
+} from "../../utils/gstPricing";
+import {
+  fetchSaleBillByIdAPI,
+  fetchSalesReturnCreditAPI,
+} from "../../api";
+import { resolveQuickSaleAPI } from "../../api/quickSales";
+import { matchesProductSearch } from "../../utils/productSearch";
+import { previewPromotionAPI } from "../../api/promotions";
 import { useToast } from "../../hooks/useToast";
 import { ToastContainer } from "../../components/ui";
 import BarcodeInput from "../../components/pos/BarcodeInput";
 import CameraScanner from "../../components/pos/CameraScanner";
 import POSCartItem from "../../components/pos/POSCartItem";
 import POSPaymentModal from "../../components/pos/POSPaymentModal";
+import QuickSaleModal from "../../components/pos/QuickSaleModal";
 import ThermalBill from "../../components/pos/ThermalBill";
+import POSStartShiftModal from "../../components/pos/POSStartShiftModal";
+import POSCloseShiftModal from "../../components/pos/POSCloseShiftModal";
+import { money, rupees, Kbd } from "../../components/pos/posTerminal";
+import { loyaltyTier } from "../../utils/loyaltyTier";
+import {
+  fetchCurrentShiftAPI,
+  fetchAssignedPosCountersAPI,
+} from "../../api/pos";
+import { invalidateBatchCache } from "../../components/shared/BatchSelector";
+import { loadBatchesCached } from "../../utils/productBatchCache";
+import {
+  buildMrpPriceGroups,
+  allocatePriceGroupQuantity,
+  getPriceGroupKey,
+} from "../../utils/priceCheck";
+import PriceCheckModal from "../../components/pos/PriceCheckModal";
 import "../../styles/pos-b2c.css";
+import "../../styles/pos-terminal.css";
 // import '../../styles/thermal.css';
 import {
-  fetchCompanyUsersAPI,
   fetchFinancialDetailsAPI,
   previewNextInvoiceNumberAPI,
 } from "../../api";
 import ThermalInvoice from "../billing/invoices/ThermalInvoice";
+import {
+  formatQuantity,
+  isWeightProduct,
+  normalizeWeightQuantity,
+} from "../../utils/quantityUnits";
+import {
+  getQuantityInProductBaseUnit,
+  getProductStockLabel,
+} from "../../utils/posStock";
+
+/* ── Quantity and discount inputs for POS cart rows ── */
+function POSQtyInput({
+  value,
+  onCommit,
+  onEnter,
+  ariaLabel,
+  step = 1,
+  allowDecimal = false,
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      step={step}
+      className="pos-exact-qty-input"
+      aria-label={ariaLabel}
+      value={draft}
+      onChange={(e) => {
+        const v = e.target.value;
+        const validPattern = allowDecimal
+          ? /^\d*\.?\d{0,3}$/
+          : /^\d*$/;
+        if (v !== "" && !validPattern.test(v)) return;
+        setDraft(v);
+        const n = parseFloat(v);
+        if (n > 0) {
+          const result = onCommit(n);
+          if (result === false) setDraft(String(value));
+          else if (result && typeof result.then === "function") {
+            result.then((saved) => {
+              if (!saved) setDraft(String(value));
+            });
+          }
+        }
+      }}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => {
+        if (!(parseFloat(draft) > 0)) setDraft(String(value));
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.target.blur();
+          if (onEnter) onEnter();
+        }
+      }}
+    />
+  );
+}
+
+/* Ticking date/time kept in its own component so the whole POS doesn't re-render each second */
+function LiveClock({ date }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const time = now.toLocaleTimeString("en-GB", { hour12: false });
+  return (
+    <span className="bf-pill">
+      <FiCalendar /> {date || now.toLocaleDateString("en-GB")} | {time}
+    </span>
+  );
+}
+
+function createPosIdempotencyKey() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  return `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export default function POSScreen({
   editMode = false,
@@ -49,11 +175,46 @@ export default function POSScreen({
   const products = useAppStore((s) => s.products);
   const categories = useAppStore((s) => s.categories);
   const companyRecord = useAppStore((s) => s.companies);
+  const companyInfo = Array.isArray(companyRecord)
+    ? companyRecord[0] || {}
+    : companyRecord || {};
+  const companyId = companyInfo.id;
+  const brands = useAppStore((s) => s.brands);
+  const brandNamesById = useMemo(
+    () =>
+      new Map(
+        (brands || []).map((brand) => [
+          String(brand.id || brand._id),
+          brand.name || brand.brand || "",
+        ]),
+      ),
+    [brands],
+  );
+  const categoryNamesById = useMemo(
+    () =>
+      new Map(
+        (categories || []).map((category) => [
+          String(category.id || category._id),
+          category.category || category.name || "",
+        ]),
+      ),
+    [categories],
+  );
+  const billingUser = useAuthStore((s) => s.user);
+  const canViewShifts =
+    hasPermission(billingUser, "shifts.management.view") ||
+    hasPermission(billingUser, "pos.billing.access");
+  const canCreateQuickSale = hasPermission(
+    billingUser,
+    "quick-sales.creation.create",
+  );
+  const shiftCompanyId = billingUser?.companyId || companyId;
   const settings = useSettingsStore();
   const saleBills = useSalesStore((s) => s.saleBills);
   const addBill = useSalesStore((s) => s.addBill);
   const updateBill = useSalesStore((s) => s.updateBill);
   const toast = useToast();
+  const toastError = toast.error;
 
   /* ── POS Store ── */
   const cart = usePOSStore((s) => s.cart);
@@ -67,9 +228,8 @@ export default function POSScreen({
   const autoPrint = useSettingsStore((s) => s.autoPrint);
   const scannerEnabled = useSettingsStore((s) => s.scannerEnabled);
   const cameraEnabled = useSettingsStore((s) => s.cameraEnabled);
-  const getComputedTotals = usePOSStore((s) => s.getComputedTotals);
-  const addToCart = usePOSStore((s) => s.addToCart);
-  const addCartItemDirect = usePOSStore((s) => s.addCartItemDirect);
+  const addPriceCheckedCartItem = usePOSStore((s) => s.addPriceCheckedCartItem);
+  const addQuickSaleCartItem = usePOSStore((s) => s.addQuickSaleCartItem);
   const addMultipleCartItemsDirect = usePOSStore(
     (s) => s.addMultipleCartItemsDirect,
   );
@@ -106,9 +266,16 @@ export default function POSScreen({
   const setSaleDate = usePOSStore((s) => s.setSaleDate);
 
   /* ── Shift & Hold Store ── */
-  const activeShift = usePosStore((s) => s.activeShift);
+  const storedActiveShift = usePosStore((s) => s.activeShift);
+  const activeShift =
+    Number(storedActiveShift?.userId) === Number(billingUser?.id) &&
+    (!shiftCompanyId ||
+      Number(storedActiveShift?.companyId) === Number(shiftCompanyId))
+      ? storedActiveShift
+      : null;
   const holdCarts = usePosStore((s) => s.holdCarts);
   const checkCurrentShift = usePosStore((s) => s.checkCurrentShift);
+  const clearActiveShift = usePosStore((s) => s.clearActiveShift);
   const startShift = usePosStore((s) => s.startShift);
   const endShift = usePosStore((s) => s.endShift);
   const holdCartAction = usePosStore((s) => s.holdCart);
@@ -118,36 +285,250 @@ export default function POSScreen({
 
   /* ── Local State ── */
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [priceCheck, setPriceCheck] = useState({
+    open: false,
+    product: null,
+    groups: [],
+    loading: false,
+    error: "",
+  });
+  const priceCheckOpenRef = useRef(false);
+  const priceCheckRequestRef = useRef(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastPrintedBill, setLastPrintedBill] = useState(null);
-  const [users, setUsers] = useState([]);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
-  const [shiftFloat, setShiftFloat] = useState("");
   const [shiftCloseModal, setShiftCloseModal] = useState(false);
-  const [closingCash, setClosingCash] = useState("");
+  const [closeSnapshot, setCloseSnapshot] = useState(null);
+  const [closeRefreshing, setCloseRefreshing] = useState(false);
+  const [shiftSubmitting, setShiftSubmitting] = useState(false);
+  const [assignedCounters, setAssignedCounters] = useState([]);
+  const [countersLoading, setCountersLoading] = useState(false);
+  const [countersError, setCountersError] = useState("");
+  const [selectedCounterId, setSelectedCounterId] = useState("");
   const [holdDrawerOpen, setHoldDrawerOpen] = useState(false);
   const [holdNote, setHoldNote] = useState("");
   const [printReady, setPrintReady] = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [redeemLoyaltyOptIn, setRedeemLoyaltyOptIn] = useState(false);
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
+  const posIdempotencyKeyRef = useRef("");
+  const [promotionPreviews, setPromotionPreviews] = useState({});
+  const [returnCredit, setReturnCredit] = useState(null);
+  const [loadingReturnCredit, setLoadingReturnCredit] = useState(false);
+  const [quickSaleDraft, setQuickSaleDraft] = useState(null);
+  const [quickSaleResolving, setQuickSaleResolving] = useState(false);
+
+  useEffect(() => {
+    setRedeemLoyaltyOptIn(false);
+    setLoyaltyPointsToRedeem(0);
+  }, [customerInfo.phone]);
+
+  useEffect(() => {
+    if (!shiftModalOpen || !billingUser?.id) return undefined;
+    let active = true;
+    setCountersLoading(true);
+    setCountersError("");
+    fetchAssignedPosCountersAPI()
+      .then((counters) => {
+        if (!active) return;
+        setAssignedCounters(counters);
+        setSelectedCounterId((current) =>
+          counters.some((counter) => String(counter.id) === String(current))
+            ? current
+            : String(counters[0]?.id || ""),
+        );
+      })
+      .catch((error) => {
+        if (!active) return;
+        setAssignedCounters([]);
+        setSelectedCounterId("");
+        setCountersError(
+          typeof error === "string" ? error : "Could not load assigned POS counters.",
+        );
+      })
+      .finally(() => {
+        if (active) setCountersLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [shiftModalOpen, billingUser?.id]);
+
+  const pricedCart = useMemo(
+    () =>
+      cart.map((item) => {
+        if (item.cartItemType === "QUICK_SALE") {
+          return calcQuickSaleItemRow(item);
+        }
+        const regularItem = {
+          ...item,
+          productBatchId: item.productBatchId || item.batchId || "",
+          batchId: item.productBatchId || item.batchId || "",
+          batchNumber: item.batchNumber || item.batchNo || "",
+          batchNo: item.batchNo || item.batchNumber || "",
+          expiryDate: item.expiryDate || "",
+        };
+        const product = findProduct(products, item.productId);
+        const priceGroup = item.priceGroup;
+        return calcItemRow({
+          ...regularItem,
+          price: item.priceGroupKey
+            ? Number(item.price ?? item.salePrice ?? priceGroup?.salePrice ?? 0)
+            : 0,
+          priceType: normalizePriceType(
+            priceGroup?.priceType || item.priceType || "WITHOUT_GST",
+          ),
+          mrp: Number(priceGroup?.mrp ?? item.mrp) || 0,
+          discountPercent: Number(item.discountPercent) || 0,
+          taxRate: Number(priceGroup?.taxRate ?? item.taxRate) || 0,
+          unitType:
+            item.unitType || (product && isWeightProduct(product) ? "WEIGHT" : "PIECE"),
+        });
+      }),
+    [cart, products],
+  );
+
+  const promotionPreviewGroups = useMemo(() => {
+    const groups = new Map();
+    pricedCart.forEach((item) => {
+      if (item.cartItemType === "QUICK_SALE") return;
+      const product = findProduct(products, item.productId);
+      const weightProduct = isWeightProduct(product || item);
+      const normalizedQuantity = weightProduct
+        ? normalizeWeightQuantity(item.quantity, item.quantityUnit || product?.baseUnit || 'KG')
+        : Number(item.quantity) || 0;
+      const key = `${item.productId}:${item.priceGroupKey || ''}`;
+      const group = groups.get(key) || {
+        productId: item.productId,
+        priceGroupKey: item.priceGroupKey || '',
+        priceGroup: item.priceGroup || null,
+        paidQuantity: 0,
+        quantityUnit: weightProduct ? 'KG' : 'PCS',
+      };
+      group.paidQuantity += normalizedQuantity;
+      groups.set(key, group);
+    });
+    return [...groups.values()].map((group) => {
+      const productItems = pricedCart.filter(
+        (item) =>
+          String(item.productId) === String(group.productId) &&
+          String(item.priceGroupKey || '') === String(group.priceGroupKey || ''),
+      );
+      const selectedItems = productItems.filter(
+        (item) =>
+          item.productBatchId ||
+          item.batchId ||
+          (Array.isArray(item.batchAllocations) && item.batchAllocations.length > 0),
+      );
+      const allItemsHaveBatch = selectedItems.length === productItems.length;
+      const batchQuantities = new Map();
+      if (allItemsHaveBatch) {
+        productItems.forEach((item) => {
+          const itemAllocations = Array.isArray(item.batchAllocations)
+            ? item.batchAllocations
+            : [{
+                batchId: item.productBatchId || item.batchId,
+                quantity: isWeightProduct(findProduct(products, item.productId) || item)
+                  ? normalizeWeightQuantity(item.quantity, item.quantityUnit || "KG")
+                  : Number(item.quantity) || 0,
+              }];
+          itemAllocations.forEach(({ batchId, quantity }) => {
+            const id = String(batchId || '');
+            batchQuantities.set(
+              id,
+              (batchQuantities.get(id) || 0) + Number(quantity || 0),
+            );
+          });
+        });
+      }
+      return {
+        ...group,
+        hasMixedBatchSelection:
+          selectedItems.length > 0 && !allItemsHaveBatch,
+        ...(allItemsHaveBatch &&
+          selectedItems.length > 0 && {
+            batchAllocations: [...batchQuantities.entries()].map(
+              ([batchId, quantity]) => ({ batchId, quantity }),
+            ),
+          }),
+        batchAllocationKey: getPromotionBatchAllocationKey(
+          productItems,
+        ),
+      };
+    });
+  }, [pricedCart, products]);
+
+  useEffect(() => {
+    if (editMode || promotionPreviewGroups.length === 0) {
+      setPromotionPreviews({});
+      return undefined;
+    }
+
+    let active = true;
+    const pending = Object.fromEntries(
+      promotionPreviewGroups.map((group) => [
+        `${group.productId}:${group.priceGroupKey || ''}`,
+        { loading: true, batchAllocationKey: group.batchAllocationKey },
+      ]),
+    );
+    setPromotionPreviews(pending);
+
+    const timer = setTimeout(() => {
+      Promise.all(
+        promotionPreviewGroups.map(async (group) => {
+          if (group.hasMixedBatchSelection) {
+            return [`${group.productId}:${group.priceGroupKey || ''}`, {
+              batchAllocationKey: group.batchAllocationKey,
+              error: "Select a batch for every line of this product, or clear all batch selections.",
+            }];
+          }
+          try {
+            const response = await previewPromotionAPI({
+              ...group,
+              billType: 'B2C',
+              companyId: shiftCompanyId,
+              useProductSalesPrice: true,
+            });
+            return [`${group.productId}:${group.priceGroupKey || ''}`, {
+              batchAllocationKey: group.batchAllocationKey,
+              data: response?.data?.data || response?.data || response,
+            }];
+          } catch (error) {
+            return [`${group.productId}:${group.priceGroupKey || ''}`, {
+              batchAllocationKey: group.batchAllocationKey,
+              error: error.message,
+            }];
+          }
+        }),
+      ).then((entries) => {
+        if (active) setPromotionPreviews(Object.fromEntries(entries));
+      });
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [editMode, promotionPreviewGroups, shiftCompanyId]);
 
   const printRef = useRef(null);
 
   /* ── Add Item Form State ── */
   const [addItemSearch, setAddItemSearch] = useState("");
   const [addItemProduct, setAddItemProduct] = useState(null);
-  const [addItemQty, setAddItemQty] = useState(1);
-  const [addItemRate, setAddItemRate] = useState("");
-  const [addItemDisc, setAddItemDisc] = useState("");
   const [addItemSuggestions, setAddItemSuggestions] = useState([]);
   const [addItemDropdownOpen, setAddItemDropdownOpen] = useState(false);
   const [addItemHighlightedIndex, setAddItemHighlightedIndex] = useState(-1);
   const formDropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const cartTableRef = useRef(null);
+  const customerPhoneInputRef = useRef(null);
+  const customerNameInputRef = useRef(null);
 
   const [companyFinancials, setCompanyFinancials] = useState({});
 
   useEffect(() => {
-    const companyId = companyRecord?.id;
     if (!companyId) return;
     let cancelled = false;
     (async () => {
@@ -165,9 +546,9 @@ export default function POSScreen({
     return () => {
       cancelled = true;
     };
-  }, [companyRecord?.id]);
+  }, [companyId]);
 
-  const companyForReceipt = { ...companyRecord, financials: companyFinancials };
+  const companyForReceipt = { ...companyInfo, financials: companyFinancials };
   // console.log(companyForReceipt);
 
   /* ── Init & Edit Mode ── */
@@ -237,49 +618,65 @@ export default function POSScreen({
         [];
 
       if (Array.isArray(items) && items.length > 0) {
-        const mappedItems = items.map((item) => ({
-          productId: String(item.productId || item.product_id || item.id || ""),
+        const mappedItems = items.map((item) => {
+          const productId = item.productId || item.product_id || item.id || "";
+          const product = findProduct(products, productId);
+          const batch = item.ProductBatch;
+          const batchId = item.productBatchId || batch?.id || item.batchId || "";
+          const priceType = normalizePriceType(
+            item.priceType ||
+              product?.sellingPriceType ||
+              item.Product?.sellingPriceType,
+          );
+          const priceGroup = batch
+            ? {
+                mrp: Number(batch.mrp ?? item.mrp ?? 0),
+                salePrice: Number(batch.salePrice ?? item.price ?? 0),
+                taxRate: Number(batch.gstPercentage ?? item.taxPercentage ?? 0),
+                priceType,
+              }
+            : null;
 
-          productName: item.productName || item.product_name || item.name || "",
-
-          price: parseFloat(item.price || item.rate || item.unitPrice || 0),
-
-          quantity: parseFloat(item.quantity || 1),
-
-          taxRate: parseFloat(
-            item.taxRate ||
-              item.tax_rate ||
-              item.gstPercentage ||
-              item.taxPercentage ||
-              0,
-          ),
-
-          discountPercent: parseFloat(
-            item.discountPercent ||
-              item.discount_percent ||
-              item.discount ||
-              item.discountPercentage ||
-              0,
-          ),
-
-          unit: item.unit || "pcs",
-
-          hsnCode: item.hsnCode || item.hsn_code || "",
-
-          barcode: item.barcode || "",
-
-          sku: item.sku || "",
-
-          mrp: parseFloat(item.mrp || 0),
-
-          batchNumber: item.batchNumber || item.batch_number || "",
-
-          expiryDate: item.expiryDate || item.expiry_date || "",
-
-          serialNumber: item.serialNumber || item.serial_number || "",
-
-          notes: item.notes || "",
-        }));
+          return {
+            productId: String(productId),
+            productName: item.productName || item.product_name || item.name || "",
+            price: Number(priceGroup?.salePrice ?? item.price ?? 0),
+            priceType,
+            quantity: Number(item.quantity || 1),
+            quantityUnit: item.quantityUnit || "",
+            taxRate: Number(priceGroup?.taxRate ?? item.taxPercentage ?? 0),
+            discountPercent: Number(
+              item.discountPercent ?? item.discountPercentage ?? 0,
+            ),
+            unit: item.unit || "pcs",
+            unitType: product && isWeightProduct(product) ? "WEIGHT" : "PIECE",
+            baseUnit: product?.baseUnit || "",
+            hsnCode: item.hsnCode || item.hsn_code || "",
+            barcode: item.barcode || "",
+            sku: item.sku || "",
+            mrp: Number(priceGroup?.mrp ?? item.mrp ?? 0),
+            productBatchId: String(batchId),
+            batchAllocations:
+              batchId && priceGroup
+                ? [{
+                    batchId: String(batchId),
+                    quantity: Number(item.paidQuantity ?? item.quantity ?? 0),
+                  }]
+                : undefined,
+            batchAvailableQuantity: batch?.availableQuantity,
+            priceGroupKey: priceGroup ? getPriceGroupKey(priceGroup) : "",
+            priceGroup,
+            batchNumber:
+              item.batchNumber ||
+              item.batchNo ||
+              batch?.batchNumber ||
+              item.batch_number ||
+              "",
+            expiryDate: item.expiryDate || item.expiry_date || "",
+            serialNumber: item.serialNumber || item.serial_number || "",
+            notes: item.notes || "",
+          };
+        });
 
         addMultipleCartItemsDirect(mappedItems);
       }
@@ -298,39 +695,58 @@ export default function POSScreen({
     // Do NOT put saleBills in this dependency list.
   }, [editMode, billId]);
 
-  // ── Fetch Users ──
-  async function loadUsers() {
-    try {
-      const data = await fetchCompanyUsersAPI(1);
-      setUsers(data.data || []);
-    } catch (err) {
-      toast.error("Failed to load user listing.");
+  useEffect(() => {
+    clearActiveShift();
+    if (!billingUser?.id) return;
+
+    setCustomerInfo((prev) => ({
+      ...prev,
+      userId: String(billingUser.id),
+    }));
+    if (!canViewShifts) return;
+    checkCurrentShift(billingUser.id, shiftCompanyId).catch((err) => {
+      toastError(typeof err === "string" ? err : "Failed to load active shift");
+    });
+  }, [
+    billingUser?.id,
+    canViewShifts,
+    shiftCompanyId,
+    clearActiveShift,
+    checkCurrentShift,
+    setCustomerInfo,
+    toastError,
+  ]);
+
+  // Close-shift audit: read a fresh copy of the shift (read-only, store untouched)
+  // so the ledger figures reflect every bill saved so far.
+  useEffect(() => {
+    if (!canViewShifts || !shiftCloseModal || !billingUser?.id) {
+      setCloseSnapshot(null);
+      return undefined;
     }
-  }
+    let cancelled = false;
+    setCloseRefreshing(true);
+    fetchCurrentShiftAPI(billingUser.id, shiftCompanyId)
+      .then((fresh) => {
+        if (!cancelled && fresh && Number(fresh.id) === Number(activeShift?.id)) {
+          setCloseSnapshot(fresh);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setCloseRefreshing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canViewShifts, shiftCloseModal]);
 
   useEffect(() => {
-    const storedAuth = localStorage.getItem("thrive-auth-storage");
-
-    if (storedAuth) {
-      try {
-        const authData = JSON.parse(storedAuth);
-        const userId = authData?.state?.user?.id;
-
-        if (userId) {
-          setCustomerInfo((prev) => ({
-            ...prev,
-            userId: String(userId),
-          }));
-        }
-      } catch (error) {
-        console.error("Failed to read user from localStorage:", error);
-      }
-    }
-
-    loadUsers();
-    checkCurrentShift();
     loadHoldCarts();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Load held carts once when POS mounts; their behavior is independent of shifts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -346,11 +762,17 @@ export default function POSScreen({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const totals = getComputedTotals();
+  const displayCart = applyPromotionPreviewPricing(pricedCart, promotionPreviews);
+  const totals = calcBillTotals(displayCart, globalDiscount, 0, {
+    roundToWholeRupee: settings.roundOffInvoices !== false,
+  });
+  const promotionPreviewLoading = Object.values(promotionPreviews).some(
+    (preview) => preview.loading,
+  );
 
   console.log("Computed totals:", totals);
   // Total item-level discount
-  const itemDiscount = cart.reduce(
+  const itemDiscount = displayCart.reduce(
     (sum, item) => sum + (Number(item.discountAmount) || 0),
     0,
   );
@@ -359,11 +781,77 @@ export default function POSScreen({
   const totalDiscount = itemDiscount + (Number(globalDiscount) || 0);
 
   const actualTotal = Number(totals.grandTotal) || 0;
+  const pendingQuickSaleRawAmount = displayCart.reduce(
+    (sum, item) =>
+      item.cartItemType === "QUICK_SALE" &&
+      item.gstVerificationStatus === "GST_PENDING"
+        ? sum + Number(item.total || 0)
+        : sum,
+    0,
+  );
+  const hasPendingQuickSaleItems = displayCart.some(
+    (item) =>
+      item.cartItemType === "QUICK_SALE" &&
+      item.gstVerificationStatus === "GST_PENDING",
+  );
+  const quickSalePendingAmount = Number(
+    Math.max(
+      0,
+      pendingQuickSaleRawAmount -
+        (Number(totals.rawTotal) > 0
+          ? (Number(totals.globalDiscountAmount || 0) *
+              pendingQuickSaleRawAmount) /
+            Number(totals.rawTotal)
+          : 0),
+    ).toFixed(2),
+  );
 
-  const roundedTotal = Math.round(actualTotal);
+  const returnCreditApplied = Math.min(
+    Number(returnCredit?.remainingAmount) || 0,
+    actualTotal,
+  );
+  const redemptionRateCents = Math.round(
+    (Number(settings.loyaltyRedemptionAmountPerPoint) || 0) * 100,
+  );
+  const redemptionLimitPercentage = Math.min(
+    100,
+    Math.max(0, Number(settings.loyaltyMaxRedemptionPercentage) || 0),
+  );
+  const redemptionDueCents = Math.max(
+    0,
+    Math.round((actualTotal - returnCreditApplied) * 100),
+  );
+  const maximumRedemptionCents = Math.floor(
+    (redemptionDueCents * Math.round(redemptionLimitPercentage * 100)) / 10000,
+  );
+  const minimumRedeemablePoints =
+    Math.max(1, Number(settings.loyaltyMinimumRedemptionPoints) || 1);
+  const calculatedMaximumRedeemablePoints =
+    settings.loyaltyRedemptionEnabled === true && !editMode && redemptionRateCents > 0
+      ? Math.min(
+          Number(loyaltyPoints) || 0,
+          Math.floor(maximumRedemptionCents / redemptionRateCents),
+        )
+      : 0;
+  const maximumRedeemablePoints =
+    calculatedMaximumRedeemablePoints >= minimumRedeemablePoints
+      ? calculatedMaximumRedeemablePoints
+      : 0;
+  const boundedLoyaltyPointsToRedeem = Math.min(
+    maximumRedeemablePoints,
+    Math.max(0, Number(loyaltyPointsToRedeem) || 0),
+  );
+  const loyaltyRedemptionAmount = Number(
+    ((boundedLoyaltyPointsToRedeem * redemptionRateCents) / 100).toFixed(2),
+  );
+  const payableTotal = Math.max(
+    0,
+    Number(
+      (actualTotal - returnCreditApplied - loyaltyRedemptionAmount).toFixed(2),
+    ),
+  );
 
-  // const roundOff = Number((roundedTotal - actualTotal).toFixed(2));
- const roundOff = Number(totals.roundOff?.toFixed(2));
+  const roundOff = Number(totals.roundOff?.toFixed(2));
   /* ── Add Item Form Handlers ── */
   const handleAddItemSearchChange = (e) => {
     const val = e.target.value;
@@ -378,17 +866,13 @@ export default function POSScreen({
       return;
     }
 
-    const query = val.toLowerCase().trim();
-
     const matches = (products || [])
-      .filter((p) => {
-        return (
-          (p.name && p.name.toLowerCase().includes(query)) ||
-          (p.barcode && String(p.barcode).toLowerCase().includes(query)) ||
-          (p.sku && String(p.sku).toLowerCase().includes(query)) ||
-          (p.HSNCode && String(p.HSNCode).toLowerCase().includes(query))
-        );
-      })
+      .filter((product) =>
+        matchesProductSearch(product, val, [
+          brandNamesById.get(String(product.brandId)),
+          categoryNamesById.get(String(product.categoryId)),
+        ]),
+      )
       .slice(0, 15);
 
     setAddItemSuggestions(matches);
@@ -400,7 +884,376 @@ export default function POSScreen({
     }
   };
 
+  const applyReturnCredit = useCallback(async (value) => {
+    const code = String(value || '')
+      .trim()
+      .replace(/^RETURN-CREDIT:/i, '');
+    if (!code) {
+      toast.error('Return credit barcode is empty');
+      return null;
+    }
+    if (editMode) {
+      toast.error('Return credits can only be used on a new B2C sale');
+      return null;
+    }
+    if (returnCredit && returnCredit.code !== code) {
+      toast.error('Remove the current return credit before scanning another');
+      return null;
+    }
+
+    setLoadingReturnCredit(true);
+    try {
+      const credit = await fetchSalesReturnCreditAPI(code);
+      if (Number(credit.remainingAmount) <= 0) {
+        throw new Error('This return credit has already been fully used');
+      }
+      setReturnCredit(credit);
+      toast.success(`Return credit applied: ${formatCurrency(credit.remainingAmount)}`);
+      return { name: `Return credit ${credit.code}` };
+    } catch (error) {
+      toast.error(error.message || 'Could not validate return credit');
+      return null;
+    } finally {
+      setLoadingReturnCredit(false);
+    }
+  }, [editMode, returnCredit, toast.error, toast.success]);
+
+  const clearProductSearch = useCallback(() => {
+    setAddItemSearch("");
+    setAddItemProduct(null);
+    setAddItemSuggestions([]);
+    setAddItemDropdownOpen(false);
+    setAddItemHighlightedIndex(-1);
+  }, []);
+
+  const addProductWithStockCheck = useCallback(
+    async (product) => {
+      if (!product || priceCheckRequestRef.current || priceCheckOpenRef.current) {
+        return false;
+      }
+
+      priceCheckRequestRef.current = true;
+      clearProductSearch();
+      const productId = product.id || product._id;
+      setPriceCheck({
+        open: false,
+        product,
+        groups: [],
+        loading: true,
+        error: "",
+      });
+
+      try {
+        invalidateBatchCache(productId);
+        const response = await loadBatchesCached(productId, { availableOnly: true });
+        const batches = response?.data?.data || response?.data || response || [];
+        const groups = buildMrpPriceGroups({
+          product,
+          batches: Array.isArray(batches) ? batches : [],
+          cart,
+        });
+
+        if (groups.length > 1) {
+          priceCheckOpenRef.current = true;
+          setPriceCheck({ open: true, product, groups, loading: false, error: "" });
+          return true;
+        }
+
+        if (groups.length === 1) {
+          const group = groups[0];
+          const isWeight = isWeightProduct(product);
+          const quantity = isWeight
+            ? Math.min(1, group.availableQuantity)
+            : group.availableQuantity >= 1
+              ? 1
+              : 0;
+          const allocations = allocatePriceGroupQuantity(group, quantity);
+          if (allocations) {
+            addPriceCheckedCartItem(product, group, quantity, allocations);
+            toast.success(`Added ${product.name}`);
+            return true;
+          }
+        }
+
+        toast.error(
+          `No eligible batch stock is available for ${product.name}. POS sales require an unexpired batch with available quantity.`,
+        );
+        return false;
+      } catch (error) {
+        toast.error(error.message || `Could not check current batch prices for ${product.name}.`);
+        return false;
+      } finally {
+        priceCheckRequestRef.current = false;
+        setPriceCheck((current) =>
+          current.open ? current : {
+            open: false,
+            product: null,
+            groups: [],
+            loading: false,
+            error: "",
+          },
+        );
+      }
+    },
+    [
+      addPriceCheckedCartItem,
+      cart,
+      clearProductSearch,
+      toast,
+    ],
+  );
+
+  const confirmPriceCheck = useCallback(
+    ({ group, quantity, batchAllocations }) => {
+      if (!priceCheck.product) return;
+      addPriceCheckedCartItem(priceCheck.product, group, quantity, batchAllocations);
+      toast.success(`Added ${priceCheck.product.name}`);
+      priceCheckOpenRef.current = false;
+      setPriceCheck({ open: false, product: null, groups: [], loading: false, error: "" });
+      if (searchInputRef.current) searchInputRef.current.focus();
+    },
+    [addPriceCheckedCartItem, priceCheck.product, toast],
+  );
+
+  const cancelPriceCheck = useCallback(() => {
+    priceCheckOpenRef.current = false;
+    setPriceCheck({ open: false, product: null, groups: [], loading: false, error: "" });
+    if (searchInputRef.current) searchInputRef.current.focus();
+  }, []);
+
+  /* Add a product straight into the current order, then get ready for the next scan */
+  const addProductToOrder = async (prod) => {
+    if (!prod) return;
+    if (!(await addProductWithStockCheck(prod))) return false;
+
+    clearProductSearch();
+
+    if (searchInputRef.current) searchInputRef.current.focus();
+    return true;
+  };
+
+  async function openQuickSaleFromUnknown(value, forceBarcode = false) {
+    const text = String(value || "").trim();
+    if (!text) return;
+    if (!canCreateQuickSale) {
+      toast.error(`No product found for: "${text}"`);
+      return;
+    }
+
+    const isBarcode = forceBarcode ||
+      /^\d{8,14}$/.test(text) ||
+      /^[a-z0-9._-]{10,}$/i.test(text);
+    clearProductSearch();
+    if (!isBarcode) {
+      setQuickSaleDraft({ initialName: text, initialBarcode: "", alias: null });
+      return;
+    }
+
+    setQuickSaleResolving(true);
+    try {
+      const result = await resolveQuickSaleAPI({
+        companyId: shiftCompanyId,
+        barcode: text,
+      });
+      if (result?.type === "REGISTERED") {
+        await addProductToOrder(result.product);
+        return;
+      }
+      if (result?.type === "BLOCKED") {
+        toast.error(result.message || "This Quick Sale item needs administrator review.");
+        return;
+      }
+      setQuickSaleDraft({
+        initialName: result?.alias?.name || "",
+        initialBarcode: text,
+        alias: result?.alias || null,
+      });
+    } catch (error) {
+      toast.error(error.message || "Could not check the scanned barcode.");
+    } finally {
+      setQuickSaleResolving(false);
+    }
+  }
+
+  async function handleQuickSaleAdd(item) {
+    setQuickSaleResolving(true);
+    try {
+      const result = await resolveQuickSaleAPI({
+        companyId: shiftCompanyId,
+        ...(item.barcode ? { barcode: item.barcode } : { name: item.name }),
+      });
+      if (result?.type === "REGISTERED") {
+        setQuickSaleDraft(null);
+        if (!(await addProductToOrder(result.product))) {
+          throw new Error("This registered product has no eligible batch stock for POS billing.");
+        }
+        return;
+      }
+      if (result?.type === "BLOCKED") {
+        throw new Error(result.message || "This alias needs administrator review.");
+      }
+
+      const alias = result?.type === "QUICK_SALE_ALIAS" ? result.alias : null;
+      const identityKey = item.barcode
+        ? `barcode:${item.barcode.trim().toUpperCase()}`
+        : `name:${item.name
+            .normalize("NFKC")
+            .trim()
+            .replace(/\s+/g, " ")
+            .toLocaleLowerCase("en-IN")}`;
+      addQuickSaleCartItem({
+        identityKey,
+        productName: item.name,
+        barcode: item.barcode,
+        mrp: item.mrp,
+        price: item.sellingPrice,
+        quantity: item.quantity,
+        unit: "pcs",
+        gstVerificationStatus: alias?.gstVerificationStatus || "GST_PENDING",
+        quickSaleTaxRate: alias?.verifiedTaxRate ?? null,
+        quickSalePriceType: alias?.verifiedPriceType ?? null,
+        quickSaleAliasId: alias?.id || null,
+      });
+      setQuickSaleDraft(null);
+      toast.success(`Added ${item.name} as a Quick Sale item`);
+      if (searchInputRef.current) searchInputRef.current.focus();
+    } finally {
+      setQuickSaleResolving(false);
+    }
+  }
+
+  const updateProductQuantity = async (item, quantity) => {
+    if (item.cartItemType === "QUICK_SALE") {
+      if (Number(quantity) <= 0) return false;
+      updateCartItem(item.cartLineId, { quantity });
+      return true;
+    }
+    const product = findProduct(products, item.productId) || item;
+    const quantityUnit =
+      item.quantityUnit || (isWeightProduct(product) ? "KG" : "PCS");
+    if (!item.priceGroupKey) {
+      toast.error(
+        `${item.productName} has no batch price selection. Remove it and add it again after checking batch stock.`,
+      );
+      return false;
+    }
+
+    try {
+      invalidateBatchCache(item.productId);
+      const response = await loadBatchesCached(item.productId, {
+        availableOnly: !editMode,
+      });
+      let batches = response?.data?.data || response?.data || response || [];
+      if (editMode) {
+        const restoredByBatch = new Map();
+        cart
+          .filter((line) => String(line.productId) === String(item.productId))
+          .forEach((line) => {
+            const allocations = Array.isArray(line.batchAllocations)
+              ? line.batchAllocations
+              : line.productBatchId || line.batchId
+                ? [{
+                    batchId: line.productBatchId || line.batchId,
+                    quantity: getQuantityInProductBaseUnit(
+                      line.quantity,
+                      line.quantityUnit || (isWeightProduct(product) ? "KG" : "PCS"),
+                      product,
+                    ),
+                  }]
+                : [];
+            allocations.forEach((allocation) => {
+              const batchId = String(
+                allocation.batchId || allocation.productBatchId || "",
+              );
+              if (!batchId) return;
+              restoredByBatch.set(
+                batchId,
+                (restoredByBatch.get(batchId) || 0) +
+                  Number(allocation.quantity || 0),
+              );
+            });
+          });
+        batches = batches.map((batch) => {
+          const batchId = String(batch.id || batch._id || "");
+          return {
+            ...batch,
+            availableQuantity:
+              Number(batch.availableQuantity ?? batch.quantity ?? 0) +
+              (restoredByBatch.get(batchId) || 0),
+          };
+        });
+      }
+      const groups = buildMrpPriceGroups({
+        product,
+        batches: Array.isArray(batches) ? batches : [],
+        cart,
+        excludedCartLineId: item.cartLineId || item.productId,
+      });
+      const group = groups.find((candidate) => candidate.key === item.priceGroupKey);
+      const baseQuantity = getQuantityInProductBaseUnit(quantity, quantityUnit, product);
+      const allocations = group && allocatePriceGroupQuantity(group, baseQuantity);
+      if (!allocations) {
+        toast.error(
+          `Only ${formatQuantity(group?.availableQuantity || 0)} is available at this MRP and price.`,
+        );
+        return false;
+      }
+      updateCartItem(item.cartLineId || item.productId, {
+        quantity,
+        batchAllocations: allocations,
+      });
+      return true;
+    } catch (error) {
+      toast.error(error.message || "Could not refresh batch stock.");
+      return false;
+    }
+  };
+
   const handleAddItemSearchKeyDown = (e) => {
+    // Enter — works for barcode scanners (they type the code then press Enter)
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const typed = (e.currentTarget.value || "").trim();
+      if (!typed) return;
+
+      if (/^RETURN-CREDIT:/i.test(typed)) {
+        setAddItemSearch("");
+        setAddItemSuggestions([]);
+        setAddItemDropdownOpen(false);
+        void applyReturnCredit(typed);
+        return;
+      }
+
+      const q = typed.toLowerCase();
+
+      // 1) Exact barcode / SKU match always wins
+      const exact = (products || []).find(
+        (p) =>
+          (p.barcode && String(p.barcode).trim().toLowerCase() === q) ||
+          (p.sku && String(p.sku).trim().toLowerCase() === q),
+      );
+      if (exact) {
+        addProductToOrder(exact);
+        return;
+      }
+
+      // 2) Otherwise use the highlighted suggestion (or the only suggestion)
+      if (addItemSuggestions.length > 0) {
+        const picked =
+          addItemSuggestions[
+            addItemHighlightedIndex >= 0 ? addItemHighlightedIndex : 0
+          ];
+        if (picked) {
+          addProductToOrder(picked);
+          return;
+        }
+      }
+
+      void openQuickSaleFromUnknown(typed);
+      return;
+    }
+
     if (!addItemDropdownOpen || addItemSuggestions.length === 0) {
       return;
     }
@@ -435,22 +1288,6 @@ export default function POSScreen({
       return;
     }
 
-    // Enter
-    if (e.key === "Enter") {
-      e.preventDefault();
-
-      const selectedIndex =
-        addItemHighlightedIndex >= 0 ? addItemHighlightedIndex : 0;
-
-      const selectedProduct = addItemSuggestions[selectedIndex];
-
-      if (selectedProduct) {
-        handleSelectFormProduct(selectedProduct);
-      }
-
-      return;
-    }
-
     // Escape
     if (e.key === "Escape") {
       e.preventDefault();
@@ -460,101 +1297,53 @@ export default function POSScreen({
     }
   };
 
+  // Clicking a suggestion adds it to the current order directly
   const handleSelectFormProduct = (prod) => {
-    setAddItemProduct(prod);
-    setAddItemSearch(prod.name);
-    setAddItemRate(prod.salesPrice || prod.price || prod.MRP || 0);
-    setAddItemDisc(prod.discount || 0);
-    setAddItemDropdownOpen(false);
-  };
-
-  const handleAddItemSubmit = (e) => {
-    if (e) e.preventDefault();
-
-    // Product must be selected from the product list
-    if (!addItemProduct) {
-      if (addItemSearch.trim()) {
-        toast.error(
-          "Product not found. Please select a product from the suggestions.",
-        );
-      } else {
-        toast.error("Please select a product.");
-      }
-      return;
-    }
-
-    // Get rate
-    const rate =
-      addItemRate !== ""
-        ? parseFloat(addItemRate)
-        : Number(
-            addItemProduct.salesPrice ||
-              addItemProduct.price ||
-              addItemProduct.MRP ||
-              0,
-          );
-
-    // Get discount
-    const disc = parseFloat(addItemDisc) || 0;
-
-    // Get quantity
-    const qty = Math.max(1, parseFloat(addItemQty) || 1);
-
-    // Use only the actual product from the product master
-    const productPayload = {
-      ...addItemProduct,
-      salesPrice: rate,
-      price: rate,
-      discount: disc,
-    };
-
-    // Add requested quantity
-    for (let i = 0; i < qty; i++) {
-      addToCart(productPayload);
-    }
-
-    toast.success(`Added ${productPayload.name}`);
-
-    // Reset form
-    setAddItemSearch("");
-    setAddItemProduct(null);
-    setAddItemQty(1);
-    setAddItemRate("");
-    setAddItemDisc("");
-    setAddItemSuggestions([]);
-    setAddItemDropdownOpen(false);
+    addProductToOrder(prod);
   };
 
   /* ── Shift handlers ── */
-  async function handleStartShift() {
+  async function handleStartShift(shiftDetails) {
+    if (!billingUser?.id) {
+      toast.error("An authenticated user is required to start a shift");
+      return;
+    }
+    if (!shiftDetails?.counterId) {
+      toast.error("Select an assigned POS counter before starting a shift");
+      return;
+    }
+    setShiftSubmitting(true);
     try {
       await startShift({
-        userId: customerInfo.userId || 1,
-        openingFloat: parseFloat(shiftFloat) || 0,
-        terminalId: "POS-TERMINAL-1",
+        userId: billingUser.id,
+        companyId: shiftCompanyId,
+        ...shiftDetails,
       });
       toast.success("Shift started ✓");
       setShiftModalOpen(false);
-      setShiftFloat("");
     } catch (err) {
       toast.error(typeof err === "string" ? err : "Failed to start shift");
+    } finally {
+      setShiftSubmitting(false);
     }
   }
 
-  async function handleEndShift() {
+  async function handleEndShift(shiftDetails) {
     if (!activeShift) return;
+    setShiftSubmitting(true);
     try {
       const res = await endShift({
         shiftId: activeShift.id,
-        closingCashActual: parseFloat(closingCash) || 0,
+        ...shiftDetails,
       });
       toast.success(
         `Shift closed. Difference: ${formatCurrency(res?.data?.difference || 0)}`,
       );
       setShiftCloseModal(false);
-      setClosingCash("");
     } catch (err) {
       toast.error(typeof err === "string" ? err : "Failed to close shift");
+    } finally {
+      setShiftSubmitting(false);
     }
   }
 
@@ -624,23 +1413,27 @@ export default function POSScreen({
   /* ── Add to cart handler (from scanner) ── */
   const handleAddProduct = useCallback(
     (product) => {
-      addToCart(product);
-      toast.success(`Added: ${product.name}`);
+      addProductWithStockCheck(product);
     },
-    [addToCart, toast],
+    [addProductWithStockCheck],
   );
 
   /* ── Barcode not found ── */
   const handleBarcodeNotFound = useCallback(
     (val) => {
-      toast.error(`No product found for: "${val}"`);
+      void openQuickSaleFromUnknown(val, true);
     },
-    [toast],
+    [canCreateQuickSale, shiftCompanyId],
   );
 
   /* ── Camera scan result ── */
   const handleCameraScan = useCallback(
     (decodedText) => {
+      if (/^RETURN-CREDIT:/i.test(decodedText.trim())) {
+        void applyReturnCredit(decodedText);
+        return { name: 'Return credit' };
+      }
+
       const v = decodedText.trim().toLowerCase();
       const product =
         products.find((p) => p.barcode && p.barcode === decodedText) ||
@@ -652,11 +1445,11 @@ export default function POSScreen({
       if (product) {
         handleAddProduct(product);
       } else {
-        toast.error(`No product found for: "${decodedText}"`);
+        void openQuickSaleFromUnknown(decodedText, true);
       }
       return product;
     },
-    [products, handleAddProduct, toast],
+    [products, handleAddProduct, applyReturnCredit, toast],
   );
 
   /* Phone lookup for B2C */
@@ -706,30 +1499,53 @@ export default function POSScreen({
   };
 
   /* ── Save bill ── */
-  async function handleSave(paymentDetails) {
+  async function handleSave(paymentDetails, receiptPaymentDetails) {
     if (cart.length === 0) {
       toast.error("Cart is empty");
       return;
     }
 
-    let loggedInUserId = customerInfo.userId;
-    let loggedInCompanyId = null;
+    for (const item of cart) {
+      if (item.cartItemType === "QUICK_SALE") continue;
+      const allocations = item.batchAllocations;
+      if (
+        !item.priceGroup ||
+        item.priceGroupKey !== getPriceGroupKey(item.priceGroup) ||
+        !Array.isArray(allocations) ||
+        allocations.length === 0 ||
+        allocations.some(
+          (allocation) =>
+            !allocation.batchId ||
+            !Number.isFinite(Number(allocation.quantity)) ||
+            Number(allocation.quantity) <= 0,
+        )
+      ) {
+        toast.error(
+          `${item.productName} has no valid batch price and allocation. Remove it and add it again after checking batch stock.`,
+        );
+        return;
+      }
 
-    try {
-      const storedAuth = localStorage.getItem("thrive-auth-storage");
-      const companyDetails = localStorage.getItem("erp-settings");
-      if (storedAuth) {
-        const authData = JSON.parse(storedAuth);
-        loggedInUserId = authData?.state?.user?.id || loggedInUserId;
+      const product = findProduct(products, item.productId) || item;
+      const lineQuantity = getQuantityInProductBaseUnit(
+        item.quantity,
+        item.quantityUnit || (isWeightProduct(product) ? "KG" : "PCS"),
+        product,
+      );
+      const allocatedQuantity = allocations.reduce(
+        (total, allocation) => total + Number(allocation.quantity),
+        0,
+      );
+      if (Math.abs(allocatedQuantity - lineQuantity) > 0.001) {
+        toast.error(
+          `Batch allocations do not match the quantity for ${item.productName}. Refresh the selected batch price group.`,
+        );
+        return;
       }
-      // console.log("Logged in user ID:", companyDetails);
-      if (companyDetails) {
-        const companyData = JSON.parse(companyDetails);
-        loggedInCompanyId = companyData?.state?.companyId || null;
-      }
-    } catch (error) {
-      console.error("Failed to read user from localStorage:", error);
     }
+
+    const loggedInUserId = billingUser?.id;
+    const loggedInCompanyId = shiftCompanyId;
 
     if (!customerInfo.name || !customerInfo.phone) {
       toast.error("Customer Details is Required!!");
@@ -753,16 +1569,21 @@ export default function POSScreen({
     setSaving(true);
 
     try {
+      if (!editMode && !posIdempotencyKeyRef.current) {
+        posIdempotencyKeyRef.current = createPosIdempotencyKey();
+      }
       const payload = buildSaleBillPayload({
         billForm: {
           invoiceNo,
           date: saleDate,
-          items: cart,
+          items: displayCart,
           globalDiscount,
         },
         customerForm: finalCustomerInfo,
-        validItems: cart,
+        validItems: displayCart,
+        products,
       });
+      const posBillItems = payload.items;
 
       const extraFields = {
         bill_type: "B2C",
@@ -771,18 +1592,39 @@ export default function POSScreen({
         shiftId: activeShift?.id || null,
         paymentDetails: paymentDetails || null,
         companyId: loggedInCompanyId || null,
+        useProductSalesPrice: true,
+        ...(!editMode && {
+          posIdempotencyKey: posIdempotencyKeyRef.current,
+        }),
+        ...(!editMode && returnCredit && {
+          returnCreditCode: returnCredit.code,
+          returnCreditAmount: returnCreditApplied,
+        }),
+        ...(!editMode && redeemLoyaltyOptIn && boundedLoyaltyPointsToRedeem > 0
+          ? {
+              redeemLoyaltyPoints: true,
+              loyaltyPointsToRedeem: boundedLoyaltyPointsToRedeem,
+            }
+          : {}),
       };
 
       if (editMode && billId) {
         await updateBill(billId, {
           ...payload,
+          items: posBillItems,
           ...extraFields,
         });
+        if (loggedInUserId && canViewShifts) {
+          await checkCurrentShift(loggedInUserId, loggedInCompanyId).catch(() => {
+            toast.warning("Invoice updated, but shift totals could not be refreshed.");
+          });
+        }
 
         toast.success("Invoice updated ✓");
 
         // Clear edited bill data from POS store
         clearCart();
+        setReturnCredit(null);
 
         setCustomerInfo({
           name: "",
@@ -791,6 +1633,8 @@ export default function POSScreen({
         });
 
         setLoyaltyPoints(0);
+        setRedeemLoyaltyOptIn(false);
+        setLoyaltyPointsToRedeem(0);
         setGlobalDiscount(0);
         setPaymentOpen(false);
 
@@ -802,51 +1646,229 @@ export default function POSScreen({
 
         return;
       } else {
-        await addBill({
+        const created = await addBill({
           ...payload,
+          items: posBillItems,
           ...extraFields,
         });
+        posIdempotencyKeyRef.current = "";
+        if (loggedInUserId && canViewShifts) {
+          await checkCurrentShift(loggedInUserId, loggedInCompanyId).catch(() => {
+            toast.warning("Invoice saved, but shift totals could not be refreshed.");
+          });
+        }
 
         toast.success("Invoice saved ✓");
 
-        const billForPrint = {
-          invoiceNumber: invoiceNo,
-          invoiceNo,
+        const createdSale =
+          created?.data?.data ?? created?.data ?? created ?? null;
 
-          saleDate,
-
-          items: cart.map((item) => ({
+        // The create call only returns a summary; fetch the saved invoice so the
+        // receipt shows the backend-calculated taxable value / GST / totals.
+        let savedBill = null;
+        try {
+          const savedId = createdSale?.id;
+          if (savedId) {
+            const res = await fetchSaleBillByIdAPI(savedId);
+            savedBill = res?.data ?? res ?? null;
+          }
+        } catch {
+          savedBill = null;
+        }
+        // Stock changed on the server: drop cached batch lists so the next
+        // scan shows the true remaining quantity per batch.
+        invalidateBatchCache();
+        const backendInvoiceNo =
+          createdSale?.invoiceNumber ||
+          savedBill?.invoiceNumber ||
+          invoiceNo;
+        const savedItems = savedBill?.SalesItems || savedBill?.items || [];
+        const num = (v, fallback) =>
+          v !== undefined && v !== null && !isNaN(Number(v))
+            ? Number(v)
+            : fallback;
+        const receiptCreatedAt =
+          savedBill?.createdAt ||
+          savedBill?.created_at ||
+          createdSale?.createdAt ||
+          createdSale?.created_at ||
+          new Date().toISOString();
+        const receiptSourceItems = getNonQuickSaleReceiptItems(savedItems, cart);
+        const receiptItems = receiptSourceItems.map((sourceItem, i) => {
+          const saved = savedItems.length ? sourceItem : null;
+          const original = saved
+            ? cart.find(
+                (cartItem) =>
+                  String(cartItem.productId) === String(saved.productId) &&
+                  (!saved.productBatchId ||
+                    String(cartItem.productBatchId) === String(saved.productBatchId)),
+              )
+            : sourceItem;
+          const item = saved ? { ...original, ...saved } : sourceItem;
+          return {
             ...item,
 
             productName:
               item.productName || item.name || item.Product?.name || "Item",
 
-            quantity: Number(item.quantity) || 1,
+            quantity: Number(saved?.quantity ?? item.quantity) || 1,
+            paidQuantity:
+              saved?.paidQuantity ?? item.paidQuantity ?? item.quantity,
+            freeQuantity: saved?.freeQuantity ?? item.freeQuantity ?? 0,
+            totalQuantity:
+              saved?.totalQuantity ??
+              item.totalQuantity ??
+              (Number(item.paidQuantity ?? item.quantity) +
+                Number(item.freeQuantity || 0)),
+            offerId: saved?.offerId ?? item.offerId,
+            offerName: saved?.offerName ?? item.offerName,
+            promotionName: saved?.promotionName ?? item.promotionName,
+            itemRole: saved?.itemRole ?? item.itemRole,
+            productBatchId:
+              saved?.productBatchId ?? item.productBatchId,
+            batchNumber:
+              saved?.batchNumber ?? saved?.batchNo ?? item.batchNumber,
+            quantityUnit: saved?.quantityUnit || item.quantityUnit,
+            enteredQuantity: Number(saved?.quantity ?? item.quantity) || 1,
+            enteredQuantityUnit: item.quantityUnit,
 
-            price: Number(item.price) || 0,
+            price:
+              (saved?.itemRole ?? item.itemRole) === "GIFT"
+                ? Number(saved?.price) || 0
+                : Number(item.price) || 0,
+            mrp: Number(
+              saved?.mrp ??
+                saved?.ProductBatch?.mrp ??
+                saved?.ProductBatch?.MRP ??
+                saved?.Product?.MRP ??
+                item.mrp,
+            ) || 0,
+
+            // Backend-calculated line values when available (never re-taxed here)
+            ...(saved && {
+              afterDiscount: num(saved.baseRate, item.afterDiscount),
+              taxAmount: num(saved.taxAmount, item.taxAmount),
+              total: num(saved.netRate, item.total),
+              taxRate: num(saved.taxPercentage, item.taxRate),
+            }),
 
             netRate:
-              Number(item.total) ||
+              Number(saved ? saved.netRate : item.total) ||
               Number(item.netRate) ||
               (Number(item.quantity) || 1) * (Number(item.price) || 0),
-          })),
+          };
+        });
+        const savedQuickSaleItems =
+          createdSale?.quickSaleItems ||
+          savedBill?.quickSaleItems ||
+          savedBill?.QuickSaleItems ||
+          [];
+        const quickSaleReceiptItems = cart
+          .filter((item) => item.cartItemType === "QUICK_SALE")
+          .map((item) => {
+            const saved = savedQuickSaleItems.find(
+              (candidate) =>
+                String(candidate.barcode || "") === String(item.barcode || "") &&
+                String(candidate.productName || candidate.productNameSnapshot || "") ===
+                  String(item.productName || ""),
+            );
+            return {
+              ...item,
+              ...(saved || {}),
+              cartItemType: "QUICK_SALE",
+              productName:
+                saved?.productName ||
+                saved?.productNameSnapshot ||
+                item.productName,
+              quantity: Number(saved?.quantity ?? item.quantity) || 0,
+              mrp: Number(saved?.mrp ?? item.mrp) || 0,
+              price: Number(saved?.sellingPrice ?? item.price) || 0,
+              netRate: Number(saved?.netAmount ?? item.total) || 0,
+              total: Number(saved?.netAmount ?? item.total) || 0,
+              taxRate:
+                saved?.taxPercentage ?? item.taxRate ?? null,
+              taxAmount:
+                saved?.taxAmount ?? item.taxAmount ?? null,
+              gstVerificationStatus:
+                saved?.gstVerificationStatus || item.gstVerificationStatus,
+              itemType: "QUICK_SALE",
+            };
+          });
+        receiptItems.push(...quickSaleReceiptItems);
+        const totalMrp = receiptItems.reduce(
+          (sum, item) =>
+            sum + (Number(item.mrp) || 0) * (Number(item.quantity) || 1),
+          0,
+        );
+        const finalBillTotal = num(
+          savedBill?.totalAmount,
+          num(createdSale?.totalAmount, Number(totals.grandTotal) || 0),
+        );
+        const todaySavings = Math.max(0, totalMrp - finalBillTotal);
+        const receiptCustomer = finalCustomerInfo.phone
+          ? customers.find(
+              (customer) =>
+                String(customer.phone || "").trim() ===
+                String(finalCustomerInfo.phone).trim(),
+            )
+          : null;
+
+        const billForPrint = {
+          bill_type: "B2C",
+          invoiceNumber: backendInvoiceNo,
+          invoiceNo: backendInvoiceNo,
+
+          saleDate: savedBill?.saleDate || createdSale?.saleDate || saleDate,
+          createdAt: receiptCreatedAt,
+
+          items: receiptItems,
 
           customerName: finalCustomerInfo.name || "Walk-in Customer",
 
           customerPhone: finalCustomerInfo.phone || "",
+          customerAddress:
+            savedBill?.Customer?.address || receiptCustomer?.address || "",
+          loyaltyPointsEarned: Number(createdSale?.loyaltyPointsEarned) || 0,
+          loyaltyPointsRedeemed:
+            Number(createdSale?.loyaltyPointsRedeemed) || 0,
+          loyaltyRedemptionAmount:
+            Number(createdSale?.loyaltyRedemptionAmount) || 0,
+          loyaltyPointsBalance:
+            createdSale?.loyaltyPointsBalance ??
+            savedBill?.Customer?.loyalty_points ??
+            null,
 
           paymentMethod,
 
           discountAmount: Number(globalDiscount) || 0,
 
-          baseRate: Number(totals.subtotal) || 0,
+          baseRate: num(savedBill?.baseRate, Number(totals.subtotal) || 0),
 
-          tax: Number(totals.totalTax) || 0,
+          tax: num(savedBill?.tax, Number(totals.totalTax) || 0),
+          gstClassificationPending:
+            createdSale?.gstClassificationPending ??
+            savedBill?.gstClassificationPending ??
+            hasPendingQuickSaleItems,
 
-          totalAmount: Number(totals.grandTotal) || 0,
+          totalAmount: num(
+            savedBill?.totalAmount,
+            num(createdSale?.totalAmount, Number(totals.grandTotal) || 0),
+          ),
+          roundOff: num(savedBill?.roundOff, Number(totals.roundOff) || 0),
+          returnCreditAmount: Number(
+            createdSale?.returnCredit?.appliedAmount ?? returnCreditApplied,
+          ) || 0,
+          amountReceived: Number(
+            receiptPaymentDetails?.amountReceived ?? payableTotal,
+          ),
+          amountReturned: Number(receiptPaymentDetails?.amountReturned) || 0,
+          todaySavings,
 
           User: {
-            name: activeShift?.user?.name || "Store Manager",
+            name:
+              billingUser?.name ||
+              activeShift?.user?.name ||
+              "Store Manager",
           },
 
           ...extraFields,
@@ -856,9 +1878,12 @@ export default function POSScreen({
 
         setLastPrintedBill(billForPrint);
         setPaymentOpen(false);
+        setRedeemLoyaltyOptIn(false);
+        setLoyaltyPointsToRedeem(0);
         setPrintReady(true);
 
         clearCart();
+        setReturnCredit(null);
 
         let newBillUserId = "";
         const storedAuthAfterSave = localStorage.getItem("thrive-auth-storage");
@@ -909,6 +1934,7 @@ export default function POSScreen({
     }
 
     clearCart();
+    setReturnCredit(null);
 
     setCustomerInfo({
       name: "",
@@ -926,31 +1952,20 @@ export default function POSScreen({
   /* ── Keyboard shortcuts ── */
   useEffect(() => {
     function onKey(e) {
-      if (e.key === "F2") {
-        e.preventDefault();
-        const barcodeInput = document.querySelector(
-          ".barcode-input-wrap input",
-        );
-        if (barcodeInput) barcodeInput.focus();
-      }
-      if (e.key === "F4") {
-        e.preventDefault();
-        const custInput = document.querySelector(".pos-cust-phone-input");
-        if (custInput) custInput.focus();
-      }
-      if (e.key === "F8") {
-        e.preventDefault();
-        if (cart.length > 0) setPaymentOpen(true);
-      }
-      if (e.key === "F9") {
-        e.preventDefault();
-        handleNewBill();
-      }
-      if (e.key === "F10") {
-        e.preventDefault();
-        handleHoldCart();
-      }
       if (e.key === "Escape") {
+        e.preventDefault();
+        if (paymentOpen) {
+          setPaymentOpen(false);
+          return;
+        }
+        if (priceCheck.open) {
+          cancelPriceCheck();
+          return;
+        }
+        if (cameraOpen) {
+          setCameraOpen(false);
+          return;
+        }
         if (holdDrawerOpen) {
           setHoldDrawerOpen(false);
           return;
@@ -963,8 +1978,62 @@ export default function POSScreen({
           setShiftCloseModal(false);
           return;
         }
-        if (!paymentOpen && !cameraOpen) {
-          onBack?.();
+        if (addItemDropdownOpen) {
+          setAddItemDropdownOpen(false);
+          setAddItemHighlightedIndex(-1);
+          return;
+        }
+
+        const target = e.target;
+        const isEditing =
+          target instanceof HTMLElement &&
+          (target.isContentEditable ||
+            target.matches("input, textarea, select"));
+        if (!isEditing) onBack?.();
+        return;
+      }
+
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (
+        paymentOpen ||
+        priceCheck.open ||
+        cameraOpen ||
+        holdDrawerOpen ||
+        shiftModalOpen ||
+        shiftCloseModal
+      ) {
+        return;
+      }
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        customerPhoneInputRef.current?.focus();
+      } else if (e.key === "F5") {
+        e.preventDefault();
+        cartTableRef.current?.querySelector(".pos-exact-qty-input")?.focus();
+      } else if (e.key === "F6") {
+        e.preventDefault();
+        customerNameInputRef.current?.focus();
+      } else if (e.key === "F8") {
+        e.preventDefault();
+        if (cart.length > 0) setPaymentOpen(true);
+      } else if (e.key === "F9") {
+        e.preventDefault();
+        if (
+          cart.length === 0 ||
+          window.confirm("Start a new bill and clear the current cart?")
+        ) {
+          handleNewBill();
+        }
+      } else if (e.key === "F10") {
+        e.preventDefault();
+        if (cart.length > 0) {
+          handleHoldCart();
+        } else {
+          setHoldDrawerOpen(true);
         }
       }
     }
@@ -973,10 +2042,14 @@ export default function POSScreen({
   }, [
     cart,
     paymentOpen,
+    priceCheck.open,
+    cancelPriceCheck,
     cameraOpen,
     holdDrawerOpen,
     shiftModalOpen,
     shiftCloseModal,
+    addItemDropdownOpen,
+    onBack,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -1030,6 +2103,46 @@ export default function POSScreen({
     hour12: true,
   });
 
+  const brandNameFor = (product) => {
+    if (!product) return "";
+    const direct = product.brandName || product.brand?.name;
+    if (direct) return direct;
+    const id = product.brandId;
+    if (id == null || id === "") return "";
+    const found = (brands || []).find((b) => String(b.id ?? b._id) === String(id));
+    return found?.name || "";
+  };
+
+  // MRP saving per line (display only): MRP above the selling rate, per unit sold
+  const mrpSavings = displayCart.reduce((sum, item) => {
+    const mrp = Number(item.mrp) || 0;
+    const rate = Number(item.price) || 0;
+    if (mrp <= rate) return sum;
+    const qty =
+      item.unitType === "WEIGHT" && item.quantityUnit === "GRAM"
+        ? normalizeWeightQuantity(item.quantity, item.quantityUnit)
+        : Number(item.quantity) || 0;
+    return sum + (mrp - rate) * qty;
+  }, 0);
+  const totalSavings = mrpSavings + totalDiscount;
+  const gstTotal = Number(totals.totalTax) || 0;
+  const cgstHalf = Number((gstTotal / 2).toFixed(2));
+  const sgstHalf = Number((gstTotal - cgstHalf).toFixed(2));
+  const totalPieces = displayCart.reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0),
+    0,
+  );
+  const cashierName = billingUser?.name || billingUser?.username || "";
+  const terminalId =
+    activeShift?.counterNameSnapshot ||
+    activeShift?.counter?.counterName ||
+    activeShift?.terminalId ||
+    "—";
+  const customerTier =
+    customerInfo.phone && (loyaltyPoints > 0 || customerInfo.name)
+      ? loyaltyTier(loyaltyPoints)
+      : null;
+
   return (
     <>
       {/* ── Thermal Bill (print-only) ── */}
@@ -1040,16 +2153,43 @@ export default function POSScreen({
           party={{
             name: lastPrintedBill.customerName || "Walk-in Customer",
             phone: lastPrintedBill.customerPhone || "",
+            address: lastPrintedBill.customerAddress || "",
           }}
           items={lastPrintedBill.items || []}
           invoiceLabel="INVOICE"
           partyLabel="Customer"
           printRef={printRef}
+          showActionBar={false}
+          showBatch={false}
         />
       )}
 
-      <div className="pos-b2c-root pos-exact-layout">
+      <div className="pos-b2c-root bf-pos">
         <ToastContainer toasts={toast.toasts} />
+
+        {quickSaleDraft && (
+          <QuickSaleModal
+            initialName={quickSaleDraft.initialName}
+            initialBarcode={quickSaleDraft.initialBarcode}
+            alias={quickSaleDraft.alias}
+            saving={quickSaleResolving}
+            onClose={() => {
+              setQuickSaleDraft(null);
+              if (searchInputRef.current) searchInputRef.current.focus();
+            }}
+            onAdd={handleQuickSaleAdd}
+          />
+        )}
+
+        <PriceCheckModal
+          open={priceCheck.open}
+          product={priceCheck.product}
+          groups={priceCheck.groups}
+          loading={priceCheck.loading}
+          error={priceCheck.error}
+          onConfirm={confirmPriceCheck}
+          onCancel={cancelPriceCheck}
+        />
 
         {/* ── Camera Scanner Modal ── */}
         <CameraScanner
@@ -1063,433 +2203,629 @@ export default function POSScreen({
           open={paymentOpen}
           totals={{
             ...totals,
-            grandTotal: roundedTotal,
+            grandTotal: payableTotal,
+            preCreditGrandTotal: actualTotal,
             roundOff: roundOff,
+            returnCreditAmount: returnCreditApplied,
+            loyaltyRedemptionAmount,
+            itemDiscount,
+            quickSalePendingAmount,
+            hasPendingQuickSale: hasPendingQuickSaleItems,
           }}
+          loyaltyRedemptionEnabled={
+            settings.loyaltyRedemptionEnabled === true &&
+            !editMode &&
+            Boolean(customerInfo.phone) &&
+            maximumRedeemablePoints > 0
+          }
+          availableLoyaltyPoints={Number(loyaltyPoints) || 0}
+          loyaltyPointsToRedeem={boundedLoyaltyPointsToRedeem}
+          maximumRedeemablePoints={maximumRedeemablePoints}
+          minimumRedeemablePoints={minimumRedeemablePoints}
+          loyaltyRedemptionAmountPerPoint={
+            Number(settings.loyaltyRedemptionAmountPerPoint) || 0
+          }
+          redeemLoyaltyOptIn={redeemLoyaltyOptIn}
+          onRedeemLoyaltyOptInChange={(enabled) => {
+            setRedeemLoyaltyOptIn(enabled);
+            setLoyaltyPointsToRedeem(0);
+          }}
+          onLoyaltyPointsToRedeemChange={setLoyaltyPointsToRedeem}
           paymentMethod={paymentMethod}
           onPaymentMethodChange={setPaymentMethod}
           customerInfo={customerInfo}
-          onCustomerChange={setCustomerInfo}
           invoiceNo={invoiceNo}
-          saleDate={saleDate}
           onConfirm={handleSave}
-          onClose={() => setPaymentOpen(false)}
+          onClose={() => {
+            setPaymentOpen(false);
+            setRedeemLoyaltyOptIn(false);
+            setLoyaltyPointsToRedeem(0);
+          }}
+          onHold={async () => {
+            await handleHoldCart();
+            setPaymentOpen(false);
+            setRedeemLoyaltyOptIn(false);
+            setLoyaltyPointsToRedeem(0);
+          }}
           saving={saving}
+          operatorName={cashierName}
+          operatorId={billingUser?.id}
+          terminalId={terminalId}
+          tierLabel={customerTier?.label}
+          printerLabel={`THERMAL ${printerWidth || "80"}MM · AUTO-PRINT ${autoPrint ? "ON" : "OFF"}`}
         />
 
-        {/* ═══ TOP NAVBAR ═══ */}
-        <div className="pos-exact-topbar">
-          <div className="pos-exact-topbar__search">
-            {onBack && (
-              <button
-                className="pos-exact-back-btn"
-                onClick={() => {
-                  onBack();
-                  setCustomerInfo({
-                    name: "",
-                    phone: "",
-                    userId: "",
-                  });
-                  setLoyaltyPoints(0);
-                  clearCart();
-                }}
-                title="Back (Esc)"
-              >
-                ‹ Back
-              </button>
-            )}
-            <div className="pos-exact-search-wrap">
-              <FiSearch className="pos-exact-search-icon" />
-              <input
-                type="text"
-                placeholder="Search product..."
-                className="pos-exact-search-input"
-                value={addItemSearch}
-                onChange={handleAddItemSearchChange}
-                onKeyDown={handleAddItemSearchKeyDown}
-                onFocus={() => {
-                  if (addItemSuggestions.length > 0) {
-                    setAddItemDropdownOpen(true);
-
-                    if (addItemHighlightedIndex === -1) {
-                      setAddItemHighlightedIndex(0);
-                    }
-                  }
-                }}
-              />
-              {addItemDropdownOpen && addItemSuggestions.length > 0 && (
-                <div className="pos-exact-dropdown" ref={formDropdownRef}>
-                  {addItemSuggestions.map((item, index) => (
-                    <div
-                      key={item.id || item._id}
-                      className={`pos-exact-dropdown-item ${
-                        index === addItemHighlightedIndex
-                          ? "pos-exact-dropdown-item--highlighted"
-                          : ""
-                      }`}
-                      onMouseEnter={() => setAddItemHighlightedIndex(index)}
-                      onClick={() => handleSelectFormProduct(item)}
-                    >
-                      <span className="pos-exact-dropdown-name">
-                        {item.name}
-                      </span>
-
-                      <span className="pos-exact-dropdown-price">
-                        {formatCurrency(item.salesPrice || item.price || 0)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
+        {/* ═══ TOP TOOLBAR ═══ */}
+        <div className="bf-toolbar">
+          {onBack && (
             <button
-              className="pos-exact-scan-btn"
-              onClick={() => setCameraOpen(true)}
-              title="Scan Barcode with Camera"
-            >
-              <span className="scan-icon-box">📷</span>
-              <span>Scan</span>
-            </button>
-          </div>
-
-          <div className="pos-exact-topbar__meta">
-            <span className="pos-exact-inv-badge">
-              {invoiceNo || "INV-2024-001"}
-            </span>
-            <div className="pos-exact-date-pill">
-              📅 {saleDate || formattedDateTimeStr}
-            </div>
-
-            {/* ── Shift Button ── */}
-            <button
-              className={`pos-exact-topbar-btn pos-exact-topbar-btn--shift ${activeShift ? "active" : ""}`}
-              onClick={() =>
-                activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true)
-              }
-              title={
-                activeShift
-                  ? `Shift #${activeShift.id} Active — Click to Close`
-                  : "Start New Shift"
-              }
-            >
-              <FiClock />
-              <span>
-                {activeShift ? `Shift #${activeShift.id}` : "Start Shift"}
-              </span>
-              {activeShift && (
-                <span className="pos-exact-topbar-dot pos-exact-topbar-dot--green" />
-              )}
-            </button>
-
-            {/* ── Hold Bill Button ── */}
-            <button
-              className="pos-exact-topbar-btn pos-exact-topbar-btn--hold"
+              type="button"
+              className="bf-iconbtn"
               onClick={() => {
-                if (cart.length > 0) {
-                  handleHoldCart();
-                } else {
-                  setHoldDrawerOpen(true);
+                onBack();
+                setCustomerInfo({ name: "", phone: "", userId: "" });
+                setLoyaltyPoints(0);
+                clearCart();
+                setReturnCredit(null);
+              }}
+              title="Back (Esc)"
+              aria-label="Back"
+            >
+              <FiArrowLeft />
+            </button>
+          )}
+          <button
+            type="button"
+            className={`bf-scanbadge ${scannerEnabled ? "" : "is-off"}`}
+            onClick={() => cameraEnabled && setCameraOpen(true)}
+            title={cameraEnabled ? "Scan barcode with camera" : "Camera scanning is disabled in settings"}
+          >
+            <FiMaximize />
+            <span>EAN-13</span>
+          </button>
+          <div className="bf-searchwrap">
+            <input
+              type="text"
+              placeholder="Scan barcode [EAN-13] or search product by name / SKU…"
+              className="bf-searchinput"
+              ref={searchInputRef}
+              autoFocus
+              role="combobox"
+              aria-label="Scan barcode or search products"
+              aria-autocomplete="list"
+              aria-expanded={addItemDropdownOpen && addItemSuggestions.length > 0}
+              aria-controls="pos-product-suggestions"
+              aria-activedescendant={
+                addItemHighlightedIndex >= 0
+                  ? `pos-product-suggestion-${addItemHighlightedIndex}`
+                  : undefined
+              }
+              value={addItemSearch}
+              onChange={handleAddItemSearchChange}
+              onKeyDown={handleAddItemSearchKeyDown}
+              onFocus={() => {
+                if (addItemSuggestions.length > 0) {
+                  setAddItemDropdownOpen(true);
+                  if (addItemHighlightedIndex === -1) setAddItemHighlightedIndex(0);
                 }
               }}
-              title={
-                cart.length > 0 ? "Hold Current Bill (F10)" : "View Held Bills"
+            />
+            <button
+              type="button"
+              className="bf-enterbtn"
+              onClick={() =>
+                handleAddItemSearchKeyDown({
+                  key: "Enter",
+                  preventDefault: () => {},
+                  stopPropagation: () => {},
+                  target: searchInputRef.current,
+                  currentTarget: searchInputRef.current,
+                })
               }
             >
-              <FiLayers />
-              <span>{cart.length > 0 ? "Hold Bill" : "Held Bills"}</span>
-              {holdCarts.length > 0 && (
-                <span className="pos-exact-topbar-badge">
-                  {holdCarts.length}
-                </span>
-              )}
+              <FiCornerDownLeft /> ENTER
             </button>
+            {canCreateQuickSale && (
+              <button
+                type="button"
+                className="bf-pill"
+                disabled={quickSaleResolving}
+                onClick={() => {
+                  const search = addItemSearch.trim();
+                  if (search) {
+                    void openQuickSaleFromUnknown(search);
+                  } else {
+                    setQuickSaleDraft({
+                      initialName: "",
+                      initialBarcode: "",
+                      alias: null,
+                    });
+                  }
+                }}
+              >
+                <FiPlus /> Quick Sale
+              </button>
+            )}
+            {addItemDropdownOpen && addItemSuggestions.length > 0 && (
+              <div
+                className="bf-dropdown"
+                id="pos-product-suggestions"
+                role="listbox"
+                ref={formDropdownRef}
+              >
+                {addItemSuggestions.map((item, index) => (
+                  <div
+                    key={item.id || item._id}
+                    id={`pos-product-suggestion-${index}`}
+                    className={`bf-dropdown__item ${index === addItemHighlightedIndex ? "is-active" : ""}`}
+                    role="option"
+                    aria-selected={index === addItemHighlightedIndex}
+                    onMouseEnter={() => setAddItemHighlightedIndex(index)}
+                    onClick={() => handleSelectFormProduct(item)}
+                  >
+                    <span>
+                      <strong>{item.name}</strong>
+                      {(item.sku || item.barcode) && (
+                        <span className="bf-dropdown__sub" style={{ textAlign: "left" }}>
+                          {item.sku || ""}
+                          {item.sku && item.barcode ? " · " : ""}
+                          {item.barcode || ""}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ textAlign: "right" }}>
+                      <strong>Batch price check on add</strong>
+                      {getProductStockLabel(item) && (
+                        <span className="bf-dropdown__sub">
+                          Stock: {getProductStockLabel(item)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <span className="bf-pill">INV: {invoiceNo || "—"}</span>
+          <LiveClock date={saleDate} />
+          {canViewShifts && (
+            <button
+              type="button"
+              className={`bf-pill ${activeShift ? "is-live" : ""}`}
+              onClick={() => (activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true))}
+              title={activeShift ? `Shift #${activeShift.id} active — click to close` : "Start new shift"}
+            >
+              <FiClock /> {activeShift ? `Shift #${activeShift.id}` : "Start Shift"}
+            </button>
+          )}
+          <button
+            type="button"
+            className="bf-pill"
+            onClick={() => (cart.length > 0 ? handleHoldCart() : setHoldDrawerOpen(true))}
+            title={cart.length > 0 ? "Hold current bill (F10)" : "View held bills (F10)"}
+          >
+            <FiLayers /> {cart.length > 0 ? "Hold Bill" : "Held Bills"}
+            <span className="bf-count">{holdCarts.length}</span>
+          </button>
+        </div>
+
+        {/* ═══ CUSTOMER IDENTIFICATION ═══ */}
+        <div className="bf-custrow">
+          <div className="bf-phone">
+            <span>+91</span>
+            <input
+              type="tel"
+              name="phone"
+              ref={customerPhoneInputRef}
+              placeholder="Customer phone"
+              aria-label="Customer phone number"
+              value={customerInfo.phone || ""}
+              onChange={handlePhoneChange}
+              maxLength={10}
+              inputMode="numeric"
+              autoComplete="tel"
+            />
+          </div>
+          <div className="bf-namefield">
+            <input
+              type="text"
+              name="name"
+              className="bf-custname"
+              ref={customerNameInputRef}
+              aria-label="Customer name"
+              placeholder="Customer name"
+              value={customerInfo.name}
+              onChange={handleCustomerNameChange}
+            />
+          </div>
+          <span className="bf-loyal" title="Loyalty points balance (points are awarded when the bill is saved)">
+            <FiStar />
+            {customerTier && <span className="bf-loyal__tier">{customerTier.label.toUpperCase()}</span>}
+            <span>{Number(loyaltyPoints) || 0} pts</span>
+          </span>
+          <div className="bf-shortcuts" aria-label="Keyboard shortcuts">
+            <span><b>F2</b>Search</span>
+            <span><b>F4</b>Phone</span>
+            <span><b>F5</b>Qty</span>
+            <span><b>F6</b>Name</span>
+            <span><b>F8</b>Pay</span>
+            <span><b>F9</b>New</span>
+            <span><b>F10</b>Hold</span>
           </div>
         </div>
 
-        {/* ═══ MAIN LAYOUT GRID ═══ */}
-        <div className="pos-exact-container">
-          {/* LEFT COLUMN: Customer + Add Item + Cart Table */}
-          <div className="pos-exact-left-col">
-            {/* Top Row: Two Cards */}
-            <div className="pos-exact-cards-row">
-              {/* Card 1: Customer Details */}
-              <div className="pos-exact-card pos-exact-card--customer">
-                <div className="pos-exact-card__title">
-                  <FiUser className="pos-exact-card__icon" />
-                  <span>Customer Details</span>
-                </div>
-                <div className="pos-exact-card__body">
-                  <div className="pos-exact-form-group">
-                    <label>
-                      Phone Number <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <div className="pos-exact-input-icon-wrap">
-                      <span className="pos-exact-input-icon">📞</span>
-                      {/* <input
-                        type="tel"
-                        className="pos-exact-input pos-cust-phone-input"
-                        placeholder="Enter phone..."
-                        value={customerInfo.phone || ""}
-                        onChange={handlePhoneChange}
-                        maxLength={10}
-                      /> */}
-                      <input
-                        type="tel"
-                        name="phone"
-                        className="pos-exact-input pos-cust-phone-input"
-                        placeholder="Enter phone number"
-                        value={customerInfo.phone || ""}
-                        onChange={handlePhoneChange}
-                        maxLength={10}
-                        inputMode="numeric"
-                        autoComplete="tel"
-                      />
-                    </div>
-                  </div>
-                  <div className="pos-exact-form-group">
-                    <label>
-                      Customer Name <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={customerInfo.name}
-                      onChange={handleCustomerNameChange}
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                  {/* ── Loyalty Points ── */}
-                  <div className="pos-exact-loyalty-row">
-                    <FiStar className="pos-exact-loyalty-icon" />
-                    <span className="pos-exact-loyalty-label">
-                      Loyalty Points
-                    </span>
-                    <span className="pos-exact-loyalty-value">
-                      {loyaltyPoints || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Add Item to Cart */}
-              <div className="pos-exact-card pos-exact-card--add-item">
-                <div className="pos-exact-card__title">
-                  <FiShoppingCart className="pos-exact-card__icon" />
-                  <span>Add Item to Cart</span>
-                </div>
-                <form
-                  className="pos-exact-card__body"
-                  onSubmit={handleAddItemSubmit}
-                >
-                  <div className="pos-exact-add-grid">
-                    <div className="pos-exact-form-group pos-exact-form-group--product">
-                      <label>Product Name / Barcode</label>
-                      <div
-                        className="pos-exact-input-icon-wrap"
-                        style={{ position: "relative" }}
-                      >
-                        <span className="pos-exact-input-icon">📊</span>
-                        <input
-                          type="text"
-                          className="pos-exact-input"
-                          placeholder="Scan or type..."
-                          value={addItemSearch}
-                          onChange={handleAddItemSearchChange}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pos-exact-form-group pos-exact-form-group--sm">
-                      <label>Quantity</label>
-                      <input
-                        type="number"
-                        className="pos-exact-input pos-exact-input--center"
-                        value={addItemQty}
-                        onChange={(e) => setAddItemQty(e.target.value)}
-                        min="1"
-                      />
-                    </div>
-
-                    <div className="pos-exact-form-group pos-exact-form-group--sm">
-                      <label>Rate ($)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="pos-exact-input pos-exact-input--center"
-                        placeholder="0.0"
-                        value={addItemRate}
-                        onChange={(e) => setAddItemRate(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="pos-exact-form-group pos-exact-form-group--sm">
-                      <label>Disc (%)</label>
-                      <input
-                        type="number"
-                        className="pos-exact-input pos-exact-input--center"
-                        placeholder="0"
-                        value={addItemDisc}
-                        onChange={(e) => setAddItemDisc(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="pos-exact-form-group pos-exact-form-group--btn">
-                      <button
-                        type="submit"
-                        className="pos-exact-add-btn"
-                        title="Add to cart"
-                      >
-                        <FiPlus />
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
+        {/* ═══ MAIN: LEDGER + CHECKOUT PANEL ═══ */}
+        <div className="bf-main">
+          <section className="bf-cart" aria-label="Active cart ledger">
+            <div className="bf-cart__head">
+              <h2 className="bf-cart__title">ACTIVE CART LEDGER</h2>
+              <span className="bf-tag bf-tag--dark">{cart.length} Items</span>
+              <span className="bf-cart__sub">
+                {hasPendingQuickSaleItems
+                  ? "Quick Sale lines await GST verification"
+                  : "Auto-calculated with GST / HSN"}
+              </span>
+              <span className="bf-spacer" />
+              <span className="bf-cart__sub">
+                Scanner: <b style={{ color: scannerEnabled ? "#059669" : "#64748b" }}>{scannerEnabled ? "ONLINE" : "OFF"}</b>
+              </span>
             </div>
-
-            {/* Bottom Row: Current Order Table */}
-            <div className="pos-exact-card pos-exact-card--order">
-              <div className="pos-exact-card__header">
-                <div className="pos-exact-card__title">
-                  <FiFileText className="pos-exact-card__icon" />
-                  <span>Current Order</span>
-                </div>
-                <span className="pos-exact-item-count-badge">
-                  {cart.length} Items
-                </span>
-              </div>
-
-              <div className="pos-exact-table-wrap">
-                <table className="pos-exact-table">
-                  <thead>
+            <div className="bf-cart__scroll" ref={cartTableRef}>
+              <table className="bf-table">
+                <colgroup>
+                  <col style={{ width: 42 }} />
+                  <col />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 92 }} />
+                  <col style={{ width: 82 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 64 }} />
+                  <col style={{ width: 108 }} />
+                  <col style={{ width: 48 }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th className="c">#</th>
+                    <th>Item Description &amp; Brand</th>
+                    <th>SKU / EAN</th>
+                    <th className="c">Quantity</th>
+                    <th className="r">Rate (₹)</th>
+                    <th className="r">MRP (₹)</th>
+                    <th className="r">Discount</th>
+                    <th className="r">GST</th>
+                    <th className="r">Net Total (₹)</th>
+                    <th className="c">Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.length === 0 ? (
                     <tr>
-                      <th style={{ width: 40, textAlign: "center" }}>#</th>
-                      <th>Item Name</th>
-                      <th style={{ width: 80, textAlign: "center" }}>Qty</th>
-                      <th style={{ width: 100, textAlign: "right" }}>Rate</th>
-                      <th style={{ width: 100, textAlign: "right" }}>
-                        Discount
-                      </th>
-                      <th style={{ width: 110, textAlign: "right" }}>Total</th>
-                      <th style={{ width: 60, textAlign: "center" }}>Act</th>
+                      <td colSpan="10">
+                        <div className="bf-empty">
+                          <strong>No items in order</strong>
+                          Scan a barcode or search in the toolbar and press Enter to add products.
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {cart.length === 0 ? (
-                      <tr>
-                        <td colSpan="7">
-                          <div className="pos-exact-empty-cart">
-                            <div className="pos-exact-empty-icon">🛒</div>
-                            <div className="pos-exact-empty-title">
-                              No Items in Order
-                            </div>
-                            <div className="pos-exact-empty-sub">
-                              Use the top search bar or form above to add
-                              products to this sale
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      cart.map((item, idx) => {
-                        const rate = item.price || 0;
-                        const discAmount = item.discountAmount || 0;
-                        const discDisplay =
-                          item.discountPercent > 0
-                            ? `-${formatCurrency(discAmount)}`
-                            : "-";
-                        console.log(item, "item in cart");
-                        const itemTotal = item.afterDiscount || 0;
+                  ) : (
+                    displayCart.map((item, idx) => {
+                        const displayItem = item;
+                        const isQuickSaleItem = item.cartItemType === "QUICK_SALE";
+                        const productStock = findProduct(products, item.productId);
+                        const totalStockLabel = isQuickSaleItem
+                          ? ""
+                          : getProductStockLabel(productStock);
+                        const lineTotal = Number(displayItem.total) || 0;
+                        const isFirstProductLine = !isQuickSaleItem && cart.findIndex(
+                          (candidate) =>
+                            String(candidate.productId) === String(item.productId) &&
+                            String(candidate.priceGroupKey || '') === String(item.priceGroupKey || ''),
+                        ) === idx;
+                        const promotionPreview = isFirstProductLine
+                          ? promotionPreviews[`${item.productId}:${item.priceGroupKey || ''}`]
+                          : null;
+                        const previewData = promotionPreview?.data;
+                        const currentProductQuantity = cart
+                          .filter(
+                            (line) =>
+                              String(line.productId) === String(item.productId) &&
+                              String(line.priceGroupKey || '') === String(item.priceGroupKey || ''),
+                          )
+                          .reduce(
+                            (total, line) =>
+                              total +
+                              (isWeightProduct(line)
+                                ? normalizeWeightQuantity(
+                                    line.quantity,
+                                    line.quantityUnit || "KG",
+                                  )
+                                : Number(line.quantity) || 0),
+                            0,
+                          );
+                        const previewPaidQuantity = Number(
+                          previewData?.product?.paidQuantity ??
+                            previewData?.pricing?.paidQuantity,
+                        );
+                        const previewMatchesCart =
+                          Number.isFinite(previewPaidQuantity) &&
+                          Math.abs(previewPaidQuantity - currentProductQuantity) <=
+                            0.0005;
+                        const previewPromotion = previewMatchesCart
+                          ? previewData?.promotion
+                          : null;
+                        const storedFreeQuantity = Number(item.freeQuantity) || 0;
+                        const previewFreeQuantity = Number(
+                          previewMatchesCart
+                            ? previewData?.pricing?.freeQuantity ??
+                                previewData?.product?.freeQuantity ??
+                                previewPromotion?.freeQuantity ??
+                                0
+                            : 0,
+                        );
+                        const giftProductId =
+                          previewPromotion?.giftProductId ??
+                          previewPromotion?.giftProduct?.id;
+                        const hasDifferentProductGift =
+                          giftProductId != null &&
+                          String(giftProductId) !== String(item.productId);
+                        const freeQuantityForDisplay =
+                          item.itemRole !== "GIFT" && storedFreeQuantity > 0
+                            ? storedFreeQuantity
+                            : item.itemRole !== "GIFT" &&
+                                isFirstProductLine &&
+                                !hasDifferentProductGift
+                              ? previewFreeQuantity
+                              : 0;
+                        const isWeightLine = !isQuickSaleItem && isWeightProduct(item);
+                        const unitMultiplier =
+                          isWeightLine && item.quantityUnit === "GRAM" ? 1000 : 1;
+                        const paidQuantityForDisplay =
+                          storedFreeQuantity > 0
+                            ? Number(
+                                item.paidQuantity ??
+                                  Math.max(0, Number(item.quantity) - storedFreeQuantity),
+                              )
+                            : isFirstProductLine && previewFreeQuantity > 0
+                              ? cart
+                                  .filter(
+                                    (line) =>
+                                      String(line.productId) === String(item.productId) &&
+                                      String(line.priceGroupKey || '') === String(item.priceGroupKey || ''),
+                                  )
+                                  .reduce(
+                                    (total, line) =>
+                                      total +
+                                      (isWeightLine
+                                        ? normalizeWeightQuantity(
+                                            line.quantity,
+                                            line.quantityUnit || "KG",
+                                          )
+                                        : Number(line.quantity) || 0),
+                                    0,
+                                  ) * unitMultiplier
+                              : Number(item.quantity) || 0;
+                        const totalQuantity = Number(
+                          item.totalQuantity ?? item.quantity,
+                        );
+                        const paidOnlyAmount =
+                          storedFreeQuantity > 0 && totalQuantity > 0
+                            ? (lineTotal *
+                                (Number(item.paidQuantity) ||
+                                  Math.max(0, totalQuantity - storedFreeQuantity))) /
+                              totalQuantity
+                            : lineTotal;
+                        const itemTotal = paidOnlyAmount;
+                        const rate = Number(item.price) || 0;
+                        const mrpValue = Number(item.mrp) || 0;
+                        const brandName = isQuickSaleItem ? "" : brandNameFor(productStock);
+                        const batchLabel = item.batchNumber || item.batchNo || "";
+                        const unitLabel = isWeightLine
+                          ? item.quantityUnit === "GRAM" ? "g" : "kg"
+                          : item.unit || "pcs";
+                        const lowStock = (() => {
+                          const avail = Number(item.batchAvailableQuantity);
+                          return Number.isFinite(avail) && avail >= 0 && avail <= 5 && !isWeightLine;
+                        })();
 
                         return (
-                          <tr key={item.productId || idx}>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                color: "#64748b",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {idx + 1}
-                            </td>
+                          <tr key={item.cartLineId || item.productId || idx}>
+                            <td className="c serial">{String(idx + 1).padStart(2, "0")}</td>
                             <td>
-                              <div className="pos-exact-item-name">
-                                {item.productName}
+                              <div className="bf-item__name">{item.productName}</div>
+                              <div className="bf-item__meta">
+                                {isQuickSaleItem && (
+                                  <span className="bf-quick-sale-status">
+                                    Quick Sale · {item.gstVerificationStatus === "GST_PENDING"
+                                      ? "GST pending verification"
+                                      : "GST verified"}
+                                  </span>
+                                )}
+                                {brandName && <>Brand: {brandName}</>}
+                                {batchLabel && <>{brandName ? " | " : ""}Batch: {batchLabel}</>}
+                                {item.hsnCode && <>{brandName || batchLabel ? " | " : ""}HSN: {item.hsnCode}</>}
+                                {item.priceGroupKey && (
+                                  <>{brandName || batchLabel || item.hsnCode ? " | " : ""}MRP Group · {item.batchAllocations?.length || 0} FIFO batch{item.batchAllocations?.length === 1 ? "" : "es"}</>
+                                )}
                               </div>
-                              {item.hsnCode && (
-                                <div className="pos-exact-item-sub">
-                                  HSN: {item.hsnCode}
+                              {totalStockLabel && (
+                                <div className="bf-item__meta">Stock: {totalStockLabel}</div>
+                              )}
+                              {lowStock && (
+                                <span className="bf-stock-low">LOW: {formatQuantity(item.batchAvailableQuantity)} LEFT IN BATCH</span>
+                              )}
+                              {promotionPreview?.loading && isFirstProductLine && (
+                                <div className="bf-offer is-loading">Checking offers…</div>
+                              )}
+                              {promotionPreview?.error && isFirstProductLine && (
+                                <div className="bf-offer is-warning" role="status">
+                                  Promotion preview failed: {promotionPreview.error}
+                                </div>
+                              )}
+                              {previewPromotion && isFirstProductLine && (
+                                <div className="bf-offer">
+                                  <strong><FiTag /> OFFER APPLIED: {previewPromotion.name}</strong>
+                                  {(Number(previewPromotion.discountPercentage) > 0 || Number(previewPromotion.discountAmount) > 0) && (
+                                    <span>
+                                      Discount{" "}
+                                      {Number(previewPromotion.discountPercentage) > 0
+                                        ? `${Number(previewPromotion.discountPercentage)}%`
+                                        : formatCurrency(previewPromotion.discountAmount)}
+                                    </span>
+                                  )}
+                                  {previewPromotion.giftProduct?.name && (
+                                    <span>FREE GIFT: {previewPromotion.giftProduct.name}</span>
+                                  )}
+                                  {previewData.pricing?.payableAmount !== undefined && (
+                                    <span>Offer total: {formatCurrency(previewData.pricing.payableAmount)}</span>
+                                  )}
+                                  <small>Final offer and amount are rechecked at checkout.</small>
                                 </div>
                               )}
                             </td>
-                            <td style={{ textAlign: "center" }}>
-                              <div className="pos-exact-qty-controls">
+                            <td>
+                              <div>{item.sku || "—"}</div>
+                              {item.barcode && <div className="bf-item__meta">{item.barcode}</div>}
+                            </td>
+                            <td className="c">
+                              <div className="bf-qty">
                                 <button
-                                  className="pos-exact-qty-btn"
+                                  type="button"
+                                  aria-label={`Decrease ${item.productName} quantity`}
                                   onClick={() =>
-                                    updateCartItem(
-                                      item.productId,
-                                      "quantity",
-                                      Math.max(1, item.quantity - 1),
+                                    updateProductQuantity(
+                                      item,
+                                      isWeightLine || isQuickSaleItem
+                                        ? Math.max(
+                                            isWeightLine && item.quantityUnit === "GRAM" ? 1 : 0.001,
+                                            Number(
+                                              (
+                                                item.quantity -
+                                                (isWeightLine && item.quantityUnit === "GRAM"
+                                                  ? 1
+                                                  : 0.001)
+                                              ).toFixed(3),
+                                            ),
+                                          )
+                                        : Math.max(1, item.quantity - 1),
                                     )
                                   }
                                 >
                                   −
                                 </button>
-                                <span className="pos-exact-qty-val">
-                                  {item.quantity}
-                                </span>
+                                <POSQtyInput
+                                  value={item.quantity}
+                                  ariaLabel={`Quantity for ${item.productName}`}
+                                  step={
+                                    (isWeightLine || isQuickSaleItem) &&
+                                    (!isWeightLine || item.quantityUnit !== "GRAM")
+                                      ? 0.001
+                                      : 1
+                                  }
+                                  allowDecimal={
+                                    (isWeightLine || isQuickSaleItem) &&
+                                    (!isWeightLine || item.quantityUnit !== "GRAM")
+                                  }
+                                  onCommit={(n) =>
+                                    updateProductQuantity(
+                                      item,
+                                      isWeightLine
+                                        ? Math.max(
+                                            item.quantityUnit === "GRAM"
+                                              ? 1
+                                              : 0.001,
+                                            n,
+                                          )
+                                        : isQuickSaleItem
+                                          ? Math.max(0.001, Number(n.toFixed(3)))
+                                          : Math.max(1, Math.round(n)),
+                                    )
+                                  }
+                                  onEnter={() => {
+                                    if (searchInputRef.current)
+                                      searchInputRef.current.focus();
+                                  }}
+                                />
                                 <button
-                                  className="pos-exact-qty-btn"
+                                  type="button"
+                                  aria-label={`Increase ${item.productName} quantity`}
                                   onClick={() =>
-                                    updateCartItem(
-                                      item.productId,
-                                      "quantity",
-                                      item.quantity + 1,
+                                    updateProductQuantity(
+                                      item,
+                                      item.quantity +
+                                        ((isWeightLine || isQuickSaleItem) &&
+                                        (!isWeightLine || item.quantityUnit !== "GRAM")
+                                          ? 0.001
+                                          : 1),
                                     )
                                   }
                                 >
                                   +
                                 </button>
                               </div>
+                              <span className="bf-unit">
+                                {unitLabel}
+                                {freeQuantityForDisplay > 0 &&
+                                  ` · ${formatQuantity(paidQuantityForDisplay)}+${formatQuantity(freeQuantityForDisplay * unitMultiplier)} free`}
+                              </span>
+                              {isWeightProduct(item) && (
+                                <select
+                                  className="bf-unitselect"
+                                  aria-label={`Quantity unit for ${item.productName}`}
+                                  value={item.quantityUnit || "KG"}
+                                  onChange={(event) => {
+                                    const nextUnit = event.target.value;
+                                    const baseQuantity = normalizeWeightQuantity(
+                                      item.quantity,
+                                      item.quantityUnit || "KG",
+                                    );
+                                    updateCartItem(item.cartLineId || item.productId, {
+                                      quantityUnit: nextUnit,
+                                      quantity:
+                                        nextUnit === "GRAM"
+                                          ? Number((baseQuantity * 1000).toFixed(3))
+                                          : Number(baseQuantity.toFixed(3)),
+                                    });
+                                  }}
+                                >
+                                  <option value="GRAM">GRAM</option>
+                                  <option value="KG">KG</option>
+                                </select>
+                              )}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                fontWeight: 600,
-                                color: "#334155",
-                              }}
-                            >
-                              {formatCurrency(rate)}
+                            <td className="r">
+                              <strong>{money(rate)}</strong>
+                              {isWeightProduct(item) && <span className="bf-unit">/ KG</span>}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                color:
-                                  item.discountPercent > 0
-                                    ? "#ef4444"
-                                    : "#94a3b8",
-                                fontWeight:
-                                  item.discountPercent > 0 ? 600 : 400,
-                              }}
-                            >
-                              {discDisplay}
+                            <td className="r">
+                              {mrpValue > 0 ? <span className="bf-mrp">{money(mrpValue)}</span> : "—"}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                fontWeight: 800,
-                                color: "#0f172a",
-                              }}
-                            >
-                              {formatCurrency(itemTotal)}
+                            <td className="r">
+                              <span className="bf-disc">
+                                {Number(item.discountPercent) > 0 ? `${Number(item.discountPercent)}%` : "—"}
+                                {item.discountAmount > 0 && <small>(-{money(item.discountAmount)})</small>}
+                              </span>
                             </td>
-                            <td style={{ textAlign: "center" }}>
+                            <td className="r">
+                              {isQuickSaleItem &&
+                              item.gstVerificationStatus === "GST_PENDING" ? (
+                                <div className="bf-item__meta">GST pending</div>
+                              ) : (
+                                <>
+                                  <div>{Number(item.taxRate) || 0}%</div>
+                                  <div className="bf-item__meta">{money(item.taxAmount || 0)}</div>
+                                </>
+                              )}
+                            </td>
+                            <td className="r"><span className="bf-total">{money(itemTotal)}</span></td>
+                            <td className="c">
                               <button
-                                className="pos-exact-remove-btn"
-                                onClick={() => removeFromCart(item.productId)}
+                                type="button"
+                                className="bf-remove"
+                                onClick={() => removeFromCart(item.cartLineId || item.productId)}
                                 title="Remove item"
+                                aria-label={`Remove ${item.productName}`}
                               >
                                 <FiTrash2 />
                               </button>
@@ -1497,549 +2833,195 @@ export default function POSScreen({
                           </tr>
                         );
                       })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
-
-          {/* RIGHT COLUMN: Sidebar (User + Shift + Hold/Void + Totals) */}
-          <div className="pos-exact-right-col">
-            {/* Store User & Shift Card */}
-            <div className="pos-exact-user-card">
-              <div className="pos-exact-user-avatar">
-                <FiUser />
-              </div>
-              <div className="pos-exact-user-info">
-                <div className="pos-exact-user-name">
-                  {activeShift?.user?.name || "Store Manager"}
-                </div>
-                <div
-                  className="pos-exact-user-shift"
-                  onClick={() =>
-                    activeShift
-                      ? setShiftCloseModal(true)
-                      : setShiftModalOpen(true)
-                  }
-                  title="Click to manage shift"
-                >
-                  <span className="pos-exact-shift-dot"></span>
-                  <span>
-                    {activeShift
-                      ? `Active Shift (#${activeShift.id})`
-                      : "Start Shift"}
-                  </span>
-                </div>
-              </div>
+            <div className="bf-cart__foot">
+              <span>Rows: {cart.length} &nbsp; Total pieces: {formatQuantity(totalPieces)}</span>
+              <span>[F5] Edit qty · [Tab] Move between controls · [F9] New bill</span>
             </div>
+          </section>
 
-            {/* Actions: Hold Sale & Void Sale */}
-            <div className="pos-exact-sidebar-actions">
-              <button
-                className="pos-exact-sidebar-btn pos-exact-sidebar-btn--hold"
-                onClick={handleHoldCart}
-                disabled={cart.length === 0}
-              >
-                <FiPauseCircle />
-                <span>Hold Sale</span>
-              </button>
-
-              <button
-                className="pos-exact-sidebar-btn pos-exact-sidebar-btn--void"
-                onClick={handleNewBill}
-              >
-                <FiXCircle />
-                <span>Void Sale</span>
-              </button>
-            </div>
-
-            {/* Totals & Payment Section */}
-            <div className="pos-exact-totals-box">
-              {/* Total Discount */}
-              {totalDiscount > 0 && (
-                <div
-                  className="pos-exact-summary-row"
-                  style={{ color: "#ef4444" }}
-                >
-                  <span>Total Discount</span>
-                  <span className="pos-exact-summary-val">
-                    −{formatCurrency(totalDiscount)}
-                  </span>
-                </div>
-              )}
-
-              <div className="pos-exact-summary-row">
-                <span>Subtotal</span>
-                <span className="pos-exact-summary-val">
-                  {formatCurrency(totals.subtotal)}
-                </span>
-              </div>
-
-              <div className="pos-exact-summary-row">
-                <span>Tax (%)</span>
-                <span className="pos-exact-summary-val">
-                  {formatCurrency(totals.totalTax)}
-                </span>
-              </div>
-
-              {/* Round Off */}
-              <div className="pos-exact-summary-row">
-                <span>Round Off</span>
+          <aside className="bf-side" aria-label="Checkout summary">
+            <div className="bf-term">
+              <div className="bf-term__icon"><FiMonitor /></div>
+              <div className="bf-term__body">
+                <strong>COUNTER {terminalId}</strong>
                 <span>
-                  {roundOff > 0 ? "+" : ""}
-                  {formatCurrency(roundOff)}
+                  Cashier: {cashierName || "—"}
+                  {billingUser?.id ? ` (ID #${billingUser.id})` : ""}
                 </span>
               </div>
-
-              {globalDiscount > 0 && (
-                <div
-                  className="pos-exact-summary-row"
-                  style={{ color: "#ef4444" }}
+              {canViewShifts && (
+                <button
+                  type="button"
+                  className={`bf-badge ${activeShift ? "" : "is-off"}`}
+                  onClick={() => (activeShift ? setShiftCloseModal(true) : setShiftModalOpen(true))}
+                  title="Manage shift"
                 >
-                  <span>Global Discount</span>
-                  <span className="pos-exact-summary-val">
-                    −{formatCurrency(globalDiscount)}
+                  {activeShift ? `SHIFT #${activeShift.id}` : "NO SHIFT"}
+                </button>
+              )}
+            </div>
+
+            <div className="bf-actions">
+              <button type="button" className="bf-action" onClick={handleHoldCart} disabled={cart.length === 0}>
+                <span><FiPauseCircle /> HOLD</span>
+                <small>[F10]</small>
+              </button>
+              <button type="button" className="bf-action bf-action--void" onClick={handleNewBill}>
+                <span><FiXCircle /> VOID / NEW</span>
+                <small>[F9]</small>
+              </button>
+            </div>
+
+            <div className="bf-summary">
+              {returnCredit && (
+                <div className="bf-sum bf-sum--green">
+                  <span>
+                    Return credit
+                    <small>
+                      {returnCredit.code}
+                      {Number(returnCredit.remainingAmount) > returnCreditApplied &&
+                        ` · ${formatCurrency(Number(returnCredit.remainingAmount) - returnCreditApplied)} remains`}
+                    </small>
+                  </span>
+                  <span>
+                    <strong>-{rupees(returnCreditApplied)}</strong>{" "}
+                    <button
+                      type="button"
+                      className="bf-link"
+                      onClick={() => setReturnCredit(null)}
+                      disabled={loadingReturnCredit}
+                      aria-label="Remove return credit"
+                    >
+                      REMOVE
+                    </button>
                   </span>
                 </div>
               )}
-
-              <div className="pos-exact-grand-total">
-                <span className="pos-exact-gt-label">GRAND TOTAL</span>
-                <span className="pos-exact-gt-val">
-                  {/* {formatCurrency(totals.grandTotal)} */}
-                  {formatCurrency(roundedTotal)}
+              <div className="bf-sum"><span>Subtotal (taxable):</span><strong>{rupees(totals.subtotal)}</strong></div>
+              {hasPendingQuickSaleItems && (
+                <div className="bf-sum bf-sum--warning">
+                  <span>Quick Sale · GST pending:</span>
+                  <strong>{rupees(quickSalePendingAmount)}</strong>
+                </div>
+              )}
+              {itemDiscount > 0 && (
+                <div className="bf-sum bf-sum--green"><span>Item discounts (applied):</span><strong>{rupees(itemDiscount)}</strong></div>
+              )}
+              {globalDiscount > 0 && (
+                <div className="bf-sum bf-sum--green"><span>Bill discount:</span><strong>-{rupees(globalDiscount)}</strong></div>
+              )}
+              <div className="bf-sum bf-sum--tint">
+                <span>
+                  GST
+                  <small>CGST {rupees(cgstHalf)} + SGST {rupees(sgstHalf)}</small>
                 </span>
+                <strong>{rupees(gstTotal)}</strong>
               </div>
-
-              <button
-                className="pos-exact-pay-btn"
-                onClick={() => setPaymentOpen(true)}
-                disabled={cart.length === 0}
-              >
-                <FiCreditCard />
-                <span>Pay Now</span>
-              </button>
+              {roundOff !== 0 && (
+                <div className="bf-sum">
+                  <span>Total before round-off:</span>
+                  <strong>{rupees(totals.afterGlobalDiscount)}</strong>
+                </div>
+              )}
+              {roundOff !== 0 && (
+                <div className="bf-sum">
+                  <span>Round-off:</span>
+                  <strong>{roundOff > 0 ? "+" : "-"}{rupees(Math.abs(roundOff))}</strong>
+                </div>
+              )}
+              <div className="bf-savings">
+                <span>TOTAL BILL SAVINGS</span>
+                <span>{rupees(totalSavings)}</span>
+              </div>
             </div>
-          </div>
+
+            <div className="bf-net">
+              <div className="bf-net__top">
+                <span>{returnCreditApplied > 0 ? "AMOUNT DUE" : "NET PAYABLE AMOUNT"}</span>
+                <span>{promotionPreviewLoading ? "CHECKING OFFERS…" : cart.length ? "AWAITING SETTLEMENT" : "EMPTY CART"}</span>
+              </div>
+              <div className="bf-net__amt">{rupees(payableTotal)}</div>
+              <div className="bf-net__foot">
+                {hasPendingQuickSaleItems
+                  ? "GST classification pending on Quick Sale line(s)"
+                  : "INCLUSIVE OF ALL STATE &amp; FEDERAL TAXES"}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="bf-paybtn"
+              onClick={() => setPaymentOpen(true)}
+              disabled={cart.length === 0 || loadingReturnCredit || promotionPreviewLoading}
+            >
+              PROCEED TO PAY <Kbd>F8</Kbd> <FiArrowRight />
+            </button>
+          </aside>
         </div>
 
-        {shiftModalOpen && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15,23,42,0.6)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backdropFilter: "blur(4px)",
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShiftModalOpen(false);
-            }}
-          >
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 20,
-                width: "100%",
-                maxWidth: 400,
-                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  background: "linear-gradient(135deg, #16a34a, #22c55e)",
-                  padding: "20px 24px",
-                  color: "#fff",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.8px",
-                    opacity: 0.8,
-                  }}
-                >
-                  POS Shift Management
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
-                  Open New Shift
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: "20px 24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 16,
-                }}
-              >
-                <div>
-                  <label
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      marginBottom: 6,
-                      display: "block",
-                    }}
-                  >
-                    Opening Cash Float (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={shiftFloat}
-                    onChange={(e) => setShiftFloat(e.target.value)}
-                    placeholder="Enter opening cash amount"
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px",
-                      border: "1.5px solid #e2e8f0",
-                      borderRadius: 10,
-                      fontSize: 15,
-                      fontWeight: 600,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                    autoFocus
-                  />
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => setShiftModalOpen(false)}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "1.5px solid #e2e8f0",
-                      background: "#f8fafc",
-                      color: "#374151",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleStartShift}
-                    style={{
-                      flex: 2,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "none",
-                      background: "linear-gradient(135deg, #16a34a, #15803d)",
-                      color: "#fff",
-                      fontSize: 14,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(22,163,74,0.4)",
-                    }}
-                  >
-                    🟢 Start Shift
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ═══ BOTTOM STATUS BAR ═══ */}
+        <div className="bf-statusbar">
+          <div className={`bf-dev ${scannerEnabled ? "" : "is-off"}`}><b>SCANNER</b><span>{scannerEnabled ? "Enabled" : "Disabled"}</span></div>
+          <div className={`bf-dev ${cameraEnabled ? "" : "is-off"}`}><b>CAMERA</b><span>{cameraEnabled ? "Enabled" : "Disabled"}</span></div>
+          <div className="bf-dev"><b>PRINTER</b><span>Thermal {printerWidth || "80"}mm{autoPrint ? " · auto" : ""}</span></div>
+          <span className="bf-spacer" />
+          <span className="bf-cart__sub">Status reflects POS settings</span>
+        </div>
 
-        {/* ═══ SHIFT CLOSE MODAL ═══ */}
-        {shiftCloseModal && activeShift && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15,23,42,0.6)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backdropFilter: "blur(4px)",
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShiftCloseModal(false);
-            }}
-          >
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 20,
-                width: "100%",
-                maxWidth: 440,
-                boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  background: "linear-gradient(135deg, #dc2626, #ef4444)",
-                  padding: "20px 24px",
-                  color: "#fff",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.8px",
-                    opacity: 0.8,
-                  }}
-                >
-                  Cash Drawer Reconciliation
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>
-                  Close Shift #{activeShift.id}
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: "20px 24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 14,
-                }}
-              >
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "#f0fdf4",
-                      borderRadius: 10,
-                      padding: "12px 14px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#15803d",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Opening Float
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#15803d",
-                        marginTop: 2,
-                      }}
-                    >
-                      {formatCurrency(activeShift.openingFloat || 0)}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      background: "#eff6ff",
-                      borderRadius: 10,
-                      padding: "12px 14px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#2563eb",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Total Sales
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#2563eb",
-                        marginTop: 2,
-                      }}
-                    >
-                      {activeShift.totalSalesCount || 0} bills
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#64748b",
-                      }}
-                    >
-                      CASH
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
-                      {formatCurrency(activeShift.cashSalesTotal || 0)}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#64748b",
-                      }}
-                    >
-                      CARD
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
-                      {formatCurrency(activeShift.cardSalesTotal || 0)}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#64748b",
-                      }}
-                    >
-                      UPI
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
-                      {formatCurrency(activeShift.upiSalesTotal || 0)}
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      marginBottom: 6,
-                      display: "block",
-                    }}
-                  >
-                    Actual Cash in Drawer (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={closingCash}
-                    onChange={(e) => setClosingCash(e.target.value)}
-                    placeholder="Count and enter actual cash"
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px",
-                      border: "1.5px solid #e2e8f0",
-                      borderRadius: 10,
-                      fontSize: 15,
-                      fontWeight: 600,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                    autoFocus
-                  />
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => setShiftCloseModal(false)}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "1.5px solid #e2e8f0",
-                      background: "#f8fafc",
-                      color: "#374151",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleEndShift}
-                    style={{
-                      flex: 2,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "none",
-                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
-                      color: "#fff",
-                      fontSize: 14,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(220,38,38,0.4)",
-                    }}
-                  >
-                    🔴 Close Shift
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ═══ START SHIFT ═══ */}
+        <POSStartShiftModal
+          open={shiftModalOpen}
+          onClose={() => setShiftModalOpen(false)}
+          onStart={handleStartShift}
+          submitting={shiftSubmitting}
+          operatorName={cashierName}
+          operatorId={billingUser?.id}
+          counters={assignedCounters}
+          countersLoading={countersLoading}
+          countersError={countersError}
+          selectedCounterId={selectedCounterId}
+          onCounterChange={setSelectedCounterId}
+        />
+
+        {/* ═══ CLOSE SHIFT ═══ */}
+        <POSCloseShiftModal
+          open={shiftCloseModal && !!activeShift}
+          shift={closeSnapshot || activeShift}
+          refreshing={closeRefreshing}
+          onClose={() => setShiftCloseModal(false)}
+          onConfirm={handleEndShift}
+          submitting={shiftSubmitting}
+          operatorName={activeShift?.user?.name || cashierName}
+          operatorId={activeShift?.userId ?? billingUser?.id}
+        />
 
         {/* ═══ HELD CARTS DRAWER ═══ */}
         {holdDrawerOpen && (
           <div
-            className="pos-exact-drawer-overlay"
+            className="bf-drawer"
             onClick={(e) => {
               if (e.target === e.currentTarget) setHoldDrawerOpen(false);
             }}
           >
-            <div className="pos-exact-drawer">
-              <div className="pos-exact-drawer-header">
-                <h3>📋 Held Carts ({holdCarts.length})</h3>
+            <div className="bf-drawer__panel">
+              <div className="bf-drawer__head">
+                <h3>HELD CARTS ({holdCarts.length})</h3>
                 <button onClick={() => setHoldDrawerOpen(false)}>✕</button>
               </div>
-              <div className="pos-exact-drawer-body">
+              <div className="bf-drawer__body">
                 {holdCarts.length === 0 ? (
-                  <div className="pos-exact-empty-drawer">
+                  <div className="bf-empty">
                     No held sales found
                   </div>
                 ) : (
                   holdCarts.map((h) => {
                     const items = Array.isArray(h.cartData) ? h.cartData : [];
                     return (
-                      <div key={h.id} className="pos-exact-held-item">
-                        <div className="pos-exact-held-top">
+                      <div key={h.id} className="bf-held">
+                        <div className="bf-held__top">
                           <div>
                             <strong>
                               {h.customerName || "Walk-in Customer"}
@@ -2048,19 +3030,19 @@ export default function POSScreen({
                               {h.holdNumber} · {items.length} items
                             </div>
                           </div>
-                          <div className="pos-exact-held-total">
+                          <div className="bf-total">
                             {formatCurrency(h.totalAmount || 0)}
                           </div>
                         </div>
-                        <div className="pos-exact-held-actions">
+                        <div className="bf-held__row">
                           <button
-                            className="pos-exact-btn-primary"
+                            className="bf-btn bf-btn--blue"
                             onClick={() => handleResumeCart(h.id)}
                           >
                             Resume
                           </button>
                           <button
-                            className="pos-exact-btn-subtle"
+                            className="bf-btn"
                             onClick={() => {
                               cancelHoldCart(h.id);
                               toast.success("Held cart cancelled");

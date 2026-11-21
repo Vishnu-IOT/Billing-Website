@@ -942,3 +942,29 @@
     max-height: 350px;
   }
 }
+
+/* ===== PROFIT MARGIN fields (Add / Edit Product modal) ===== */
+.pm-readonly,
+.pm-readonly:focus {
+  background: var(--bg-input);
+  cursor: default;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+/* Live "Taxable + GST = Total" preview under a price field */
+.price-gst-hint {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.pm-profit {
+  color: var(--success);
+  font-weight: var(--fw-semibold);
+}
+
+.pm-loss {
+  color: var(--danger);
+  font-weight: var(--fw-semibold);
+}

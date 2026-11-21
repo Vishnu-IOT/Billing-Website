@@ -18,7 +18,15 @@ import { formatCurrency } from '../../utils/currency';
 import '../../styles/Users.css';
 import '../../styles/products.css';
 
-const EMPTY_FORM = { name: '', phone: '', email: '', GST: '', address: '' };
+const EMPTY_FORM = {
+  name: '',
+  phone: '',
+  email: '',
+  GST: '',
+  address: '',
+  gstRegistrationType: 'UNREGISTERED',
+};
+const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
 const AVATAR_COLORS = [
   '#4f46e5',
@@ -73,11 +81,11 @@ export default function Parties() {
     if (!form.name.trim()) {
       errors.name = 'Full name is required';
     }
-    if (!form.email.trim()) {
-      errors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      errors.email = 'Invalid email address';
-    }
+    // if (!form.email.trim()) {
+    //   errors.email = 'Email address is required';
+    // } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+    //   errors.email = 'Invalid email address';
+    // }
     if (!form.phone.trim()) {
       errors.phone = 'Phone number is required';
     } else if (!/^\d{10}$/.test(form.phone)) {
@@ -86,10 +94,11 @@ export default function Parties() {
     if (!form.address.trim()) {
       errors.address = 'Address is required';
     }
-    if (!form.GST.trim()) {
-      errors.GST = 'GST number is required';
-    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.GST)) {
-      errors.GST = 'Invalid GST number';
+    if (form.gstRegistrationType === 'REGISTERED') {
+      const gstin = form.GST.trim().toUpperCase();
+      if (!GSTIN_PATTERN.test(gstin)) {
+        errors.GST = 'Enter a valid 15-character GSTIN';
+      }
     }
 
     setFormErrors(errors);
@@ -147,6 +156,11 @@ export default function Parties() {
       email: party.email || '',
       GST: party.GST || '',
       address: party.address || '',
+      gstRegistrationType:
+        party.gstRegistrationType ||
+        (GSTIN_PATTERN.test(String(party.GST || '').trim().toUpperCase())
+          ? 'REGISTERED'
+          : 'UNREGISTERED'),
     });
     setModalOpen(true);
   }
@@ -287,6 +301,25 @@ export default function Parties() {
               <div className="um-error-text">{formErrors.name}</div>
             )}
           </div>
+          <div className="form-group">
+            <label className="form-label">GST Registration Type <span style={{ color: "red" }}>*</span></label>
+            <select
+              className="form-input"
+              value={form.gstRegistrationType}
+              onChange={(e) => {
+                const gstRegistrationType = e.target.value;
+                setForm((current) => ({
+                  ...current,
+                  gstRegistrationType,
+                  ...(gstRegistrationType === 'UNREGISTERED' && { GST: '' }),
+                }));
+                setFormErrors((current) => ({ ...current, GST: '' }));
+              }}
+            >
+              <option value="REGISTERED">Registered</option>
+              <option value="UNREGISTERED">Unregistered</option>
+            </select>
+          </div>
           <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Phone <span style={{ color: "red" }}>*</span></label>
@@ -303,7 +336,7 @@ export default function Parties() {
               )}
             </div>
             <div className="form-group">
-              <label className="form-label">Email <span style={{ color: "red" }}>*</span></label>
+              <label className="form-label">Email <span style={{ color: "black" }}>(Optional)</span></label>
               <input
                 className="form-input"
                 type="email"
@@ -316,19 +349,22 @@ export default function Parties() {
                 <div className="um-error-text">{formErrors.email}</div>
               )}
             </div>
-            <div className="form-group">
-              <label className="form-label">GSTIN <span style={{ color: "red" }}>*</span></label>
-              <input
-                className="form-input"
-                value={form.GST}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, GST: e.target.value }))
-                }
-              />
-              {formErrors.GST && (
-                <div className="um-error-text">{formErrors.GST}</div>
-              )}
-            </div>
+            {form.gstRegistrationType === 'REGISTERED' && (
+              <div className="form-group">
+                <label className="form-label">GSTIN <span style={{ color: "red" }}>*</span></label>
+                <input
+                  className="form-input"
+                  value={form.GST}
+                  maxLength={15}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, GST: e.target.value.toUpperCase() }))
+                  }
+                />
+                {formErrors.GST && (
+                  <div className="um-error-text">{formErrors.GST}</div>
+                )}
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Address <span style={{ color: "red" }}>*</span></label>
@@ -410,6 +446,21 @@ export default function Parties() {
                         >
                           {p.name}
                         </span>
+                        <Badge
+                          variant={
+                            (p.gstRegistrationType ||
+                              (GSTIN_PATTERN.test(String(p.GST || '').trim().toUpperCase())
+                                ? 'REGISTERED'
+                                : 'UNREGISTERED')) === 'REGISTERED'
+                              ? 'success'
+                              : 'secondary'
+                          }
+                        >
+                          {p.gstRegistrationType ||
+                          (GSTIN_PATTERN.test(String(p.GST || '').trim().toUpperCase())
+                            ? 'REGISTERED'
+                            : 'UNREGISTERED')}
+                        </Badge>
                       </div>
                       <div
                         style={{ fontSize: '11px', color: 'var(--text-muted)' }}
@@ -443,6 +494,21 @@ export default function Parties() {
                     <div className="pu-profile-name-row">
                       <h2 className="pu-profile-name">{selectedParty.name}</h2>
                       <span className="pu-verified-badge">✓ Party Profile</span>
+                      <Badge
+                        variant={
+                          (selectedParty.gstRegistrationType ||
+                            (GSTIN_PATTERN.test(String(selectedParty.GST || '').trim().toUpperCase())
+                              ? 'REGISTERED'
+                              : 'UNREGISTERED')) === 'REGISTERED'
+                            ? 'success'
+                            : 'secondary'
+                        }
+                      >
+                        {selectedParty.gstRegistrationType ||
+                        (GSTIN_PATTERN.test(String(selectedParty.GST || '').trim().toUpperCase())
+                          ? 'REGISTERED'
+                          : 'UNREGISTERED')}
+                      </Badge>
                     </div>
                     <div className="pu-profile-meta">
                       {selectedParty.GST && (

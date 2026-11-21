@@ -38,6 +38,15 @@ const defaultSettings = {
     defaultCreditLimit: 50000,
     paymentRoundOff: true,
 
+    // Loyalty redemption
+    loyaltyEnabled: true,
+    loyaltyAmountPerPoint: 100,
+    loyaltyPointsPerUnit: 1,
+    loyaltyRedemptionEnabled: false,
+    loyaltyRedemptionAmountPerPoint: 1,
+    loyaltyMinimumRedemptionPoints: 1,
+    loyaltyMaxRedemptionPercentage: 100,
+
     // POS & Printing
     printerWidth: '80', // '58' | '80'
     autoPrint: false,

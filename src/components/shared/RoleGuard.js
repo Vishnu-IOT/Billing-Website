@@ -1,20 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import useUIStore from '../../store/uiStore';
 import useAuthStore from '../../store/authStore';
+import { canAccessPage } from '../../utils/permissions';
 
-export default function RoleGuard({ allowedRoles, children }) {
-  const { user, isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    if (isAuthenticated && user && !allowedRoles.includes(user.role)) {
-      console.warn(`Access denied. Role ${user.role} is not allowed to access this resource.`);
-      // Redirect to dashboard
-      window.location.hash = 'dashboard';
-    }
-  }, [isAuthenticated, user, allowedRoles]);
-
-  if (!isAuthenticated || !user || !allowedRoles.includes(user.role)) {
+export default function RoleGuard({ children }) {
+  const user = useAuthStore((state) => state.user);
+  const { page, searchParams } = useUIStore();
+  if (!user || !canAccessPage(user, page, searchParams)) {
     return null;
   }
-
   return children;
 }

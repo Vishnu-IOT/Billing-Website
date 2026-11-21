@@ -12,17 +12,19 @@ import { formatDate } from '../../utils/date';
 import '../../styles/dashboard.css';
 import { useToast } from '../../hooks/useToast';
 import { getDashboardAPI } from '../../api';
+import { formatQuantity, getProductBaseUnit } from '../../utils/quantityUnits';
 
 export default function Dashboard() {
   const products = useAppStore((s) => s.products);
   const canvasRef = useRef(null);
   const toast = useToast();
   const [dashData, setDashData] = useState();
+  const [chartTooltip, setChartTooltip] = useState(null);
 
   /* ── Low stock is independent of the Sales/Purchase filter state, safe to
      derive from the products store directly ── */
   const lowStock = useMemo(
-    () => products.filter((p) => (parseInt(p.stockQuantity) || 0) < 5),
+    () => products.filter((p) => (Number(p.stockQuantity) || 0) < 5),
     [products]
   );
 
@@ -108,6 +110,92 @@ export default function Dashboard() {
     });
   }, [dashData]);
 
+  const handleChartMouseMove = (event) => {
+    const canvas = canvasRef.current;
+    const chartData = dashData?.chartData;
+    if (!canvas || !chartData?.length) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    if (!canvasRect.width || !canvasRect.height) return;
+    const scaleX = canvas.width / canvasRect.width;
+    const scaleY = canvas.height / canvasRect.height;
+    const pointerX = (event.clientX - canvasRect.left) * scaleX;
+    const pointerY = (event.clientY - canvasRect.top) * scaleY;
+    const width = canvas.width;
+    const height = canvas.height;
+    const pad = { top: 20, right: 20, bottom: 30, left: 50 };
+    const chartWidth = width - pad.left - pad.right;
+    const chartHeight = height - pad.top - pad.bottom;
+    const maxValue = Math.max(
+      ...chartData.flatMap((item) => [item.sales, item.purchase]),
+      1
+    );
+    const barWidth = chartWidth / chartData.length / 2 - 4;
+    let hoveredBar = null;
+
+    chartData.forEach((item, index) => {
+      const x = pad.left + (index * chartWidth) / chartData.length;
+      const bars = [
+        { type: 'sales', value: item.sales, x: x + 2 },
+        { type: 'purchase', value: item.purchase, x: x + barWidth + 4 },
+      ];
+
+      bars.forEach((bar) => {
+        const barHeight = (bar.value / maxValue) * chartHeight;
+        const barTop = pad.top + chartHeight - barHeight;
+        if (
+          pointerX >= bar.x &&
+          pointerX <= bar.x + barWidth &&
+          pointerY >= barTop &&
+          pointerY <= pad.top + chartHeight
+        ) {
+          hoveredBar = { ...bar, barTop, month: item.month };
+        }
+      });
+    });
+
+    if (!hoveredBar) {
+      setChartTooltip(null);
+      return;
+    }
+
+    const wrapperRect = canvas.parentElement.getBoundingClientRect();
+    const tooltipWidth = 180;
+    const tooltipHeight = 58;
+    const maxTooltipX = Math.max(
+      tooltipWidth / 2 + 8,
+      wrapperRect.width - tooltipWidth / 2 - 8
+    );
+    const anchorX =
+      canvasRect.left -
+      wrapperRect.left +
+      (hoveredBar.x + barWidth / 2) / scaleX;
+    const anchorY =
+      canvasRect.top -
+      wrapperRect.top +
+      hoveredBar.barTop / scaleY;
+    setChartTooltip((current) => {
+      if (
+        current?.month === hoveredBar.month &&
+        current?.type === hoveredBar.type &&
+        current?.amount === hoveredBar.value
+      ) {
+        return current;
+      }
+
+      return {
+        month: hoveredBar.month,
+        type: hoveredBar.type,
+        amount: hoveredBar.value,
+        x: Math.min(
+          Math.max(anchorX, tooltipWidth / 2 + 8),
+          maxTooltipX
+        ),
+        y: Math.max(tooltipHeight + 8, anchorY - 8),
+      };
+    });
+  };
+
   return (
     <div className="dashboard">
       <ToastContainer toasts={toast.toasts} />
@@ -135,9 +223,9 @@ export default function Dashboard() {
           color="green"
         />
         <StatCard
-          label="Stock Value"
+          label="Inventory Value"
           value={formatCurrency(dashData?.currentMonth?.stockValue)}
-          sub="Unsold Stocks"
+          sub="Current stock at acquisition cost"
           icon="⏳"
           color="amber"
         />
@@ -158,7 +246,25 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="chart-canvas-wrap">
-          <canvas ref={canvasRef} />
+          <canvas
+            ref={canvasRef}
+            onMouseMove={handleChartMouseMove}
+            onMouseLeave={() => setChartTooltip(null)}
+          />
+          {chartTooltip && (
+            <div
+              className={`chart-tooltip chart-tooltip--${chartTooltip.type}`}
+              style={{ left: chartTooltip.x, top: chartTooltip.y }}
+              role="status"
+            >
+              <span className="chart-tooltip__month">{chartTooltip.month}</span>
+              <span className="chart-tooltip__value">
+                <span className="chart-tooltip__dot" />
+                <span>{chartTooltip.type === 'sales' ? 'Sales' : 'Purchases'}</span>
+                <strong>{formatCurrency(chartTooltip.amount)}</strong>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -234,6 +340,61 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Expired and expiring batches */}
+        <div className="party-list-section">
+          <div className="card__header">
+            <span className="card__title">Expiry Alerts</span>
+            {((dashData?.expiryAlerts?.expired?.length || 0) +
+              (dashData?.expiryAlerts?.expiring?.length || 0)) > 0 && (
+              <span className="badge badge--danger">
+                {(dashData?.expiryAlerts?.expired?.length || 0) +
+                  (dashData?.expiryAlerts?.expiring?.length || 0)}
+              </span>
+            )}
+          </div>
+          <div className="party-list-scroll">
+            {!dashData ? (
+              <p className="dashboard-expiry-empty">Loading expiry alerts…</p>
+            ) : !dashData.expiryAlerts?.expired?.length &&
+              !dashData.expiryAlerts?.expiring?.length ? (
+              <EmptyState
+                icon="✅"
+                title="No expiry alerts"
+                description="No stocked batches are expired or expiring within 30 days"
+              />
+            ) : (
+              <>
+                {dashData.expiryAlerts?.expired?.map((batch) => (
+                  <div className="dashboard-expiry-item" key={`expired-${batch.id}`}>
+                    <div className="dashboard-expiry-info">
+                      <span className="low-stock-name">{batch.Product?.name || 'Product'}</span>
+                      <span className="party-sub">
+                        Batch {batch.batchNumber || batch.id} · Expired {formatDate(batch.expiryDate)}
+                      </span>
+                    </div>
+                    <span className="dashboard-expiry-quantity dashboard-expiry-quantity--expired">
+                      {formatQuantity(batch.availableQuantity)} {getProductBaseUnit(batch.Product || {})}
+                    </span>
+                  </div>
+                ))}
+                {dashData.expiryAlerts?.expiring?.map((batch) => (
+                  <div className="dashboard-expiry-item" key={`expiring-${batch.id}`}>
+                    <div className="dashboard-expiry-info">
+                      <span className="low-stock-name">{batch.Product?.name || 'Product'}</span>
+                      <span className="party-sub">
+                        Batch {batch.batchNumber || batch.id} · Expires {formatDate(batch.expiryDate)}
+                      </span>
+                    </div>
+                    <span className="dashboard-expiry-quantity">
+                      {formatQuantity(batch.availableQuantity)} {getProductBaseUnit(batch.Product || {})}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Low Stock */}
         <div className="party-list-section">
           <div className="card__header">
@@ -255,7 +416,7 @@ export default function Dashboard() {
                   <div className="low-stock-dot" />
                   <span className="low-stock-name">{p.name}</span>
                   <span className="low-stock-qty">
-                    {p.stockQuantity ?? 0} {p.unit || 'pcs'}
+                    {formatQuantity(p.stockQuantity ?? 0)} {getProductBaseUnit(p)}
                   </span>
                 </div>
               ))}

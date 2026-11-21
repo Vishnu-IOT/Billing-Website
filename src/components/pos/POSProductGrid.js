@@ -1,6 +1,8 @@
 /* ===== POS PRODUCT GRID — Left panel ===== */
 import React, { useState, useMemo, useCallback } from 'react';
 import { formatCurrency } from '../../utils/currency';
+import { formatQuantity, getProductBaseUnit, isWeightProduct } from '../../utils/quantityUnits';
+import { matchesProductSearch } from '../../utils/productSearch';
 
 /**
  * POSProductGrid
@@ -10,7 +12,13 @@ import { formatCurrency } from '../../utils/currency';
  * - Product card grid (click to add to cart)
  * - Stock badge per card
  */
-export default function POSProductGrid({ products, categories, onAddProduct, recentProductIds }) {
+export default function POSProductGrid({
+  products,
+  categories,
+  brands,
+  onAddProduct,
+  recentProductIds,
+}) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   console.log(categories);
@@ -25,23 +33,47 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
       })),
     ];
   }, [categories]);
+  const brandNamesById = useMemo(
+    () =>
+      new Map(
+        (brands || []).map((brand) => [
+          String(brand.id || brand._id),
+          brand.name || brand.brand || '',
+        ]),
+      ),
+    [brands],
+  );
+  const categoryNamesById = useMemo(
+    () =>
+      new Map(
+        (categories || []).map((category) => [
+          String(category.id || category._id),
+          category.category || category.name || '',
+        ]),
+      ),
+    [categories],
+  );
 
   /* ── Filter products ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return (products || []).filter((p) => {
-      const matchSearch =
-        !q ||
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.HSNCode && p.HSNCode.toLowerCase().includes(q)) ||
-        (p.sku && p.sku.toLowerCase().includes(q)) ||
-        (p.barcode && p.barcode.toLowerCase().includes(q));
+      const matchSearch = matchesProductSearch(p, q, [
+        brandNamesById.get(String(p.brandId)),
+        categoryNamesById.get(String(p.categoryId)),
+      ]);
       const matchCat =
         activeCategory === 'all' ||
         String(p.categoryId) === String(activeCategory);
       return matchSearch && matchCat;
     });
-  }, [products, search, activeCategory]);
+  }, [
+    products,
+    search,
+    activeCategory,
+    brandNamesById,
+    categoryNamesById,
+  ]);
 
   /* ── Recent products strip ── */
   const recentProducts = useMemo(() => {
@@ -55,8 +87,9 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
 
   function getStockBadge(p) {
     const qty = p.stockQuantity || 0;
+    const stockText = `${formatQuantity(qty)} ${getProductBaseUnit(p)}`;
     if (qty === 0) return { label: 'Out', color: '#dc2626', bg: '#fee2e2' };
-    if (qty < 5) return { label: `${qty} left`, color: '#d97706', bg: '#fef3c7' };
+    if (qty < 5) return { label: `${stockText} left`, color: '#d97706', bg: '#fef3c7' };
     return { label: 'In stock', color: '#16a34a', bg: '#dcfce7' };
   }
 
@@ -171,8 +204,12 @@ export default function POSProductGrid({ products, categories, onAddProduct, rec
                 )}
                 <div className="pos-product-card__price">
                   {formatCurrency(price)}
-                  {product.unit && (
+                  {isWeightProduct(product) ? (
+                    <span className="pos-product-card__unit">/KG</span>
+                  ) : product.unit ? (
                     <span className="pos-product-card__unit">/{product.unit}</span>
+                  ) : (
+                    <span className="pos-product-card__unit">/PCS</span>
                   )}
                 </div>
                 <div className="pos-product-card__add-hint">+ Add</div>

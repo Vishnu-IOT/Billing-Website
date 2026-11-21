@@ -48,6 +48,13 @@
   padding: var(--sp-5);
 }
 
+.purchase-bill-details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--sp-4);
+}
+
 .bill-type-toggle {
   display: flex;
   background: var(--bg);
@@ -85,6 +92,35 @@
 .invoice-table {
   width: 100%;
   font-size: var(--fs-sm);
+}
+
+.invoice-table--purchase {
+  table-layout: fixed;
+}
+
+.invoice-table--purchase .purchase-batch-selector {
+  max-width: 100%;
+  margin-top: var(--sp-2);
+}
+
+.purchase-quantity-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.purchase-quantity-cell .invoice-input,
+.purchase-quantity-cell .form-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.purchase-quantity-summary {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .invoice-table th {
@@ -312,9 +348,17 @@
     width: 100%;
     position: static;
   }
+
+  .purchase-bill-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
+  .purchase-bill-details-grid {
+    grid-template-columns: 1fr;
+  }
+
   .invoice-table {
     display: none;
   }
@@ -333,4 +377,88 @@
   .action-bar__right .btn {
     flex: 1;
   }
+}
+
+.batch-price-history {
+  position: fixed;
+  z-index: 2100;
+  box-sizing: border-box;
+  width: min(440px, calc(100vw - 24px));
+  max-height: min(320px, calc(100vh - 24px));
+  overflow: auto;
+  padding: var(--sp-3);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.batch-price-history__title {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.batch-price-history__table {
+  width: 100%;
+  min-width: 390px;
+  border-collapse: collapse;
+  font-size: var(--fs-xs);
+}
+
+.batch-price-history__table th,
+.batch-price-history__table td {
+  padding: 7px var(--sp-2);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.batch-price-history__table th {
+  color: var(--text-muted);
+  font-weight: var(--fw-semibold);
+}
+
+.batch-price-history__table td:nth-last-child(-n + 2) {
+  text-align: right;
+}
+
+.batch-price-history__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.batch-price-history__latest td {
+  background: var(--primary-light);
+}
+
+.batch-price-history__rank {
+  display: block;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+}
+
+.batch-price-history__state {
+  padding: var(--sp-3) 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.batch-price-history__state--error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  color: var(--danger);
+}
+
+.batch-price-history__retry {
+  padding: 4px 8px;
+  color: var(--primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--fs-xs);
 }

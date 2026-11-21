@@ -35,6 +35,33 @@
 
 .rv-note { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); }
 
+.rv-detail-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(15, 23, 42, 0.48); }
+.rv-detail-dialog { display: flex; flex-direction: column; width: min(900px, 100%); max-height: min(85vh, 900px); overflow: hidden; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.rv-detail-dialog__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+.rv-detail-dialog__header h2 { margin: 0; color: var(--text-primary); font-size: var(--fs-lg); }
+.rv-detail-dialog__header p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.rv-detail-dialog__close { display: grid; place-items: center; width: 34px; height: 34px; color: var(--text-secondary); background: transparent; border: 0; border-radius: var(--radius-md); cursor: pointer; }
+.rv-detail-dialog__close:hover { color: var(--text-primary); background: var(--bg-hover); }
+.rv-detail-dialog__body { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); overflow: auto; }
+.rv-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin: 0; }
+.rv-detail-grid__item { min-width: 0; padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
+.rv-detail-grid__item dt { margin-bottom: 4px; color: var(--text-muted); font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: capitalize; }
+.rv-detail-grid__item dd { margin: 0; overflow-wrap: anywhere; color: var(--text-primary); font-size: var(--fs-sm); }
+.rv-detail-empty { color: var(--text-muted); }
+
+.gst-template-report { display: flex; flex-direction: column; gap: var(--sp-4); }
+.gst-template-period { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-4); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.gst-template-period .rv-filter { min-width: 180px; }
+.gst-template-sheet { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-card); overflow: hidden; }
+.gst-template-sheet > summary { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); cursor: pointer; font-weight: var(--fw-semibold); }
+.gst-template-sheet__meta { color: var(--text-muted); font-size: var(--fs-xs); font-weight: var(--fw-regular); }
+.gst-template-sheet__table { max-height: 420px; overflow: auto; }
+.gst-template-sheet__table th small { display: block; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: none; white-space: normal; }
+.gst-template-message { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); color: var(--text-secondary); font-size: var(--fs-sm); }
+.gst-template-message ul { margin: var(--sp-2) 0 0; padding-left: 1.25rem; }
+.gst-template-message--warning { border-color: var(--warning); background: var(--warning-light); }
+.gst-template-sheets { display: flex; flex-direction: column; gap: var(--sp-2); }
+
 /* ── Mobile: filters stack, tables become stacked cards ── */
 @media (max-width: 700px) {
   .rv-filter { min-width: 100%; }
@@ -43,6 +70,13 @@
   .rv-search { max-width: none; }
   .rv-actions { width: 100%; }
   .rv-actions .btn { flex: 1; }
+  .rv-detail-backdrop { padding: var(--sp-2); }
+  .rv-detail-dialog { max-height: 92vh; }
+  .rv-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .gst-template-period { align-items: stretch; }
+  .gst-template-period .rv-filter { min-width: 100%; }
+  .gst-template-period > .btn { width: 100%; }
+  .gst-template-sheet > summary { align-items: flex-start; flex-direction: column; }
 
   .rv-table-wrap, .rv-mini { overflow: visible; background: transparent; border: none; box-shadow: none; }
   .rv-table thead, .rv-mini thead { display: none; }

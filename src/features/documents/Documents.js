@@ -21,6 +21,7 @@ import DocumentForm from '../../components/shared/DocumentForm';
 import '../../styles/bills.css';
 import useAppStore from '../../store/appStore';
 import DocumentPreview from '../../components/shared/DocumentPreview';
+import DateInput from '../../components/shared/DateInput';
 
 const TAB_TYPES = [...SALES_DOCUMENT_TYPES, ...PURCHASE_DOCUMENT_TYPES];
 
@@ -245,9 +246,8 @@ export default function Documents({ searchParams }) {
           <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
             From
           </label>
-          <input
+          <DateInput
             className="form-input"
-            type="date"
             value={filterFromDate}
             onChange={(e) => setFilterFromDate(e.target.value)}
           />
@@ -257,9 +257,8 @@ export default function Documents({ searchParams }) {
           <label style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
             To
           </label>
-          <input
+          <DateInput
             className="form-input"
-            type="date"
             value={filterToDate}
             onChange={(e) => setFilterToDate(e.target.value)}
           />

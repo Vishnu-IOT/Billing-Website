@@ -1,0 +1,244 @@
+.offers-page {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: var(--sp-6);
+  color: var(--text-primary);
+}
+
+.offers-header,
+.offers-toolbar,
+.offers-modal-header,
+.offers-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.offers-header {
+  margin-bottom: var(--sp-5);
+}
+
+.offers-kicker {
+  color: var(--info);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+
+.offers-header h1,
+.offers-modal-header h2 {
+  margin: var(--sp-1) 0;
+  font-size: var(--fs-2xl);
+}
+
+.offers-header p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.offers-toolbar {
+  justify-content: flex-start;
+  margin-bottom: var(--sp-4);
+}
+
+.offers-search {
+  width: min(100%, 420px);
+}
+
+.offers-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.offers-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.offers-table th,
+.offers-table td {
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.offers-table th {
+  color: var(--text-muted);
+  background: var(--bg);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+}
+
+.offers-subline {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.offers-status {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.offers-status.is-active {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.offers-status.is-inactive {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+.offers-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  white-space: nowrap;
+}
+
+.offers-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+.offers-actions button:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.offers-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.offers-error {
+  display: block;
+  color: var(--danger);
+}
+
+.offers-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: var(--bg-overlay);
+}
+
+.offers-modal {
+  width: min(100%, 760px);
+  max-height: min(92dvh, 900px);
+  overflow: auto;
+  padding: var(--sp-5);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+}
+
+.offers-modal-header {
+  margin-bottom: var(--sp-4);
+}
+
+.offers-modal-header h2 {
+  font-size: var(--fs-xl);
+}
+
+.offers-modal-header > button {
+  width: 36px;
+  height: 36px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.offers-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.offers-field-wide {
+  grid-column: 1 / -1;
+}
+
+.offers-active-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.offers-active-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.offers-modal-footer {
+  justify-content: flex-end;
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .offers-page {
+    padding: var(--sp-4);
+  }
+
+  .offers-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .offers-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .offers-search {
+    width: 100%;
+  }
+
+  .offers-modal {
+    padding: var(--sp-4);
+  }
+
+  .offers-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .offers-field-wide {
+    grid-column: auto;
+  }
+}

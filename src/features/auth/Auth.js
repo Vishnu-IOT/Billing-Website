@@ -310,7 +310,7 @@ const Brand = () => (
       </svg>
     </div>
     <div className="brand-text">
-      <span className="brand-name">NithiX</span>
+      <span className="brand-name">Shree Kamachi Amman Store</span>
       <span className="brand-sub">POS &amp; Billing</span>
     </div>
   </div>

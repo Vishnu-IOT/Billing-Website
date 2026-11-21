@@ -205,6 +205,16 @@
     font-weight: var(--fw-semibold);
 }
 
+.sm-detail-row--denominations {
+    align-items: flex-start;
+}
+
+.sm-detail-row--denominations strong {
+    max-width: 70%;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
 .sm-detail-row--notes {
     flex-direction: column;
     align-items: flex-start;

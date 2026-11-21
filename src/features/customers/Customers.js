@@ -1,19 +1,20 @@
 /* ===== CUSTOMERS ===== */
 import React, { useState, useMemo } from 'react';
 import useAppStore from '../../store/appStore';
-import { Badge, EmptyState } from '../../components/ui';
+import { Badge, Button, EmptyState } from '../../components/ui';
+import { FiGift } from 'react-icons/fi';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import LoyaltyRedemptionModal from './LoyaltyRedemptionModal';
+import { loyaltyTier } from '../../utils/loyaltyTier';
 
-function loyaltyTier(points) {
-  const p = Number(points) || 0;
-  if (p >= 1000) return { label: 'Gold', variant: 'success' };
-  if (p >= 300) return { label: 'Silver', variant: 'info' };
-  return { label: 'Bronze', variant: 'neutral' };
-}
 
 export default function Customers() {
   const customers = useAppStore((s) => s.customers);
+  const updateCustomerLoyaltyPoints = useAppStore(
+    (s) => s.updateCustomerLoyaltyPoints
+  );
   const [search, setSearch] = useState('');
+  const [loyaltyCustomer, setLoyaltyCustomer] = useState(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -35,6 +36,12 @@ export default function Customers() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+      <LoyaltyRedemptionModal
+        open={!!loyaltyCustomer}
+        customer={loyaltyCustomer}
+        onClose={() => setLoyaltyCustomer(null)}
+        onBalanceChange={updateCustomerLoyaltyPoints}
+      />
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div className="page-header__left">
           <h1>Customers</h1>
@@ -73,6 +80,7 @@ export default function Customers() {
                 <th>Phone</th>
                 <th>Loyalty Points</th>
                 <th>Tier</th>
+                <th>Rewards</th>
               </tr>
             </thead>
             <tbody>
@@ -85,6 +93,16 @@ export default function Customers() {
                     <td style={{ fontWeight: 700 }}>{Number(c.loyalty_points) || 0}</td>
                     <td>
                       <Badge variant={tier.variant}>{tier.label}</Badge>
+                    </td>
+                    <td>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={<FiGift />}
+                        onClick={() => setLoyaltyCustomer(c)}
+                      >
+                        Rewards
+                      </Button>
                     </td>
                   </tr>
                 );

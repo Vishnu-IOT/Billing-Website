@@ -7,6 +7,7 @@
  */
 import React, { useState } from 'react';
 import { Button } from '../../components/ui';
+import DateInput from '../../components/shared/DateInput';
 import {
   STATUS_OPTIONS, BILL_TYPES, STOCK_STATUSES, TX_TYPES, PARTY_TYPES, OUTSTANDING_STATUSES, STOCK_GROUPS,
 } from './reportRegistry';
@@ -36,7 +37,11 @@ function TextInput({ label, value, onChange, placeholder, type = 'text', min }) 
   return (
     <div className="filter-group rv-filter">
       <label className="filter-label">{label}</label>
-      <input className="form-input" type={type} min={min} value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      {type === 'date' ? (
+        <DateInput className="form-input" min={min} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input className="form-input" type={type} min={min} value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      )}
     </div>
   );
 }
@@ -51,7 +56,7 @@ function Check({ label, checked, onChange }) {
 }
 
 // filters shown in the always-visible row; everything else sits under "More filters"
-const PRIMARY = new Set(['period', 'gstPeriod', 'party', 'user', 'status', 'stockStatus', 'groupBy', 'transactionType', 'category', 'asOfDate']);
+const PRIMARY = new Set(['period', 'gstPeriod', 'party', 'user', 'status', 'stockStatus', 'expiryStatus', 'groupBy', 'transactionType', 'category', 'asOfDate']);
 
 export default function ReportFilters({ def, draft, patchDraft, lookups, onApply, onReset, loading }) {
   const [showMore, setShowMore] = useState(false);
@@ -64,13 +69,16 @@ export default function ReportFilters({ def, draft, patchDraft, lookups, onApply
 
   const dateControls = (disabled) => (
     <>
-      <Select label="Period" value={draft.quick || 'custom'} onChange={quickChanged} options={QUICK_RANGES.map((q) => ({ value: q.key, label: q.label }))} disabled={disabled} />
-      <TextInput label="From Date" type="date" value={draft.fromDate} onChange={dateChanged('fromDate')} />
-      <TextInput label="To Date" type="date" value={draft.toDate} onChange={dateChanged('toDate')} />
+      <Select label={def.dateRangeLabel || 'Period'} value={draft.quick || 'custom'} onChange={quickChanged} options={QUICK_RANGES.map((q) => ({ value: q.key, label: q.label }))} disabled={disabled} />
+      <TextInput label={def.fromDateLabel || 'From Date'} type="date" value={draft.fromDate} onChange={dateChanged('fromDate')} />
+      <TextInput label={def.toDateLabel || 'To Date'} type="date" value={draft.toDate} onChange={dateChanged('toDate')} />
     </>
   );
 
   const renderFilter = (k) => {
+    const label = def.filterLabels?.[k] || cap(k.replace(/([A-Z])/g, ' $1').replace(/Id$/, '').replace(/Number$/, ' No'));
+    const options = def.filterOptions?.[k];
+    if (options) return <Select key={k} label={label} value={draft[k]} onChange={set(k)} options={options} placeholder={`All ${label.toLowerCase()}`} />;
     switch (k) {
       case 'period': return <React.Fragment key={k}>{dateControls(false)}</React.Fragment>;
       case 'gstPeriod': return (
@@ -81,15 +89,16 @@ export default function ReportFilters({ def, draft, patchDraft, lookups, onApply
         </React.Fragment>
       );
       case 'party': return <Select key={k} label={def.partyLabel || 'Party'} value={draft.partyId} onChange={set('partyId')} options={lookups.parties} placeholder={def.requires?.includes('partyId') ? '— Select Party —' : `All ${def.partyLabel ? `${def.partyLabel}s` : 'Parties'}`} />;
-      case 'user': return <Select key={k} label="User / Rep" value={draft.userId} onChange={set('userId')} options={lookups.users} placeholder="All Users" />;
+      case 'user': return <Select key={k} label={def.filterLabels?.user || 'User / Rep'} value={draft.userId} onChange={set('userId')} options={lookups.users} placeholder="All Users" />;
       case 'product': return <Select key={k} label="Product" value={draft.productId} onChange={set('productId')} options={lookups.products} placeholder="All Products" />;
       case 'category': return <Select key={k} label="Category" value={draft.categoryId} onChange={set('categoryId')} options={lookups.categories} placeholder="All Categories" />;
       case 'brand': return <Select key={k} label="Brand" value={draft.brandId} onChange={set('brandId')} options={lookups.brands} placeholder="All Brands" />;
       case 'paymentMode': return <Select key={k} label="Payment Mode" value={draft.paymentMode} onChange={set('paymentMode')} options={lookups.paymentModes} placeholder="All Modes" />;
-      case 'billType': return <Select key={k} label="Bill Type" value={draft.billType} onChange={set('billType')} options={BILL_TYPES} placeholder="All Types" />;
+      case 'billType': return <Select key={k} label={label} value={draft.billType} onChange={set('billType')} options={BILL_TYPES} placeholder="All Types" />;
       case 'invoiceType': return <Select key={k} label="Invoice Type" value={draft.invoiceType} onChange={set('invoiceType')} options={BILL_TYPES} placeholder="All Types" />;
-      case 'status': return <Select key={k} label="Status" value={draft.status} onChange={set('status')} options={STATUS_OPTIONS} placeholder="Active (excl. Cancelled)" />;
-      case 'invoiceNumber': return <TextInput key={k} label="Invoice No" value={draft.invoiceNumber} onChange={set('invoiceNumber')} placeholder="Contains…" />;
+      case 'status': return <Select key={k} label={label} value={draft.status} onChange={set('status')} options={STATUS_OPTIONS} placeholder="Active (excl. Cancelled)" />;
+      case 'expiryStatus': return <Select key={k} label={label} value={draft.expiryStatus} onChange={set('expiryStatus')} options={[]} placeholder={`All ${label.toLowerCase()}`} />;
+      case 'invoiceNumber': return <TextInput key={k} label={label} value={draft.invoiceNumber} onChange={set('invoiceNumber')} placeholder="Contains…" />;
       case 'purchaseNumber': return <TextInput key={k} label="Bill No" value={draft.purchaseNumber} onChange={set('purchaseNumber')} placeholder="Contains…" />;
       case 'gstin': return <TextInput key={k} label="GSTIN" value={draft.gstin} onChange={set('gstin')} placeholder="Contains…" />;
       case 'taxRate': return <Select key={k} label="Tax Rate" value={draft.taxRate} onChange={set('taxRate')} options={lookups.taxRates} placeholder="All Rates" />;
@@ -102,15 +111,16 @@ export default function ReportFilters({ def, draft, patchDraft, lookups, onApply
       case 'overdueDays': return <TextInput key={k} label="Overdue > (days)" type="number" min="0" value={draft.overdueDays} onChange={set('overdueDays')} placeholder="e.g. 30" />;
       case 'includeProducts': return <Check key={k} label="Show products" checked={draft.includeProducts} onChange={set('includeProducts')} />;
       case 'activeOnly': return <Check key={k} label="Only with movement" checked={draft.activeOnly} onChange={set('activeOnly')} />;
-      default: return null;
+      default: return <TextInput key={k} label={label} value={draft[k]} onChange={set(k)} placeholder="Contains…" />;
     }
   };
 
   const primary = def.filters.filter((k) => PRIMARY.has(k) || k === 'includeProducts' || k === 'activeOnly');
   const more = def.filters.filter((k) => !PRIMARY.has(k) && k !== 'includeProducts' && k !== 'activeOnly');
+  const filterStateKey = (key) => ({ user: 'userId', product: 'productId', category: 'categoryId', brand: 'brandId' }[key] || key);
   const moreActive = more.filter((k) => {
-    const map = { user: 'userId', product: 'productId', brand: 'brandId', paymentMode: 'paymentMode', billType: 'billType', invoiceType: 'invoiceType', invoiceNumber: 'invoiceNumber', purchaseNumber: 'purchaseNumber', gstin: 'gstin', taxRate: 'taxRate', partyType: 'partyType', outstandingStatus: 'outstandingStatus', overdueDays: 'overdueDays' };
-    return map[k] && draft[map[k]];
+    const value = draft[filterStateKey(k)];
+    return value !== undefined && value !== null && value !== '';
   }).length;
 
   return (
@@ -145,6 +155,14 @@ export function describeFilters(def, applied, lookups, search) {
   add('Brand', applied.brandId && pick(lookups.brands, applied.brandId));
   add('Payment Mode', applied.paymentMode); add('Bill Type', applied.billType); add('Invoice Type', applied.invoiceType);
   add('Status', applied.status); add('Invoice No', applied.invoiceNumber); add('Bill No', applied.purchaseNumber);
+  Object.entries(def.filterLabels || {}).forEach(([key, label]) => {
+    const stateKey = ({ user: 'userId', category: 'categoryId', brand: 'brandId' }[key] || key);
+    if (!['period', 'status', 'user'].includes(key)) {
+      const value = applied[stateKey];
+      const option = (def.filterOptions?.[key] || []).find((item) => String(item.value) === String(value));
+      add(label, option?.label || value);
+    }
+  });
   add('GSTIN', applied.gstin); add('Tax Rate', applied.taxRate !== '' && applied.taxRate !== undefined ? `${applied.taxRate}%` : '');
   add('Stock Status', applied.stockStatus && applied.stockStatus !== 'All' ? applied.stockStatus : '');
   add('Group By', applied.groupBy); add('Transaction Type', applied.transactionType);

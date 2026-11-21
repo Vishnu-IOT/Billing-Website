@@ -7,6 +7,7 @@ import { useToast } from "../../hooks/useToast";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import "../../styles/components.css";
 import { ToastContainer } from "../../components/ui";
+import { formatQuantity, getProductBaseUnit } from "../../utils/quantityUnits";
 
 export default function InventoryHub() {
   const toast = useToast();
@@ -288,7 +289,10 @@ export default function InventoryHub() {
               <div style={{ fontSize: 12, color: "#be123c", marginTop: 2 }}>
                 {reorderAlerts
                   .slice(0, 4)
-                  .map((p) => `${p.name} (${p.stockQuantity} left)`)
+                  .map(
+                    (p) =>
+                      `${p.name} (${p.stockQuantity} ${getProductBaseUnit(p)} left)`,
+                  )
                   .join(" · ")}
                 {reorderAlerts.length > 4
                   ? ` and ${reorderAlerts.length - 4} more...`
@@ -821,7 +825,8 @@ export default function InventoryHub() {
                           color: Number(m.quantity) > 0 ? "#16a34a" : "#dc2626",
                         }}
                       >
-                        {Number(m.quantity) > 0 ? `+${m.quantity}` : m.quantity}
+                        {Number(m.quantity) > 0 ? `+${formatQuantity(m.quantity)}` : formatQuantity(m.quantity)}{" "}
+                        {getProductBaseUnit(m.Product)}
                       </td>
                       <td style={{ padding: "12px 18px", color: "#64748b" }}>
                         {m.referenceType} #{m.referenceId || "-"}
@@ -1210,7 +1215,7 @@ export default function InventoryHub() {
                       <option value="">Select Product</option>
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} (Stock: {p.stockQuantity})
+                          {p.name} (Stock: {p.stockQuantity} {getProductBaseUnit(p)})
                         </option>
                       ))}
                     </select>

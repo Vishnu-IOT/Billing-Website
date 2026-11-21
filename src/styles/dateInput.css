@@ -1,0 +1,53 @@
+.date-input {
+  position: relative;
+  width: 100%;
+}
+
+.date-input > input[type='text'] {
+  padding-right: 40px;
+}
+
+.date-input__picker {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  z-index: 1;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  color: var(--text-secondary, #64748b);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.date-input__picker:disabled {
+  cursor: not-allowed;
+}
+
+.date-input__native-picker {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  opacity: 0;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.date-input__native-picker:disabled {
+  display: none;
+}
+
+.date-input__error {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger, #dc2626);
+  font-size: 0.75rem;
+}

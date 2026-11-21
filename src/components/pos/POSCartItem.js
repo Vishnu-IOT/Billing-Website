@@ -85,7 +85,10 @@ export default function POSCartItem({ item, onUpdate, onRemove, index }) {
       </td>
       <td className="pos-cart-td-price">
         <span className="pos-cart-item__rate">{formatCurrency(item.price)}</span>
-        <div className="pos-cart-item__unit">/{item.unit || 'pcs'}</div>
+        <div className="pos-cart-item__unit">
+          /{item.unit || 'pcs'}
+          {item.priceType === 'WITH_GST' ? ' · incl. GST' : ''}
+        </div>
       </td>
       <td className="pos-cart-td-disc">
         {editingDisc ? (
